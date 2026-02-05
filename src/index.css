@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #1a1a1a;
+    --card: #242424;
+    --neon: #00ff41;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply h-full;
+    background: var(--background);
+    overscroll-behavior: none;
+  }
+
+  body {
+    @apply h-full bg-background text-white;
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
+  }
+
+  #root {
+    @apply h-full;
+  }
+}
