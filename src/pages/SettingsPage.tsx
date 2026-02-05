@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui";
 import { MemberAdd, MemberList } from "@/components/member";
+import { FixedTeamManager } from "@/components/fixedTeam";
 import { useSquadStore } from "@/stores/squadStore";
 
 const SettingsPage = () => {
@@ -19,6 +20,8 @@ const SettingsPage = () => {
           <MemberList />
         </div>
       </Card>
+
+      <FixedTeamManager />
     </div>
   );
 };

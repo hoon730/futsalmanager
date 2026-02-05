@@ -26,7 +26,7 @@ export interface IDivision {
 export interface IFixedTeam {
   id: string;
   playerIds: string[];
-  players: IMember[];
+  players?: IMember[];
   active: boolean;
 }
 
