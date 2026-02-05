@@ -1,34 +1,26 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: #1a1a1a;
-    --card: #242424;
-    --neon: #00ff41;
-  }
+* {
+  border-color: rgba(255, 255, 255, 0.1);
+}
 
-  * {
-    @apply border-border;
-  }
+html {
+  height: 100%;
+  background: #1a1a1a;
+  overscroll-behavior: none;
+}
 
-  html {
-    @apply h-full;
-    background: var(--background);
-    overscroll-behavior: none;
-  }
+body {
+  height: 100%;
+  background: #1a1a1a;
+  color: white;
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
 
-  body {
-    @apply h-full bg-background text-white;
-    margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overscroll-behavior-y: none;
-  }
-
-  #root {
-    @apply h-full;
-  }
+#root {
+  height: 100%;
 }
