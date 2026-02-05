@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui";
 import { MemberAdd, MemberList } from "@/components/member";
 import { FixedTeamManager } from "@/components/fixedTeam";
+import { SquadNameEditor } from "@/components/settings";
 import { useSquadStore } from "@/stores/squadStore";
 
 const SettingsPage = () => {
@@ -8,6 +9,8 @@ const SettingsPage = () => {
 
   return (
     <div className="space-y-6">
+      <SquadNameEditor />
+
       <Card title="멤버 관리">
         <div className="mb-4">
           <p className="text-sm text-gray-400 mb-4">
