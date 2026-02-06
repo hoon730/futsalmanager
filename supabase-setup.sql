@@ -94,6 +94,22 @@ CREATE POLICY "Enable all access for divisions" ON divisions FOR ALL USING (true
 CREATE POLICY "Enable all access for teammate_history" ON teammate_history FOR ALL USING (true);
 
 -- ====================================
+-- 11. Realtime 설정 (실시간 동기화)
+-- ====================================
+
+-- Realtime을 위한 REPLICA IDENTITY 설정
+ALTER TABLE squads REPLICA IDENTITY FULL;
+ALTER TABLE members REPLICA IDENTITY FULL;
+ALTER TABLE fixed_teams REPLICA IDENTITY FULL;
+ALTER TABLE divisions REPLICA IDENTITY FULL;
+ALTER TABLE teammate_history REPLICA IDENTITY FULL;
+
+-- Realtime Publication 생성 (이미 있으면 무시)
+-- Note: Supabase는 기본적으로 'supabase_realtime' publication이 있음
+-- 추가 publication이 필요하면 아래 주석 해제:
+-- CREATE PUBLICATION futsal_realtime FOR ALL TABLES;
+
+-- ====================================
 -- 설정 완료!
 -- ====================================
 -- 다음 단계:
@@ -101,4 +117,6 @@ CREATE POLICY "Enable all access for teammate_history" ON teammate_history FOR A
 -- 2. 이 파일 내용 전체 복사
 -- 3. "Run" 클릭하여 실행
 -- 4. 성공 메시지 확인
+-- 5. Supabase Dashboard → Database → Replication
+--    → 모든 테이블이 'supabase_realtime'에 추가되었는지 확인
 -- ====================================

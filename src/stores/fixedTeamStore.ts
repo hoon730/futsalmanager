@@ -1,33 +1,28 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { IFixedTeam } from "@/types";
 
 interface IFixedTeamStore {
   fixedTeams: IFixedTeam[];
+  setFixedTeams: (teams: IFixedTeam[]) => void;
   addFixedTeam: (team: IFixedTeam) => void;
   removeFixedTeam: (id: string) => void;
   clearAllFixedTeams: () => void;
 }
 
-export const useFixedTeamStore = create<IFixedTeamStore>()(
-  persist(
-    (set) => ({
-      fixedTeams: [],
+export const useFixedTeamStore = create<IFixedTeamStore>()((set) => ({
+  fixedTeams: [],
 
-      addFixedTeam: (team) =>
-        set((state) => ({
-          fixedTeams: [...state.fixedTeams, team],
-        })),
+  setFixedTeams: (teams) => set({ fixedTeams: teams }),
 
-      removeFixedTeam: (id) =>
-        set((state) => ({
-          fixedTeams: state.fixedTeams.filter((t) => t.id !== id),
-        })),
+  addFixedTeam: (team) =>
+    set((state) => ({
+      fixedTeams: [...state.fixedTeams, team],
+    })),
 
-      clearAllFixedTeams: () => set({ fixedTeams: [] }),
-    }),
-    {
-      name: "fixed-teams-storage",
-    }
-  )
-);
+  removeFixedTeam: (id) =>
+    set((state) => ({
+      fixedTeams: state.fixedTeams.filter((t) => t.id !== id),
+    })),
+
+  clearAllFixedTeams: () => set({ fixedTeams: [] }),
+}));
