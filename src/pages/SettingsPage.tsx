@@ -3,6 +3,7 @@ import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
 import { useFixedTeamStore } from '@/stores/fixedTeamStore';
 import { AlertModal } from '@/components/modals/AlertModal';
+import { SupabaseSync } from "@/components/settings/SupabaseSync";
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 
 export default function SettingsPage() {
@@ -281,6 +282,9 @@ export default function SettingsPage() {
           💡 고정 팀은 팀배정 탭에서 추가할 수 있습니다
         </p>
       </section>
+      {/* Supabase 동기화 섹션 */}
+      <SupabaseSync />
+
 
       {/* 데이터 관리 섹션 */}
       <section className="section danger-zone">
