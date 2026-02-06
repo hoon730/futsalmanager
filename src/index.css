@@ -58,8 +58,8 @@ body {
     background: #1a1a1a;
     background: linear-gradient(180deg, #222 0%, #1a1a1a 100%);
     color: #fff;
-    padding: 30px 20px 20px 20px;
-    padding-top: calc(30px + env(safe-area-inset-top));
+    padding: 20px 20px 10px 20px;
+    padding-top: calc(20px + env(safe-area-inset-top));
     text-align: center;
     position: sticky;
     top: 0;
@@ -68,8 +68,14 @@ body {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    /* 스크롤 시 컨텐츠가 뒤로 보이지 않도록 */
     isolation: isolate;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* 스크롤 다운 시 헤더 숨김 */
+.app-header.hidden {
+    transform: translateY(-100%);
+    opacity: 0;
 }
 
 .app-header h1 {
