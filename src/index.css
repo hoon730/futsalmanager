@@ -1197,9 +1197,24 @@ footer {
 }
 
 .participant-checkboxes {
+    /* 체크박스가 있을 때만 grid 적용 */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 체크박스 항목들이 있을 때만 grid 레이아웃 */
+.participant-checkboxes:has(.checkbox-item) {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
+}
+
+/* 빈 메시지는 중앙 정렬 */
+.participant-checkboxes .empty-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95em;
 }
 
 /* ========================================
@@ -2369,7 +2384,7 @@ footer {
         margin-bottom: 16px;
     }
 
-    .participant-checkboxes {
+    .participant-checkboxes:has(.checkbox-item) {
         grid-template-columns: 1fr;
         gap: 6px;
     }
