@@ -9,6 +9,7 @@ interface IDivisionStore {
   setCurrentDivision: (division: IDivision | null) => void;
   saveDivision: (division: IDivision) => void;
   deleteDivision: (id: string) => void;
+  clearAllDivisions: () => void;
   updateTeammateHistory: (history: ITeammateHistory) => void;
 }
 
@@ -30,6 +31,9 @@ export const useDivisionStore = create<IDivisionStore>()(
         set((state) => ({
           divisionHistory: state.divisionHistory.filter((d) => d.id !== id),
         })),
+
+      clearAllDivisions: () =>
+        set({ divisionHistory: [], teammateHistory: {} }),
 
       updateTeammateHistory: (history) =>
         set({ teammateHistory: history }),

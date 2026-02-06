@@ -3,63 +3,60 @@ import type { ReactNode } from "react";
 import DivisionPage from "@/pages/DivisionPage";
 import AttendancePage from "@/pages/AttendancePage";
 import SettingsPage from "@/pages/SettingsPage";
+import { useSquadStore } from "@/stores/squadStore";
 
 interface ILayoutProps {
   children?: ReactNode;
 }
 
-const Layout = ({ children }: ILayoutProps) => {
+const Layout = (_props: ILayoutProps) => {
   const [activeTab, setActiveTab] = useState<"division" | "attendance" | "settings">("division");
-
-  const tabs = [
-    { id: "division" as const, label: "팀 배정", icon: "⚽" },
-    { id: "attendance" as const, label: "출석률", icon: "📊" },
-    { id: "settings" as const, label: "설정", icon: "⚙️" },
-  ];
-
-  const renderPage = () => {
-    switch (activeTab) {
-      case "division":
-        return <DivisionPage />;
-      case "attendance":
-        return <AttendancePage />;
-      case "settings":
-        return <SettingsPage />;
-      default:
-        return <DivisionPage />;
-    }
-  };
+  const squad = useSquadStore((state) => state.squad);
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-card to-background px-4 py-4 shadow-lg">
-        <h1 className="text-center text-2xl font-bold text-neon">
-          ⚽ 풋살 팀 나누기
-        </h1>
+    <div className="app-container">
+      {/* 헤더 */}
+      <header className="app-header">
+        <h1>⚽ 풋살 매니저</h1>
+        <p className="squad-name">{squad?.name || "내 스쿼드"}</p>
       </header>
 
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto px-4 py-6">
-        {children || renderPage()}
+      {/* 메인 컨텐츠 */}
+      <main className="app-main">
+        <div className={`tab-content ${activeTab === "division" ? "active" : ""}`}>
+          {activeTab === "division" && <DivisionPage />}
+        </div>
+        <div className={`tab-content ${activeTab === "attendance" ? "active" : ""}`}>
+          {activeTab === "attendance" && <AttendancePage />}
+        </div>
+        <div className={`tab-content ${activeTab === "settings" ? "active" : ""}`}>
+          {activeTab === "settings" && <SettingsPage />}
+        </div>
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="flex border-t border-gray-700 bg-card">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-1 flex-col items-center gap-1 py-3 transition-colors ${
-              activeTab === tab.id
-                ? "text-neon"
-                : "text-gray-400 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-xl">{tab.icon}</span>
-            <span className="text-xs font-medium">{tab.label}</span>
-          </button>
-        ))}
+      {/* 하단 탭 네비게이션 */}
+      <nav className="tab-nav">
+        <button
+          className={`tab-btn ${activeTab === "division" ? "active" : ""}`}
+          onClick={() => setActiveTab("division")}
+        >
+          <span className="tab-icon">⚽</span>
+          <span className="tab-label">팀배정</span>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "attendance" ? "active" : ""}`}
+          onClick={() => setActiveTab("attendance")}
+        >
+          <span className="tab-icon">📊</span>
+          <span className="tab-label">출석률</span>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "settings" ? "active" : ""}`}
+          onClick={() => setActiveTab("settings")}
+        >
+          <span className="tab-icon">⚙️</span>
+          <span className="tab-label">설정</span>
+        </button>
       </nav>
     </div>
   );

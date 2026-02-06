@@ -12,6 +12,7 @@ interface ISquadStore {
   toggleParticipant: (id: string) => void;
   selectAllParticipants: () => void;
   clearAllParticipants: () => void;
+  clearAllData: () => void;
 }
 
 export const useSquadStore = create<ISquadStore>()(
@@ -69,6 +70,17 @@ export const useSquadStore = create<ISquadStore>()(
 
       clearAllParticipants: () =>
         set({ selectedParticipants: [] }),
+
+      clearAllData: () =>
+        set({
+          squad: {
+            id: Date.now().toString(),
+            name: "내 스쿼드",
+            members: [],
+            createdAt: new Date().toISOString(),
+          },
+          selectedParticipants: [],
+        }),
     }),
     {
       name: "squad-storage",
