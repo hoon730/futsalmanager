@@ -7,11 +7,9 @@ import { useSquadStore } from "@/stores/squadStore";
 
 interface ILayoutProps {
   children?: ReactNode;
-  isConnected: boolean;
 }
 
-const Layout = (props: ILayoutProps) => {
-  const { isConnected } = props;
+const Layout = (_props: ILayoutProps) => {
   const [activeTab, setActiveTab] = useState<"division" | "attendance" | "settings">("division");
   const [headerHidden, setHeaderHidden] = useState(false);
   const squad = useSquadStore((state) => state.squad);
@@ -53,7 +51,7 @@ const Layout = (props: ILayoutProps) => {
           {activeTab === "attendance" && <AttendancePage />}
         </div>
         <div className={`tab-content ${activeTab === "settings" ? "active" : ""}`}>
-          {activeTab === "settings" && <SettingsPage isConnected={isConnected} />}
+          {activeTab === "settings" && <SettingsPage />}
         </div>
       </main>
 

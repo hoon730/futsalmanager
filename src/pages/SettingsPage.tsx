@@ -3,14 +3,9 @@ import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
 import { useFixedTeamStore } from '@/stores/fixedTeamStore';
 import { AlertModal } from '@/components/modals/AlertModal';
-import { SupabaseSync } from "@/components/settings/SupabaseSync";
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 
-interface SettingsPageProps {
-  isConnected: boolean;
-}
-
-export default function SettingsPage({ isConnected }: SettingsPageProps) {
+export default function SettingsPage() {
   const { squad, updateSquadName, addMember, removeMember, clearAllData } = useSquadStore();
   const name = squad?.name || '내 스쿼드';
   const members = squad?.members || [];
@@ -286,9 +281,6 @@ export default function SettingsPage({ isConnected }: SettingsPageProps) {
           💡 고정 팀은 팀배정 탭에서 추가할 수 있습니다
         </p>
       </section>
-      {/* Supabase 동기화 섹션 */}
-      <SupabaseSync isConnected={isConnected} />
-
 
       {/* 데이터 관리 섹션 */}
       <section className="section danger-zone">
