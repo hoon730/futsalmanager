@@ -6,7 +6,11 @@ import { AlertModal } from '@/components/modals/AlertModal';
 import { SupabaseSync } from "@/components/settings/SupabaseSync";
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 
-export default function SettingsPage() {
+interface SettingsPageProps {
+  isConnected: boolean;
+}
+
+export default function SettingsPage({ isConnected }: SettingsPageProps) {
   const { squad, updateSquadName, addMember, removeMember, clearAllData } = useSquadStore();
   const name = squad?.name || '내 스쿼드';
   const members = squad?.members || [];
@@ -283,7 +287,7 @@ export default function SettingsPage() {
         </p>
       </section>
       {/* Supabase 동기화 섹션 */}
-      <SupabaseSync />
+      <SupabaseSync isConnected={isConnected} />
 
 
       {/* 데이터 관리 섹션 */}
