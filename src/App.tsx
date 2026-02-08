@@ -28,7 +28,7 @@ const App = () => {
           🟢 실시간 동기화 중
         </div>
       )}
-      <Layout isConnected={isConnected} />
+      <Layout />
     </>
   );
 };
