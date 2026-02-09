@@ -24,9 +24,9 @@ export const useRealtimeSync = (squadId: string | null) => {
 
     console.log(`🔄 Realtime 구독 시작: ${squadId}`);
 
-    // 1. 스쿼드 & 멤버 변경 감지
-    const squadChannel = supabase
-      .channel(`squad:${squadId}`)
+    // 모든 테이블을 하나의 채널로 통합
+    const channel = supabase
+      .channel(`squad_all:${squadId}`)
       .on(
         "postgres_changes",
         {
@@ -55,16 +55,6 @@ export const useRealtimeSync = (squadId: string | null) => {
           if (updated) setSquad(updated);
         }
       )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setIsConnected(true);
-          console.log("✅ 스쿼드 Realtime 연결 완료");
-        }
-      });
-
-    // 2. 고정 팀 변경 감지
-    const fixedTeamChannel = supabase
-      .channel(`fixed_teams:${squadId}`)
       .on(
         "postgres_changes",
         {
@@ -79,15 +69,6 @@ export const useRealtimeSync = (squadId: string | null) => {
           setFixedTeams(teams);
         }
       )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          console.log("✅ 고정 팀 Realtime 연결 완료");
-        }
-      });
-
-    // 3. 팀 나누기 이력 변경 감지
-    const divisionChannel = supabase
-      .channel(`divisions:${squadId}`)
       .on(
         "postgres_changes",
         {
@@ -102,15 +83,6 @@ export const useRealtimeSync = (squadId: string | null) => {
           setDivisionHistory(divisions);
         }
       )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          console.log("✅ 이력 Realtime 연결 완료");
-        }
-      });
-
-    // 4. 팀 메이트 이력 변경 감지
-    const historyChannel = supabase
-      .channel(`teammate_history:${squadId}`)
       .on(
         "postgres_changes",
         {
@@ -126,18 +98,20 @@ export const useRealtimeSync = (squadId: string | null) => {
         }
       )
       .subscribe((status) => {
+        console.log(`📡 Realtime 상태: ${status}`);
         if (status === "SUBSCRIBED") {
-          console.log("✅ 팀 메이트 이력 Realtime 연결 완료");
+          setIsConnected(true);
+          console.log("✅ 모든 Realtime 연결 완료");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setIsConnected(false);
+          console.error("❌ Realtime 연결 실패:", status);
         }
       });
 
     // 정리 함수
     return () => {
       console.log("🔌 Realtime 구독 해제");
-      squadChannel.unsubscribe();
-      fixedTeamChannel.unsubscribe();
-      divisionChannel.unsubscribe();
-      historyChannel.unsubscribe();
+      channel.unsubscribe();
       setIsConnected(false);
     };
   }, [squadId, setSquad, setDivisionHistory, setFixedTeams, updateTeammateHistory]);
