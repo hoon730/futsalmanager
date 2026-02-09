@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCards } from "swiper/modules";
+import type { Swiper as SwiperType } from "swiper";
 // @ts-expect-error - CSS import
 import "swiper/css";
 // @ts-expect-error - CSS import
@@ -13,6 +14,11 @@ import { divideTeamsWithConstraints, updateTeammateHistory as updateHistory } fr
 import { AlertModal, ConfirmModal } from "@/components/modals";
 import type { IMember } from "@/types";
 
+// 한글/영문 정렬 함수
+const sortByName = (a: IMember, b: IMember) => {
+  return a.name.localeCompare(b.name, ['ko', 'en']);
+};
+
 const DivisionPage = () => {
   const { squad, selectedParticipants, toggleParticipant, selectAllParticipants, clearAllParticipants } = useSquadStore();
   const { fixedTeams } = useFixedTeamStore();
@@ -20,6 +26,8 @@ const DivisionPage = () => {
 
   const [currentTeams, setCurrentTeams] = useState<IMember[][] | null>(null);
   const [_teamCount, __setTeamCount] = useState(2);
+  const [currentParticipantPage, setCurrentParticipantPage] = useState(1);
+  const participantSwiperRef = useRef<SwiperType | null>(null);
 
   // 모달 상태
   const [showTeamCountModal, setShowTeamCountModal] = useState(false);
@@ -32,6 +40,29 @@ const DivisionPage = () => {
   const [showAlert, setShowAlert] = useState(false);
 
   const selectedCount = selectedParticipants.length;
+
+  // 정렬된 멤버 리스트
+  const sortedMembers = useMemo(() => {
+    if (!squad || !squad.members) return [];
+    return [...squad.members].sort(sortByName);
+  }, [squad]);
+
+  // 페이지네이션 설정
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(sortedMembers.length / itemsPerPage);
+
+  const paginatedMembers = useMemo(() => {
+    const result: IMember[][] = [];
+    for (let i = 0; i < sortedMembers.length; i += itemsPerPage) {
+      result.push(sortedMembers.slice(i, i + itemsPerPage));
+    }
+    return result;
+  }, [sortedMembers]);
+
+  // 스와이프 핸들러
+  const handleSwipe = (swiper: SwiperType) => {
+    setCurrentParticipantPage(swiper.activeIndex + 1);
+  };
 
   const handleSelectAll = () => {
     if (!squad || squad.members.length === 0) {
@@ -71,7 +102,7 @@ const DivisionPage = () => {
   };
 
   const selectTeamCountAndDivide = async (count: number) => {
-    
+
     setShowTeamCountModal(false);
 
     const activePlayers: IMember[] = selectedParticipants
@@ -147,11 +178,14 @@ const DivisionPage = () => {
             </button>
           </div>
         </div>
-        <div className="participant-checkboxes">
-          {!squad || squad.members.length === 0 ? (
+
+        {!squad || squad.members.length === 0 ? (
+          <div className="participant-checkboxes">
             <p className="empty-message">설정 탭에서 스쿼드 멤버를 먼저 추가해주세요</p>
-          ) : (
-            squad.members.map((member) => (
+          </div>
+        ) : totalPages === 1 ? (
+          <div className="participant-checkboxes">
+            {sortedMembers.map((member) => (
               <div key={member.id} className="checkbox-item">
                 <input
                   type="checkbox"
@@ -161,9 +195,58 @@ const DivisionPage = () => {
                 />
                 <label htmlFor={`participant-${member.id}`}>{member.name}</label>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <Swiper
+              slidesPerView={1}
+              onSwiper={(swiper) => { participantSwiperRef.current = swiper; }}
+              onSlideChange={handleSwipe}
+              allowTouchMove={true}
+              className="participant-swiper"
+            >
+              {paginatedMembers.map((pageMembers, pageIndex) => (
+                <SwiperSlide key={pageIndex}>
+                  <div className="participant-checkboxes">
+                    {pageMembers.map((member) => (
+                      <div key={member.id} className="checkbox-item">
+                        <input
+                          type="checkbox"
+                          id={`participant-${member.id}`}
+                          checked={selectedParticipants.includes(member.id)}
+                          onChange={() => toggleParticipant(member.id)}
+                        />
+                        <label htmlFor={`participant-${member.id}`}>{member.name}</label>
+                      </div>
+                    ))}
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="pagination-btn"
+                  disabled={currentParticipantPage === 1}
+                  onClick={() => participantSwiperRef.current?.slidePrev()}
+                >
+                  ◀
+                </button>
+                <span className="pagination-info">
+                  {currentParticipantPage} / {totalPages}
+                </span>
+                <button
+                  className="pagination-btn"
+                  disabled={currentParticipantPage === totalPages}
+                  onClick={() => participantSwiperRef.current?.slideNext()}
+                >
+                  ▶
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       {/* 팀 나누기 / 결과 표시 */}
