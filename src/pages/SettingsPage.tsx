@@ -235,21 +235,19 @@ export default function SettingsPage() {
                   const pageMembers = sortedMembers.slice(startIdx, endIdx);
                   return (
                     <SwiperSlide key={pageIndex}>
-                      <div>
-                        {pageMembers.map((member) => (
-                          <div key={member.id} className="member-item">
-                            <span className="member-item-name">{member.name}</span>
-                            <div className="member-actions">
-                              <button
-                                className="btn-delete"
-                                onClick={() => openDeleteMemberModal(member.id, member.name)}
-                              >
-                                삭제
-                              </button>
-                            </div>
+                      {pageMembers.map((member) => (
+                        <div key={member.id} className="member-item">
+                          <span className="member-item-name">{member.name}</span>
+                          <div className="member-actions">
+                            <button
+                              className="btn-delete"
+                              onClick={() => openDeleteMemberModal(member.id, member.name)}
+                            >
+                              삭제
+                            </button>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </SwiperSlide>
                   );
                 })}
