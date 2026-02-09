@@ -1,4 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import type { Swiper as SwiperType } from 'swiper';
+// @ts-expect-error - CSS import
+import 'swiper/css';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
 import { useFixedTeamStore } from '@/stores/fixedTeamStore';
@@ -46,6 +50,12 @@ export default function SettingsPage() {
   // 페이지네이션 상태
   const [currentMemberPage, setCurrentMemberPage] = useState(1);
   const itemsPerPage = 5;
+  const memberSwiperRef = useRef<SwiperType | null>(null);
+
+  // 정렬된 멤버 리스트 (알파벳/한글 순)
+  const sortedMembers = useMemo(() => {
+    return [...members].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en']));
+  }, [members]);
 
   // 스쿼드 이름 변경 모달 열기
   const openEditSquadNameModal = () => {
@@ -148,14 +158,7 @@ export default function SettingsPage() {
     });
   };
 
-  // 페이지네이션된 멤버 목록
-  const paginatedMembers = () => {
-    const startIdx = (currentMemberPage - 1) * itemsPerPage;
-    const endIdx = startIdx + itemsPerPage;
-    return members.slice(startIdx, endIdx);
-  };
-
-  const totalMemberPages = Math.ceil(members.length / itemsPerPage);
+  const totalMemberPages = Math.ceil(sortedMembers.length / itemsPerPage);
 
   // Enter 키로 멤버 추가
   useEffect(() => {
@@ -216,42 +219,75 @@ export default function SettingsPage() {
         <div className="member-list">
           {members.length === 0 ? (
             <p className="empty-message">등록된 멤버가 없습니다</p>
+          ) : totalMemberPages === 1 ? (
+            sortedMembers.map((member) => (
+              <div key={member.id} className="member-item">
+                <span className="member-item-name">{member.name}</span>
+                <div className="member-actions">
+                  <button
+                    className="btn-delete"
+                    onClick={() => openDeleteMemberModal(member.id, member.name)}
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            ))
           ) : (
             <>
-              {paginatedMembers().map((member) => (
-                <div key={member.id} className="member-item">
-                  <span className="member-item-name">{member.name}</span>
-                  <div className="member-actions">
-                    <button
-                      className="btn-delete"
-                      onClick={() => openDeleteMemberModal(member.id, member.name)}
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {totalMemberPages > 1 && (
-                <div className="pagination">
-                  <button
-                    className="pagination-btn"
-                    disabled={currentMemberPage === 1}
-                    onClick={() => setCurrentMemberPage(currentMemberPage - 1)}
-                  >
-                    ◀
-                  </button>
-                  <span className="pagination-info">
-                    {currentMemberPage} / {totalMemberPages}
-                  </span>
-                  <button
-                    className="pagination-btn"
-                    disabled={currentMemberPage === totalMemberPages}
-                    onClick={() => setCurrentMemberPage(currentMemberPage + 1)}
-                  >
-                    ▶
-                  </button>
-                </div>
-              )}
+              <Swiper
+                slidesPerView={1}
+                onSwiper={(swiper) => {
+                  memberSwiperRef.current = swiper;
+                }}
+                onSlideChange={(swiper) => setCurrentMemberPage(swiper.activeIndex + 1)}
+                allowTouchMove={true}
+                className="member-swiper"
+              >
+                {Array.from({ length: totalMemberPages }).map((_, pageIndex) => {
+                  const startIdx = pageIndex * itemsPerPage;
+                  const endIdx = startIdx + itemsPerPage;
+                  const pageMembers = sortedMembers.slice(startIdx, endIdx);
+                  return (
+                    <SwiperSlide key={pageIndex}>
+                      <div>
+                        {pageMembers.map((member) => (
+                          <div key={member.id} className="member-item">
+                            <span className="member-item-name">{member.name}</span>
+                            <div className="member-actions">
+                              <button
+                                className="btn-delete"
+                                onClick={() => openDeleteMemberModal(member.id, member.name)}
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </SwiperSlide>
+                  );
+                })}
+              </Swiper>
+              <div className="pagination">
+                <button
+                  className="pagination-btn"
+                  disabled={currentMemberPage === 1}
+                  onClick={() => memberSwiperRef.current?.slidePrev()}
+                >
+                  ◀
+                </button>
+                <span className="pagination-info">
+                  {currentMemberPage} / {totalMemberPages}
+                </span>
+                <button
+                  className="pagination-btn"
+                  disabled={currentMemberPage === totalMemberPages}
+                  onClick={() => memberSwiperRef.current?.slideNext()}
+                >
+                  ▶
+                </button>
+              </div>
             </>
           )}
         </div>
