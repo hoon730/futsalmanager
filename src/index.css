@@ -1231,8 +1231,9 @@ footer {
 .participant-swiper,
 .member-swiper,
 .attendance-swiper {
-    min-height: 300px;
-    max-height: 450px;
+    min-height: 250px;
+    height: auto;
+    max-height: none;
     overflow: visible;
 }
 
@@ -1241,10 +1242,6 @@ footer {
 .attendance-swiper .swiper-slide {
     height: auto;
     overflow: visible;
-}
-
-/* Swiper 내부 컨텐츠가 잘리지 않도록 */
-.member-swiper .swiper-slide > div {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1471,9 +1468,10 @@ footer {
 .member-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    max-height: 400px;
-    overflow-y: auto;
+    gap: 12px;
+    min-height: 200px;
+    max-height: none;
+    overflow: visible;
 }
 
 .member-item {
