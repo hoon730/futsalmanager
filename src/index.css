@@ -1207,12 +1207,16 @@ footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 /* 체크박스 항목들이 있을 때만 grid 레이아웃 */
 .participant-checkboxes:has(.checkbox-item) {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    max-height: none; /* grid에서는 높이 제한 없음 */
+    overflow-y: visible;
 }
 
 /* 빈 메시지는 중앙 정렬 */
@@ -1221,6 +1225,20 @@ footer {
     padding: 40px 20px;
     color: rgba(255, 255, 255, 0.5);
     font-size: 0.95em;
+}
+
+/* Swiper 컨테이너 높이 제한 */
+.participant-swiper,
+.member-swiper,
+.attendance-swiper {
+    max-height: 350px;
+    overflow: hidden;
+}
+
+.participant-swiper .swiper-slide,
+.member-swiper .swiper-slide,
+.attendance-swiper .swiper-slide {
+    height: auto;
 }
 
 /* ========================================
@@ -1445,6 +1463,8 @@ footer {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 .member-item {

@@ -12,7 +12,7 @@ import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { divideTeamsWithConstraints, updateTeammateHistory as updateHistory } from "@/lib/teamAlgorithm";
 import { AlertModal, ConfirmModal } from "@/components/modals";
-import type { IMember } from "@/types";
+import type { IMember, IFixedTeam } from "@/types";
 
 // 한글/영문 정렬 함수
 const sortByName = (a: IMember, b: IMember) => {
@@ -21,13 +21,24 @@ const sortByName = (a: IMember, b: IMember) => {
 
 const DivisionPage = () => {
   const { squad, selectedParticipants, toggleParticipant, selectAllParticipants, clearAllParticipants } = useSquadStore();
-  const { fixedTeams } = useFixedTeamStore();
+  const { fixedTeams, addFixedTeam } = useFixedTeamStore();
   const { saveDivision, teammateHistory, updateTeammateHistory: updateStoreHistory } = useDivisionStore();
 
   const [currentTeams, setCurrentTeams] = useState<IMember[][] | null>(null);
   const [_teamCount, __setTeamCount] = useState(2);
   const [currentParticipantPage, setCurrentParticipantPage] = useState(1);
   const participantSwiperRef = useRef<SwiperType | null>(null);
+
+  // 용병 관련 state
+  const [mercenaries, setMercenaries] = useState<IMember[]>([]);
+  const [newMercenaryName, setNewMercenaryName] = useState("");
+  const [selectedMercenaries, setSelectedMercenaries] = useState<string[]>([]);
+  const [currentMercenaryPage, setCurrentMercenaryPage] = useState(1);
+  const mercenarySwiperRef = useRef<SwiperType | null>(null);
+
+  // 용병 고정팀 모달
+  const [showMercenaryFixedTeamModal, setShowMercenaryFixedTeamModal] = useState(false);
+  const [selectedMercenariesForTeam, setSelectedMercenariesForTeam] = useState<string[]>([]);
 
   // 모달 상태
   const [showTeamCountModal, setShowTeamCountModal] = useState(false);
@@ -40,6 +51,8 @@ const DivisionPage = () => {
   const [showAlert, setShowAlert] = useState(false);
 
   const selectedCount = selectedParticipants.length;
+  const selectedMercenaryCount = selectedMercenaries.length;
+  const totalParticipants = selectedCount + selectedMercenaryCount;
 
   // 정렬된 멤버 리스트
   const sortedMembers = useMemo(() => {
@@ -47,9 +60,99 @@ const DivisionPage = () => {
     return [...squad.members].sort(sortByName);
   }, [squad]);
 
+  // 정렬된 용병 리스트
+  const sortedMercenaries = useMemo(() => {
+    return [...mercenaries].sort(sortByName);
+  }, [mercenaries]);
+
+  // 용병 추가
+  const handleAddMercenary = () => {
+    const name = newMercenaryName.trim();
+    if (!name) {
+      setAlertMessage("용병 이름을 입력해주세요");
+      setShowAlert(true);
+      return;
+    }
+
+    // 중복 체크 (용병 리스트 내)
+    if (mercenaries.some((m) => m.name === name)) {
+      setAlertMessage("이미 추가된 용병입니다");
+      setShowAlert(true);
+      return;
+    }
+
+    // 정규 멤버와 중복 체크
+    if (squad?.members.some((m) => m.name === name)) {
+      setAlertMessage("정규 멤버와 동일한 이름입니다");
+      setShowAlert(true);
+      return;
+    }
+
+    const newMercenary: IMember = {
+      id: `mercenary_${Date.now()}`,
+      name,
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMercenaries([...mercenaries, newMercenary]);
+    setNewMercenaryName("");
+  };
+
+  // 용병 삭제
+  const handleRemoveMercenary = (id: string) => {
+    setMercenaries(mercenaries.filter((m) => m.id !== id));
+    setSelectedMercenaries(selectedMercenaries.filter((mid) => mid !== id));
+    setSelectedMercenariesForTeam(selectedMercenariesForTeam.filter((mid) => mid !== id));
+  };
+
+  // 용병 선택 토글
+  const toggleMercenary = (id: string) => {
+    setSelectedMercenaries((prev) =>
+      prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
+    );
+  };
+
+  // 용병 전체 선택
+  const selectAllMercenaries = () => {
+    setSelectedMercenaries(mercenaries.map((m) => m.id));
+  };
+
+  // 용병 전체 해제
+  const clearAllMercenaries = () => {
+    setSelectedMercenaries([]);
+  };
+
+  // 용병 고정팀 추가
+  const handleAddMercenaryFixedTeam = () => {
+    if (selectedMercenariesForTeam.length < 2) {
+      setAlertMessage("최소 2명 이상 선택해주세요");
+      setShowAlert(true);
+      return;
+    }
+
+    const selectedMercs = mercenaries.filter((m) =>
+      selectedMercenariesForTeam.includes(m.id)
+    );
+
+    const newFixedTeam: IFixedTeam = {
+      id: Date.now().toString(),
+      playerIds: selectedMercs.map((m) => m.id),
+      players: selectedMercs,
+      active: true,
+    };
+
+    addFixedTeam(newFixedTeam);
+    setSelectedMercenariesForTeam([]);
+    setShowMercenaryFixedTeamModal(false);
+    setAlertMessage("용병 고정팀이 추가되었습니다");
+    setShowAlert(true);
+  };
+
   // 페이지네이션 설정
   const itemsPerPage = 5;
   const totalPages = Math.ceil(sortedMembers.length / itemsPerPage);
+  const totalMercenaryPages = Math.ceil(sortedMercenaries.length / itemsPerPage);
 
   const paginatedMembers = useMemo(() => {
     const result: IMember[][] = [];
@@ -58,6 +161,14 @@ const DivisionPage = () => {
     }
     return result;
   }, [sortedMembers]);
+
+  const paginatedMercenaries = useMemo(() => {
+    const result: IMember[][] = [];
+    for (let i = 0; i < sortedMercenaries.length; i += itemsPerPage) {
+      result.push(sortedMercenaries.slice(i, i + itemsPerPage));
+    }
+    return result;
+  }, [sortedMercenaries]);
 
   // 스와이프 핸들러
   const handleSwipe = (swiper: SwiperType) => {
@@ -93,7 +204,7 @@ const DivisionPage = () => {
   };
 
   const handleDivideTeams = () => {
-    if (selectedParticipants.length < 2) {
+    if (totalParticipants < 2) {
       setAlertMessage("최소 2명 이상 선택해주세요");
       setShowAlert(true);
       return;
@@ -105,9 +216,16 @@ const DivisionPage = () => {
 
     setShowTeamCountModal(false);
 
-    const activePlayers: IMember[] = selectedParticipants
+    // 정규 멤버 + 용병
+    const regularMembers: IMember[] = selectedParticipants
       .map((id) => squad?.members.find((m) => m.id === id))
       .filter((m): m is IMember => m !== undefined);
+
+    const selectedMercs: IMember[] = selectedMercenaries
+      .map((id) => mercenaries.find((m) => m.id === id))
+      .filter((m): m is IMember => m !== undefined);
+
+    const activePlayers = [...regularMembers, ...selectedMercs];
 
     if (activePlayers.length < count) {
       setAlertMessage(`${count}팀으로 나누려면 최소 ${count}명이 필요합니다`);
@@ -249,6 +367,172 @@ const DivisionPage = () => {
         )}
       </section>
 
+      {/* 용병 추가 섹션 */}
+      <section className="section">
+        <h2>⚡ 용병 추가</h2>
+        <div className="participant-select-info">
+          <span id="selectedMercenaryCount">{selectedMercenaryCount}명 선택됨</span>
+          <div className="quick-actions">
+            <button className="btn-small" onClick={selectAllMercenaries}>
+              전체선택
+            </button>
+            <button className="btn-small" onClick={clearAllMercenaries}>
+              전체해제
+            </button>
+            {mercenaries.length >= 2 && (
+              <button
+                className="btn-small"
+                style={{ background: "#00ff41", color: "#000" }}
+                onClick={() => setShowMercenaryFixedTeamModal(true)}
+              >
+                고정팀 설정
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="member-input" style={{ marginBottom: "15px" }}>
+          <input
+            type="text"
+            placeholder="용병 이름 입력"
+            value={newMercenaryName}
+            onChange={(e) => setNewMercenaryName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddMercenary();
+              }
+            }}
+          />
+          <button onClick={handleAddMercenary}>추가</button>
+        </div>
+
+        {mercenaries.length === 0 ? (
+          <div className="participant-checkboxes">
+            <p className="empty-message">용병을 추가해주세요</p>
+          </div>
+        ) : totalMercenaryPages === 1 ? (
+          <div className="participant-checkboxes">
+            {sortedMercenaries.map((mercenary) => (
+              <div key={mercenary.id} className="checkbox-item">
+                <input
+                  type="checkbox"
+                  id={`mercenary-${mercenary.id}`}
+                  checked={selectedMercenaries.includes(mercenary.id)}
+                  onChange={() => toggleMercenary(mercenary.id)}
+                />
+                <label htmlFor={`mercenary-${mercenary.id}`}>{mercenary.name}</label>
+                <button
+                  className="btn-delete-inline"
+                  onClick={() => handleRemoveMercenary(mercenary.id)}
+                  style={{
+                    marginLeft: "auto",
+                    padding: "4px 8px",
+                    fontSize: "0.8em",
+                    background: "#ff0055",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <Swiper
+              slidesPerView={1}
+              onSwiper={(swiper) => {
+                mercenarySwiperRef.current = swiper;
+              }}
+              onSlideChange={(swiper) => setCurrentMercenaryPage(swiper.activeIndex + 1)}
+              allowTouchMove={true}
+              className="participant-swiper"
+            >
+              {paginatedMercenaries.map((pageMembers, pageIndex) => (
+                <SwiperSlide key={pageIndex}>
+                  <div className="participant-checkboxes">
+                    {pageMembers.map((mercenary) => (
+                      <div key={mercenary.id} className="checkbox-item">
+                        <input
+                          type="checkbox"
+                          id={`mercenary-${mercenary.id}`}
+                          checked={selectedMercenaries.includes(mercenary.id)}
+                          onChange={() => toggleMercenary(mercenary.id)}
+                        />
+                        <label htmlFor={`mercenary-${mercenary.id}`}>{mercenary.name}</label>
+                        <button
+                          className="btn-delete-inline"
+                          onClick={() => handleRemoveMercenary(mercenary.id)}
+                          style={{
+                            marginLeft: "auto",
+                            padding: "4px 8px",
+                            fontSize: "0.8em",
+                            background: "#ff0055",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+            {totalMercenaryPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="pagination-btn"
+                  disabled={currentMercenaryPage === 1}
+                  onClick={() => mercenarySwiperRef.current?.slidePrev()}
+                >
+                  ◀
+                </button>
+                <span className="pagination-info">
+                  {currentMercenaryPage} / {totalMercenaryPages}
+                </span>
+                <button
+                  className="pagination-btn"
+                  disabled={currentMercenaryPage === totalMercenaryPages}
+                  onClick={() => mercenarySwiperRef.current?.slideNext()}
+                >
+                  ▶
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* 총 인원 표시 */}
+      {totalParticipants > 0 && (
+        <section className="section total-participants-section">
+          <div
+            style={{
+              padding: "15px 20px",
+              background: "linear-gradient(135deg, #00ff41 0%, #00cc33 100%)",
+              borderRadius: "12px",
+              color: "#000",
+              fontWeight: "bold",
+              fontSize: "1.1em",
+              textAlign: "center",
+              boxShadow: "0 4px 15px rgba(0, 255, 65, 0.3)",
+            }}
+          >
+            <span style={{ fontSize: "1.5em", marginRight: "10px" }}>👥</span>
+            총 인원: {selectedCount}명 (멤버) + {selectedMercenaryCount}명 (용병) ={" "}
+            <span style={{ fontSize: "1.3em", color: "#000" }}>{totalParticipants}명</span>
+          </div>
+        </section>
+      )}
+
       {/* 팀 나누기 / 결과 표시 */}
       <section className="section team-division-section">
         {!currentTeams ? (
@@ -384,6 +668,49 @@ const DivisionPage = () => {
             </p>
             <div className="modal-actions">
               <button onClick={() => setShowSaveSuccessModal(false)}>확인</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 용병 고정팀 설정 모달 */}
+      {showMercenaryFixedTeamModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>용병 고정팀 설정</h3>
+            <p className="modal-subtitle">같은 팀으로 묶을 용병을 선택하세요 (2명 이상)</p>
+            <div className="checkbox-group" style={{ maxHeight: "300px", overflowY: "auto" }}>
+              {mercenaries.map((mercenary) => (
+                <div key={mercenary.id} className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    id={`fixed-mercenary-${mercenary.id}`}
+                    checked={selectedMercenariesForTeam.includes(mercenary.id)}
+                    onChange={() => {
+                      setSelectedMercenariesForTeam((prev) =>
+                        prev.includes(mercenary.id)
+                          ? prev.filter((id) => id !== mercenary.id)
+                          : [...prev, mercenary.id]
+                      );
+                    }}
+                  />
+                  <label htmlFor={`fixed-mercenary-${mercenary.id}`}>{mercenary.name}</label>
+                </div>
+              ))}
+            </div>
+            <div className="modal-actions" style={{ marginTop: "20px" }}>
+              <button onClick={handleAddMercenaryFixedTeam}>
+                고정팀 추가 ({selectedMercenariesForTeam.length}명 선택)
+              </button>
+              <button
+                className="cancel-btn"
+                onClick={() => {
+                  setShowMercenaryFixedTeamModal(false);
+                  setSelectedMercenariesForTeam([]);
+                }}
+              >
+                취소
+              </button>
             </div>
           </div>
         </div>
