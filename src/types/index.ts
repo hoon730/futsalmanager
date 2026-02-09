@@ -4,6 +4,7 @@ export interface IMember {
   skillLevel?: number;
   active: boolean;
   createdAt: string;
+  isMercenary?: boolean; // 용병 여부
 }
 
 export interface ISquad {

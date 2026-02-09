@@ -20,7 +20,7 @@ interface AttendanceData {
 interface HistoryDetail {
   notes: string;
   date: string;
-  teams: Array<Array<{ id: string; name: string }>>;
+  teams: Array<Array<{ id: string; name: string; isMercenary?: boolean }>>;
 }
 
 export default function AttendancePage() {
@@ -75,10 +75,10 @@ export default function AttendancePage() {
     const games = divisionHistory.length;
     setTotalGames(games);
 
-    // 평균 참가 인원
+    // 평균 참가 인원 (용병 제외)
     if (games > 0) {
       const totalParticipants = divisionHistory.reduce((sum: any, game: any) => {
-        const gameParticipants = game.teams.flat();
+        const gameParticipants = game.teams.flat().filter((p: any) => !p.isMercenary);
         return sum + gameParticipants.length;
       }, 0);
       const avg = totalParticipants / games;
@@ -87,7 +87,7 @@ export default function AttendancePage() {
       setAvgParticipants(0);
     }
 
-    // 멤버별 출석 통계 계산
+    // 멤버별 출석 통계 계산 (용병 제외)
     const attendanceMap: { [key: string]: AttendanceData } = {};
 
     members.forEach((member: any) => {
@@ -105,7 +105,8 @@ export default function AttendancePage() {
         const playerId = player.id;
         const member = members.find((m: any) => m.id === playerId);
 
-        if (member && attendanceMap[member.id]) {
+        // 용병이 아닌 정규 멤버만 출석 통계에 포함
+        if (member && attendanceMap[member.id] && !player.isMercenary) {
           attendanceMap[member.id].attended++;
         }
       });
@@ -393,7 +394,22 @@ export default function AttendancePage() {
                     </h4>
                     <ul>
                       {team.map((player, j) => (
-                        <li key={j}>{player.name}</li>
+                        <li key={j}>
+                          {player.name}
+                          {player.isMercenary && (
+                            <span style={{
+                              marginLeft: '8px',
+                              padding: '2px 6px',
+                              background: '#ff6b00',
+                              color: '#fff',
+                              fontSize: '0.75em',
+                              borderRadius: '4px',
+                              fontWeight: 'bold'
+                            }}>
+                              용병
+                            </span>
+                          )}
+                        </li>
                       ))}
                     </ul>
                   </div>
