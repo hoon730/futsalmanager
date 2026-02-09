@@ -1,4 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import type { Swiper as SwiperType } from 'swiper';
+// @ts-expect-error - CSS import
+import 'swiper/css';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
 import { AlertModal } from '@/components/modals/AlertModal';
@@ -35,6 +39,7 @@ export default function AttendancePage() {
   const [currentAttendancePage, setCurrentAttendancePage] = useState(1);
   const itemsPerHistoryPage = 3;
   const itemsPerAttendancePage = 5;
+  const attendanceSwiperRef = useRef<SwiperType | null>(null);
 
   // 모달 상태
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string }>({
@@ -106,19 +111,21 @@ export default function AttendancePage() {
       });
     });
 
-    // 출석률 계산 및 정렬
-    const attendanceList = Object.values(attendanceMap)
-      .map((item) => ({
-        ...item,
-        rate: games > 0 ? parseFloat(((item.attended / item.total) * 100).toFixed(0)) : 0,
-      }))
-      .sort((a, b) => b.attended - a.attended);
+    // 출석률 계산
+    const attendanceList = Object.values(attendanceMap).map((item) => ({
+      ...item,
+      rate: games > 0 ? parseFloat(((item.attended / item.total) * 100).toFixed(0)) : 0,
+    }));
 
-    // TOP 3 설정
-    setTopMembers(attendanceList.slice(0, 3));
+    // TOP 3 설정 (출석률 높은 순)
+    const topList = [...attendanceList].sort((a, b) => b.attended - a.attended);
+    setTopMembers(topList.slice(0, 3));
 
-    // 전체 출석률 설정
-    setAllMembersAttendance(attendanceList);
+    // 전체 출석률 설정 (이름순 정렬)
+    const sortedList = [...attendanceList].sort((a, b) =>
+      a.name.localeCompare(b.name, ['ko', 'en'])
+    );
+    setAllMembersAttendance(sortedList);
   };
 
   // 이력 상세 보기
@@ -230,37 +237,65 @@ export default function AttendancePage() {
         <div className="all-attendance">
           {allMembersAttendance.length === 0 || totalGames === 0 ? (
             <p className="empty-message">아직 경기 기록이 없습니다</p>
+          ) : totalAttendancePages === 1 ? (
+            paginatedAttendance().map((member, index) => (
+              <div key={index} className="attendance-item">
+                <span className="attendance-name">{member.name}</span>
+                <span className="attendance-count">
+                  {member.attended}/{member.total}회 ({member.rate}%)
+                </span>
+              </div>
+            ))
           ) : (
             <>
-              {paginatedAttendance().map((member, index) => (
-                <div key={index} className="attendance-item">
-                  <span className="attendance-name">{member.name}</span>
-                  <span className="attendance-count">
-                    {member.attended}/{member.total}회 ({member.rate}%)
-                  </span>
-                </div>
-              ))}
-              {totalAttendancePages > 1 && (
-                <div className="pagination">
-                  <button
-                    className="pagination-btn"
-                    disabled={currentAttendancePage === 1}
-                    onClick={() => setCurrentAttendancePage(currentAttendancePage - 1)}
-                  >
-                    ◀
-                  </button>
-                  <span className="pagination-info">
-                    {currentAttendancePage} / {totalAttendancePages}
-                  </span>
-                  <button
-                    className="pagination-btn"
-                    disabled={currentAttendancePage === totalAttendancePages}
-                    onClick={() => setCurrentAttendancePage(currentAttendancePage + 1)}
-                  >
-                    ▶
-                  </button>
-                </div>
-              )}
+              <Swiper
+                slidesPerView={1}
+                onSwiper={(swiper) => {
+                  attendanceSwiperRef.current = swiper;
+                }}
+                onSlideChange={(swiper) => setCurrentAttendancePage(swiper.activeIndex + 1)}
+                allowTouchMove={true}
+                className="attendance-swiper"
+              >
+                {Array.from({ length: totalAttendancePages }).map((_, pageIndex) => {
+                  const startIdx = pageIndex * itemsPerAttendancePage;
+                  const endIdx = startIdx + itemsPerAttendancePage;
+                  const pageItems = allMembersAttendance.slice(startIdx, endIdx);
+                  return (
+                    <SwiperSlide key={pageIndex}>
+                      <div>
+                        {pageItems.map((member, index) => (
+                          <div key={index} className="attendance-item">
+                            <span className="attendance-name">{member.name}</span>
+                            <span className="attendance-count">
+                              {member.attended}/{member.total}회 ({member.rate}%)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </SwiperSlide>
+                  );
+                })}
+              </Swiper>
+              <div className="pagination">
+                <button
+                  className="pagination-btn"
+                  disabled={currentAttendancePage === 1}
+                  onClick={() => attendanceSwiperRef.current?.slidePrev()}
+                >
+                  ◀
+                </button>
+                <span className="pagination-info">
+                  {currentAttendancePage} / {totalAttendancePages}
+                </span>
+                <button
+                  className="pagination-btn"
+                  disabled={currentAttendancePage === totalAttendancePages}
+                  onClick={() => attendanceSwiperRef.current?.slideNext()}
+                >
+                  ▶
+                </button>
+              </div>
             </>
           )}
         </div>
