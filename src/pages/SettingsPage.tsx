@@ -5,7 +5,6 @@ import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
-import { useFixedTeamStore } from '@/stores/fixedTeamStore';
 import { AlertModal } from '@/components/modals/AlertModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 
@@ -14,7 +13,6 @@ export default function SettingsPage() {
   const name = squad?.name || '내 스쿼드';
   const members = squad?.members || [];
   const { clearAllDivisions } = useDivisionStore();
-  const { fixedTeams, removeFixedTeam } = useFixedTeamStore();
 
   // 입력 상태
   const [newMemberName, setNewMemberName] = useState('');
@@ -110,19 +108,6 @@ export default function SettingsPage() {
       removeMember(removeMemberModal.memberId);
       setDeleteMemberModal({ isOpen: false, memberId: '', memberName: '' });
     }
-  };
-
-  // 고정 팀 삭제 확인
-  const confirmDeleteFixedTeam = (teamId: string) => {
-    setConfirmModal({
-      isOpen: true,
-      title: '고정 팀 삭제',
-      message: '이 고정 팀을 삭제하시겠습니까?',
-      onConfirm: () => {
-        removeFixedTeam(teamId);
-        setConfirmModal({ ...confirmModal, isOpen: false });
-      },
-    });
   };
 
   // 이력 전체 삭제 확인
@@ -291,31 +276,6 @@ export default function SettingsPage() {
             </>
           )}
         </div>
-      </section>
-
-      {/* 고정 팀 관리 섹션 */}
-      <section className="section">
-        <h2>🔗 고정 팀 관리</h2>
-        <div className="fixed-team-list">
-          {fixedTeams.length === 0 ? (
-            <p className="empty-message">고정 팀이 없습니다</p>
-          ) : (
-            fixedTeams.map((team: any) => {
-              const playerNames = team.players.map((p: any) => p.name).join(', ');
-              return (
-                <div key={team.id} className="fixed-team-item">
-                  <span>🔗 {playerNames}</span>
-                  <button className="btn-delete" onClick={() => confirmDeleteFixedTeam(team.id)}>
-                    삭제
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <p className="empty-message" style={{ fontSize: '0.85em', padding: '10px 0' }}>
-          💡 고정 팀은 팀배정 탭에서 추가할 수 있습니다
-        </p>
       </section>
 
       {/* 데이터 관리 섹션 */}
