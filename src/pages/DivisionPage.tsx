@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCards } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
@@ -30,7 +30,10 @@ const DivisionPage = () => {
   const participantSwiperRef = useRef<SwiperType | null>(null);
 
   // 용병 관련 state
-  const [mercenaries, setMercenaries] = useState<IMember[]>([]);
+  const [mercenaries, setMercenaries] = useState<IMember[]>(() => {
+    const saved = localStorage.getItem('mercenaries');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [newMercenaryName, setNewMercenaryName] = useState("");
   const [selectedMercenaries, setSelectedMercenaries] = useState<string[]>([]);
   const [currentMercenaryPage, setCurrentMercenaryPage] = useState(1);
@@ -39,6 +42,11 @@ const DivisionPage = () => {
   // 용병 고정팀 모달
   const [showMercenaryFixedTeamModal, setShowMercenaryFixedTeamModal] = useState(false);
   const [selectedMercenariesForTeam, setSelectedMercenariesForTeam] = useState<string[]>([]);
+
+  // 용병 데이터 localStorage 저장
+  useEffect(() => {
+    localStorage.setItem('mercenaries', JSON.stringify(mercenaries));
+  }, [mercenaries]);
 
   // 모달 상태
   const [showTeamCountModal, setShowTeamCountModal] = useState(false);
@@ -93,6 +101,7 @@ const DivisionPage = () => {
       name,
       active: true,
       createdAt: new Date().toISOString(),
+      isMercenary: true, // 용병 표시
     };
 
     setMercenaries([...mercenaries, newMercenary]);
@@ -111,16 +120,6 @@ const DivisionPage = () => {
     setSelectedMercenaries((prev) =>
       prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
     );
-  };
-
-  // 용병 전체 선택
-  const selectAllMercenaries = () => {
-    setSelectedMercenaries(mercenaries.map((m) => m.id));
-  };
-
-  // 용병 전체 해제
-  const clearAllMercenaries = () => {
-    setSelectedMercenaries([]);
   };
 
   // 용병 고정팀 추가
@@ -372,23 +371,15 @@ const DivisionPage = () => {
         <h2>⚡ 용병 추가</h2>
         <div className="participant-select-info">
           <span id="selectedMercenaryCount">{selectedMercenaryCount}명 선택됨</span>
-          <div className="quick-actions">
-            <button className="btn-small" onClick={selectAllMercenaries}>
-              전체선택
+          {mercenaries.length >= 2 && (
+            <button
+              className="btn-small"
+              style={{ background: "#00ff41", color: "#000" }}
+              onClick={() => setShowMercenaryFixedTeamModal(true)}
+            >
+              고정팀 설정
             </button>
-            <button className="btn-small" onClick={clearAllMercenaries}>
-              전체해제
-            </button>
-            {mercenaries.length >= 2 && (
-              <button
-                className="btn-small"
-                style={{ background: "#00ff41", color: "#000" }}
-                onClick={() => setShowMercenaryFixedTeamModal(true)}
-              >
-                고정팀 설정
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
         <div className="member-input" style={{ marginBottom: "15px" }}>

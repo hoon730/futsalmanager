@@ -1231,14 +1231,23 @@ footer {
 .participant-swiper,
 .member-swiper,
 .attendance-swiper {
-    max-height: 350px;
-    overflow: hidden;
+    min-height: 300px;
+    max-height: 450px;
+    overflow: visible;
 }
 
 .participant-swiper .swiper-slide,
 .member-swiper .swiper-slide,
 .attendance-swiper .swiper-slide {
     height: auto;
+    overflow: visible;
+}
+
+/* Swiper 내부 컨텐츠가 잘리지 않도록 */
+.member-swiper .swiper-slide > div {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 /* ========================================
