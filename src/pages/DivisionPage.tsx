@@ -105,6 +105,8 @@ const DivisionPage = () => {
     };
 
     setMercenaries([...mercenaries, newMercenary]);
+    setSelectedMercenaries([...selectedMercenaries, newMercenary.id]); // 팀 배정용 자동 체크
+    setSelectedMercenariesForTeam([...selectedMercenariesForTeam, newMercenary.id]); // 고정팀 모달용 자동 체크
     setNewMercenaryName("");
   };
 
@@ -671,9 +673,11 @@ const DivisionPage = () => {
       {showMercenaryFixedTeamModal && (
         <div className="modal">
           <div className="modal-content">
-            <h3>🔗 고정팀 설정</h3>
-            <p className="modal-subtitle">같은 팀으로 묶을 멤버를 선택하세요 (2명 이상)</p>
-            <div className="checkbox-group" style={{ maxHeight: "300px", overflowY: "auto" }}>
+            <h3 style={{ marginBottom: "8px" }}>🔗 고정팀 설정</h3>
+            <p style={{ fontSize: "0.9em", color: "#aaa", margin: "0 0 12px 0", textAlign: "left" }}>
+              같은 팀으로 묶을 멤버를 선택하세요 (2명 이상)
+            </p>
+            <div className="checkbox-group" style={{ maxHeight: "400px", overflowY: "auto" }}>
               {/* 정규 멤버 */}
               {squad && squad.members.length > 0 && (
                 <>
