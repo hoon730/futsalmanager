@@ -122,7 +122,7 @@ const DivisionPage = () => {
     );
   };
 
-  // 용병 고정팀 추가
+  // 통합 고정팀 추가 (정규 멤버 + 용병)
   const handleAddMercenaryFixedTeam = () => {
     if (selectedMercenariesForTeam.length < 2) {
       setAlertMessage("최소 2명 이상 선택해주세요");
@@ -130,21 +130,23 @@ const DivisionPage = () => {
       return;
     }
 
-    const selectedMercs = mercenaries.filter((m) =>
-      selectedMercenariesForTeam.includes(m.id)
+    // 정규 멤버와 용병을 함께 찾기
+    const allPlayers = [...(squad?.members || []), ...mercenaries];
+    const selectedPlayers = allPlayers.filter((p) =>
+      selectedMercenariesForTeam.includes(p.id)
     );
 
     const newFixedTeam: IFixedTeam = {
       id: Date.now().toString(),
-      playerIds: selectedMercs.map((m) => m.id),
-      players: selectedMercs,
+      playerIds: selectedPlayers.map((p) => p.id),
+      players: selectedPlayers,
       active: true,
     };
 
     addFixedTeam(newFixedTeam);
     setSelectedMercenariesForTeam([]);
     setShowMercenaryFixedTeamModal(false);
-    setAlertMessage("용병 고정팀이 추가되었습니다");
+    setAlertMessage("고정팀이 추가되었습니다");
     setShowAlert(true);
   };
 
@@ -371,15 +373,16 @@ const DivisionPage = () => {
         <h2>⚡ 용병 추가</h2>
         <div className="participant-select-info">
           <span id="selectedMercenaryCount">{selectedMercenaryCount}명 선택됨</span>
-          {mercenaries.length >= 2 && (
-            <button
-              className="btn-small"
-              style={{ background: "#00ff41", color: "#000" }}
-              onClick={() => setShowMercenaryFixedTeamModal(true)}
-            >
-              고정팀 설정
-            </button>
-          )}
+          <div className="quick-actions">
+            {totalParticipants >= 2 && (
+              <button
+                className="btn-small"
+                onClick={() => setShowMercenaryFixedTeamModal(true)}
+              >
+                고정팀 설정
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="member-input" style={{ marginBottom: "15px" }}>
@@ -664,30 +667,67 @@ const DivisionPage = () => {
         </div>
       )}
 
-      {/* 용병 고정팀 설정 모달 */}
+      {/* 통합 고정팀 설정 모달 (정규 멤버 + 용병) */}
       {showMercenaryFixedTeamModal && (
         <div className="modal">
           <div className="modal-content">
-            <h3>용병 고정팀 설정</h3>
-            <p className="modal-subtitle">같은 팀으로 묶을 용병을 선택하세요 (2명 이상)</p>
+            <h3>🔗 고정팀 설정</h3>
+            <p className="modal-subtitle">같은 팀으로 묶을 멤버를 선택하세요 (2명 이상)</p>
             <div className="checkbox-group" style={{ maxHeight: "300px", overflowY: "auto" }}>
-              {mercenaries.map((mercenary) => (
-                <div key={mercenary.id} className="checkbox-item">
-                  <input
-                    type="checkbox"
-                    id={`fixed-mercenary-${mercenary.id}`}
-                    checked={selectedMercenariesForTeam.includes(mercenary.id)}
-                    onChange={() => {
-                      setSelectedMercenariesForTeam((prev) =>
-                        prev.includes(mercenary.id)
-                          ? prev.filter((id) => id !== mercenary.id)
-                          : [...prev, mercenary.id]
-                      );
-                    }}
-                  />
-                  <label htmlFor={`fixed-mercenary-${mercenary.id}`}>{mercenary.name}</label>
-                </div>
-              ))}
+              {/* 정규 멤버 */}
+              {squad && squad.members.length > 0 && (
+                <>
+                  <div style={{ padding: "8px 0", fontWeight: "bold", color: "#00ff41", borderBottom: "1px solid #333" }}>
+                    👥 정규 멤버
+                  </div>
+                  {sortedMembers.map((member) => (
+                    <div key={member.id} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        id={`fixed-member-${member.id}`}
+                        checked={selectedMercenariesForTeam.includes(member.id)}
+                        onChange={() => {
+                          setSelectedMercenariesForTeam((prev) =>
+                            prev.includes(member.id)
+                              ? prev.filter((id) => id !== member.id)
+                              : [...prev, member.id]
+                          );
+                        }}
+                      />
+                      <label htmlFor={`fixed-member-${member.id}`}>{member.name}</label>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* 용병 */}
+              {mercenaries.length > 0 && (
+                <>
+                  <div style={{ padding: "8px 0", fontWeight: "bold", color: "#ff6b00", borderBottom: "1px solid #333", marginTop: "16px" }}>
+                    ⚡ 용병
+                  </div>
+                  {sortedMercenaries.map((mercenary) => (
+                    <div key={mercenary.id} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        id={`fixed-mercenary-${mercenary.id}`}
+                        checked={selectedMercenariesForTeam.includes(mercenary.id)}
+                        onChange={() => {
+                          setSelectedMercenariesForTeam((prev) =>
+                            prev.includes(mercenary.id)
+                              ? prev.filter((id) => id !== mercenary.id)
+                              : [...prev, mercenary.id]
+                          );
+                        }}
+                      />
+                      <label htmlFor={`fixed-mercenary-${mercenary.id}`}>
+                        {mercenary.name}
+                        <span style={{ marginLeft: "6px", fontSize: "0.75em", color: "#ff6b00" }}>용병</span>
+                      </label>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
             <div className="modal-actions" style={{ marginTop: "20px" }}>
               <button onClick={handleAddMercenaryFixedTeam}>
