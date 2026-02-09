@@ -423,6 +423,7 @@ const DivisionPage = () => {
                   onClick={() => handleRemoveMercenary(mercenary.id)}
                   style={{
                     marginLeft: "auto",
+                    marginRight: "16px",
                     padding: "4px 8px",
                     fontSize: "0.8em",
                     background: "#ff0055",
@@ -465,6 +466,7 @@ const DivisionPage = () => {
                           onClick={() => handleRemoveMercenary(mercenary.id)}
                           style={{
                             marginLeft: "auto",
+                            marginRight: "16px",
                             padding: "4px 8px",
                             fontSize: "0.8em",
                             background: "#ff0055",

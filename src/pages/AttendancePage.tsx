@@ -264,16 +264,14 @@ export default function AttendancePage() {
                   const pageItems = allMembersAttendance.slice(startIdx, endIdx);
                   return (
                     <SwiperSlide key={pageIndex}>
-                      <div>
-                        {pageItems.map((member, index) => (
-                          <div key={index} className="attendance-item">
-                            <span className="attendance-name">{member.name}</span>
-                            <span className="attendance-count">
-                              {member.attended}/{member.total}회 ({member.rate}%)
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      {pageItems.map((member, index) => (
+                        <div key={index} className="attendance-item">
+                          <span className="attendance-name">{member.name}</span>
+                          <span className="attendance-count">
+                            {member.attended}/{member.total}회 ({member.rate}%)
+                          </span>
+                        </div>
+                      ))}
                     </SwiperSlide>
                   );
                 })}
