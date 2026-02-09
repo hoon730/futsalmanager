@@ -18,10 +18,22 @@ export const syncSquadToSupabase = async (squad: ISquad) => {
 
     if (squadError) throw squadError;
 
-    // 2. 기존 멤버 삭제
-    await supabase.from("members").delete().eq("squad_id", squad.id);
+    // 2. 기존 멤버 ID 조회
+    const { data: existingMembers } = await supabase
+      .from("members")
+      .select("id")
+      .eq("squad_id", squad.id);
 
-    // 3. 새 멤버 저장
+    const existingIds = new Set((existingMembers || []).map((m) => m.id));
+    const currentIds = new Set(squad.members.map((m) => m.id));
+
+    // 3. 삭제할 멤버 (기존에는 있지만 현재에는 없음)
+    const toDelete = Array.from(existingIds).filter((id) => !currentIds.has(id));
+    if (toDelete.length > 0) {
+      await supabase.from("members").delete().in("id", toDelete);
+    }
+
+    // 4. 추가/업데이트할 멤버 (upsert로 한 번에 처리)
     if (squad.members.length > 0) {
       const membersData = squad.members.map((m) => ({
         id: m.id,
@@ -34,7 +46,7 @@ export const syncSquadToSupabase = async (squad: ISquad) => {
 
       const { error: membersError } = await supabase
         .from("members")
-        .insert(membersData);
+        .upsert(membersData);
 
       if (membersError) throw membersError;
     }
