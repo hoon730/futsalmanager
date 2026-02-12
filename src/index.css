@@ -1256,7 +1256,8 @@ footer {
     overflow: visible;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    width: 100%;
 }
 
 /* ========================================
@@ -1494,6 +1495,8 @@ footer {
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .member-item:hover {
