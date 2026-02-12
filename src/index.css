@@ -196,7 +196,6 @@ main {
     padding: 15px 18px;
     border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    font-size: 15px;
     transition: all 0.3s;
     background: rgba(255, 255, 255, 0.05);
     color: #fff;
@@ -1026,12 +1025,10 @@ footer {
     /* 입력 필드 크기 증가 */
     .member-input input {
         padding: 14px 16px;
-        font-size: 1em;
     }
 
     .member-input button {
         padding: 14px 20px;
-        font-size: 1em;
         min-width: 75px;
     }
 
@@ -1158,30 +1155,38 @@ footer {
    ======================================== */
 
 .participant-select-info {
+    margin-bottom: 15px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+}
+
+.participant-guest-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
-    padding: 16px 18px;
-    background: rgba(0, 255, 65, 0.08);
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
-    border: 1px solid rgba(0, 255, 65, 0.3);
 }
 
-#selectedCount {
+#selectedCount, #selectedMercenaryCount {
     font-weight: 700;
     color: #00ff41;
-    font-size: 1em;
+    font-size: 1rem;
     letter-spacing: 0.5px;
 }
 
 .quick-actions {
     display: flex;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 35px;
 }
 
 .btn-small {
-    padding: 8px 14px;
+    width: 50%;
+    padding: 8px 0;
     font-size: 0.75em;
     border-radius: 8px;
     border: 1px solid rgba(0, 255, 65, 0.5);
@@ -1211,12 +1216,14 @@ footer {
     overflow-y: auto;
 }
 
-/* 체크박스 항목들이 있을 때만 grid 레이아웃 */
+/* 체크박스 항목들이 있을 때 flex 레이아웃 (1열) */
 .participant-checkboxes:has(.checkbox-item) {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    max-height: none; /* grid에서는 높이 제한 없음 */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: none;
     overflow-y: visible;
+    width: 100%;
 }
 
 /* 빈 메시지는 중앙 정렬 */
@@ -1231,10 +1238,15 @@ footer {
 .participant-swiper,
 .member-swiper,
 .attendance-swiper {
-    min-height: 250px;
-    height: auto;
-    max-height: none;
+    width: 100%;
+    height: auto !important;
+    min-height: auto;
     overflow: visible;
+}
+
+.member-swiper .swiper-wrapper,
+.attendance-swiper .swiper-wrapper {
+    height: auto !important;
 }
 
 .participant-swiper .swiper-slide,
@@ -1469,8 +1481,7 @@ footer {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    min-height: 200px;
-    max-height: none;
+    width: 100%;
     overflow: visible;
 }
 
@@ -2507,9 +2518,17 @@ footer {
     }
 
     .btn-small {
-        padding: 10px 14px;
+        padding: 10px 0;
         font-size: 0.85em;
     }
+}
+
+.participant-total-count {
+    text-align: center;
+    margin: 10px 0;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
 }
 
 /* ========================================
@@ -2521,8 +2540,7 @@ footer {
     align-items: center;
     justify-content: center;
     gap: 12px;
-    margin-top: 20px;
-    padding: 15px;
+    padding: 14px;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
 }
