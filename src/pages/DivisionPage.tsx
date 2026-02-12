@@ -289,7 +289,6 @@ const DivisionPage = () => {
       <section className="section">
         <h2>✅ 오늘 참가자</h2>
         <div className="participant-select-info">
-          <span id="selectedCount">{selectedCount}명 선택됨</span>
           <div className="quick-actions">
             <button className="btn-small" onClick={handleSelectAll}>
               전체선택
@@ -302,22 +301,27 @@ const DivisionPage = () => {
 
         {!squad || squad.members.length === 0 ? (
           <div className="participant-checkboxes">
-            <p className="empty-message">설정 탭에서 스쿼드 멤버를 먼저 추가해주세요</p>
+            <p className="empty-message">설정 탭에서 스쿼드 멤버를 <br/> 먼저 추가해주세요</p>
           </div>
         ) : totalPages === 1 ? (
-          <div className="participant-checkboxes">
-            {sortedMembers.map((member) => (
-              <div key={member.id} className="checkbox-item">
-                <input
-                  type="checkbox"
-                  id={`participant-${member.id}`}
-                  checked={selectedParticipants.includes(member.id)}
-                  onChange={() => toggleParticipant(member.id)}
-                />
-                <label htmlFor={`participant-${member.id}`}>{member.name}</label>
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="participant-checkboxes">
+              {sortedMembers.map((member) => (
+                <div key={member.id} className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    id={`participant-${member.id}`}
+                    checked={selectedParticipants.includes(member.id)}
+                    onChange={() => toggleParticipant(member.id)}
+                  />
+                  <label htmlFor={`participant-${member.id}`}>{member.name}</label>
+                </div>
+              ))}
+            </div>
+            <div className="participant-total-count">
+              <span id="selectedCount">{selectedCount}명 선택됨</span>
+            </div>
+          </>
         ) : (
           <>
             <Swiper
@@ -345,6 +349,9 @@ const DivisionPage = () => {
                 </SwiperSlide>
               ))}
             </Swiper>
+            <div className="participant-total-count">
+                <span id="selectedCount">{selectedCount}명 선택됨</span>
+              </div>
             {totalPages > 1 && (
               <div className="pagination">
                 <button
@@ -373,9 +380,8 @@ const DivisionPage = () => {
       {/* 용병 추가 섹션 */}
       <section className="section">
         <h2>⚡ 용병 추가</h2>
-        <div className="participant-select-info">
+        <div className="participant-guest-info">
           <span id="selectedMercenaryCount">{selectedMercenaryCount}명 선택됨</span>
-          <div className="quick-actions">
             {totalParticipants >= 2 && (
               <button
                 className="btn-small"
@@ -384,7 +390,6 @@ const DivisionPage = () => {
                 고정팀 설정
               </button>
             )}
-          </div>
         </div>
 
         <div className="member-input" style={{ marginBottom: "15px" }}>
@@ -524,7 +529,7 @@ const DivisionPage = () => {
               boxShadow: "0 4px 15px rgba(0, 255, 65, 0.3)",
             }}
           >
-            <span style={{ fontSize: "1.5em", marginRight: "10px" }}>👥</span>
+            <span style={{ fontSize: "1.3em", marginRight: "5px" }}>👥</span>
             총 인원: {selectedCount}명 (멤버) + {selectedMercenaryCount}명 (용병) ={" "}
             <span style={{ fontSize: "1.3em", color: "#000" }}>{totalParticipants}명</span>
           </div>
