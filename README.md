@@ -1,73 +1,329 @@
-# React + TypeScript + Vite
+# ⚽ 풋살 팀 나누기
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> 공정하고 스마트한 풋살 팀 배정 웹 애플리케이션
 
-Currently, two official plugins are available:
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![PWA](https://img.shields.io/badge/PWA-Ready-purple)
+![React](https://img.shields.io/badge/React-19.2-61dafb)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 프로덕션 URL
 
-## React Compiler
+**배포된 앱**: [https://futsalmanager.vercel.app](https://futsalmanager.vercel.app)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## ✨ 주요 기능
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 🎯 스마트 팀 배정
+- **2~6개 팀** 자유롭게 선택
+- **이력 기반 최적화**: 같은 팀 반복 방지 (1000번 시도)
+- **고정 팀 설정**: 2명 이상 같은 팀으로 고정 가능
+- **용병 시스템**: 용병 추가 시 자동 체크
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 👥 스쿼드 관리
+- 멤버 추가/삭제
+- 오늘 참가자 선택 (Swiper 제스처 지원)
+- 전체 선택/해제 버튼
+- 스쿼드 이름 변경
+- 정렬 및 페이지네이션
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 📊 출석 통계
+- 총 경기 수 / 평균 참가자
+- 단골 멤버 TOP 표시
+- 전체 멤버 출석률
+- 경기 이력 상세 보기
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 💾 클라우드 동기화
+- **Supabase PostgreSQL** 클라우드 저장
+- **실시간 동기화** (Realtime Subscriptions)
+- **자동 동기화** (debounce로 충돌 방지)
+- 여러 기기에서 데이터 공유
+
+### 🎨 세련된 UI/UX
+- **다크 테마**: #1a1a1a 배경, #00ff41 네온 그린
+- **Tailwind CSS 4** 최신 디자인 시스템
+- **Framer Motion** 부드러운 애니메이션
+- **Swiper** 카드 슬라이더
+- **반응형 디자인**: PC/모바일 최적화
+- **PWA 지원**: 홈 화면 추가 가능
+
+---
+
+## 🛠️ 기술 스택
+
+| 카테고리 | 기술 | 버전 |
+|----------|------|------|
+| **Frontend** | React | 19.2.0 |
+| **언어** | TypeScript | 5.9.3 |
+| **빌드 툴** | Vite | 7.2.4 |
+| **상태 관리** | Zustand | 5.0.11 |
+| **스타일링** | Tailwind CSS | 4.1.18 |
+| **애니메이션** | Framer Motion | 12.33.0 |
+| **카드 UI** | Swiper | 12.1.0 |
+| **폼 관리** | React Hook Form | 7.71.1 |
+| **검증** | Zod | 4.3.6 |
+| **백엔드** | Supabase | 2.95.2 |
+| **데이터 페칭** | TanStack Query | 5.90.20 |
+| **PWA** | vite-plugin-pwa | 1.2.0 |
+
+---
+
+## 🚀 빠른 시작
+
+### 1. 프로젝트 클론
+
+```bash
+git clone https://github.com/your-username/futsal-app.git
+cd futsal-app
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. 의존성 설치
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+# 또는
+pnpm install
 ```
+
+### 3. 환경 변수 설정
+
+`.env` 파일을 생성하고 Supabase 정보 입력:
+
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 4. 개발 서버 실행
+
+```bash
+npm run dev
+```
+
+브라우저에서 `http://localhost:5173` 접속
+
+### 5. 프로덕션 빌드
+
+```bash
+npm run build
+npm run preview
+```
+
+---
+
+## 📖 사용 방법
+
+### 1️⃣ 스쿼드 생성
+1. **설정 탭** 이동
+2. 멤버 이름 입력 후 추가
+3. 스쿼드 이름 변경 (선택)
+
+### 2️⃣ 팀 나누기
+1. **팀배정 탭**에서 오늘 참가자 체크
+2. (선택) 고정 팀 설정
+3. **팀 나누기** 버튼 클릭
+4. 팀 개수 선택 (2~6팀)
+
+### 3️⃣ 결과 확인 및 저장
+1. Swiper 카드로 각 팀 확인
+2. **전반전 저장** 또는 **후반전 저장**
+3. 필요 시 **다시 섞기**
+
+### 4️⃣ 출석률 확인
+1. **출석률 탭** 이동
+2. 단골 멤버 및 통계 확인
+3. 전체 이력 클릭 시 상세 보기
+
+---
+
+## 📂 프로젝트 구조
+
+```
+futsal-app/
+├── src/
+│   ├── App.tsx                      # 메인 앱
+│   ├── main.tsx                     # 엔트리 포인트
+│   ├── index.css                    # Tailwind 글로벌 스타일
+│   ├── components/
+│   │   ├── attendance/              # 출석률 통계
+│   │   ├── fixedTeam/              # 고정 팀 관리
+│   │   ├── member/                 # 멤버 관리
+│   │   ├── participant/            # 참가자 선택
+│   │   ├── settings/               # 설정
+│   │   ├── team/                   # 팀 결과 표시
+│   │   ├── modals/                 # 모달 컴포넌트
+│   │   ├── ui/                     # UI 기본 컴포넌트
+│   │   └── Layout.tsx              # 레이아웃
+│   ├── hooks/                      # Custom Hooks
+│   │   ├── useAutoSync.ts          # 자동 동기화
+│   │   ├── useInitialLoad.ts       # 초기 로드
+│   │   └── useRealtimeSync.ts      # 실시간 동기화
+│   ├── lib/
+│   │   └── supabase.ts             # Supabase 클라이언트
+│   ├── stores/                     # Zustand 스토어
+│   ├── types/                      # TypeScript 타입
+│   └── pages/                      # 페이지 컴포넌트
+├── public/                         # PWA 아이콘
+├── .env                            # Supabase 환경변수
+├── vite.config.ts                  # Vite 설정 (PWA 포함)
+├── tailwind.config.js              # Tailwind 설정
+├── tsconfig.json                   # TypeScript 설정
+├── package.json                    # 의존성
+└── supabase-setup.sql              # DB 스키마
+```
+
+---
+
+## 🎨 디자인 시스템
+
+### 색상 팔레트
+
+```css
+/* 다크 테마 */
+배경: #1a1a1a
+카드: #242424 → #1f1f1f (그라디언트)
+액센트: #00ff41 (네온 그린)
+텍스트: rgba(255, 255, 255, 0.9)
+
+/* 팀 색상 */
+🔴 A팀: #ff6b6b (빨강)
+🔵 B팀: #4facfe (파랑)
+🟢 C팀: #43e97b (초록)
+🟡 D팀: #fa709a (분홍/노랑)
+🟣 E팀: #a8edea (민트/보라)
+
+/* 버튼 */
+전반전: #00ff41 (초록)
+후반전: #ff6b6b (빨강)
+위험: #ff0055
+```
+
+---
+
+## 🔧 주요 알고리즘
+
+### 팀 나누기 최적화
+
+```javascript
+// 1. 1000번 시도하여 다양한 조합 생성
+for (let i = 0; i < 1000; i++) {
+    // 2. 각 조합의 점수 계산
+    const score = calculateScore(teams);
+
+    // 이전에 같은 팀이었던 횟수^2로 페널티
+    // 예: 3번 함께했으면 점수 +9
+
+    // 3. 최저 점수 조합 선택
+    if (score < bestScore) {
+        bestTeams = teams;
+    }
+}
+```
+
+---
+
+## 🌟 최근 업데이트
+
+### v2.0.0 (2026-02-09)
+- ✨ React + TypeScript 마이그레이션 완료
+- ✨ Supabase 실시간 동기화 구현
+- ✨ 용병 시스템 추가
+- ✨ Swiper 카드 UI 개선 (PC/모바일 통일)
+- 🐛 debounce 추가로 409 충돌 해결
+- 🎨 Tailwind CSS 4 적용
+
+### v1.0.0 (2026-02-06)
+- 🎉 Vanilla JavaScript 프로토타입 완성
+- 🎯 팀 나누기 알고리즘 구현
+- 📊 출석률 통계 기능
+- 🎨 다크 테마 UI
+
+---
+
+## 🚀 배포
+
+### Vercel 배포 (자동)
+
+```bash
+# main 브랜치에 push하면 자동 배포
+git push origin main
+```
+
+### 수동 배포
+
+```bash
+npm run build
+vercel --prod
+```
+
+---
+
+## 🐛 문제 해결
+
+### Q: Supabase 연결 오류
+**A:** `.env` 파일의 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_ANON_KEY`를 확인하세요.
+
+### Q: 빌드 오류
+**A:** `node_modules`를 삭제하고 다시 설치:
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### Q: PWA가 업데이트 안 됨
+**A:** 브라우저 캐시를 강제 새로고침 (Ctrl+Shift+R)
+
+### Q: 실시간 동기화 안 됨
+**A:** Supabase 대시보드에서 Realtime이 활성화되어 있는지 확인
+
+---
+
+## 📱 지원 브라우저
+
+| 브라우저 | 버전 | 지원 |
+|----------|------|------|
+| Chrome | 90+ | ✅ 완벽 지원 |
+| Safari | 14+ | ✅ 완벽 지원 |
+| Firefox | 88+ | ✅ 완벽 지원 |
+| Edge | 90+ | ✅ 완벽 지원 |
+| IE | - | ❌ 미지원 |
+
+---
+
+## 🤝 기여하기
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 라이선스
+
+MIT License - 자유롭게 사용하세요!
+
+---
+
+## 📧 문의
+
+프로젝트 관련 문의: [GitHub Issues](https://github.com/your-username/futsal-app/issues)
+
+---
+
+## 🎉 감사의 말
+
+- **Vite**: 초고속 빌드 툴
+- **React 19**: 최신 프론트엔드 프레임워크
+- **Tailwind CSS 4**: 현대적인 CSS 프레임워크
+- **Supabase**: 오픈소스 Firebase 대안
+- **Vercel**: 간편한 배포 플랫폼
+- **Swiper**: 멋진 카드 슬라이더
+- **Anthropic Claude**: AI 기반 개발 도우미
+
+---
+
+**⚽ 즐거운 풋살 되세요!**
