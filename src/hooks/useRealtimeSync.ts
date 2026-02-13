@@ -36,25 +36,15 @@ export const useRealtimeSync = (squadId: string | null) => {
           filter: `id=eq.${squadId}`,
         },
         async () => {
-          console.log("✨ 스쿼드 업데이트 감지!");
+          console.log("✨ 스쿼드 업데이트 감지 (다른 기기에서 변경)");
+          // 1초 대기 후 업데이트 (자동 업로드 완료 대기)
+          await new Promise(resolve => setTimeout(resolve, 1000));
           const updated = await loadSquadFromSupabase(squadId);
           if (updated) setSquad(updated);
         }
       )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "members",
-          filter: `squad_id=eq.${squadId}`,
-        },
-        async () => {
-          console.log("✨ 멤버 업데이트 감지!");
-          const updated = await loadSquadFromSupabase(squadId);
-          if (updated) setSquad(updated);
-        }
-      )
+      // members 테이블 Realtime 구독 비활성화 (로컬 변경과 충돌 방지)
+      // 멤버 변경은 자동 업로드 후 수동으로 처리됨
       .on(
         "postgres_changes",
         {

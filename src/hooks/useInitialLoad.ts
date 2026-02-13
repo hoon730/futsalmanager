@@ -21,6 +21,7 @@ const DEFAULT_SQUAD_NAME = "내 스쿼드";
  */
 export const useInitialLoad = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setErrorState] = useState<string | null>(null);
   const { setSquad, setLoading, setError } = useSquadStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const { setFixedTeams } = useFixedTeamStore();
@@ -80,11 +81,12 @@ export const useInitialLoad = () => {
         }
 
         setError(null);
+        setErrorState(null);
       } catch (error) {
         console.error("❌ 초기 데이터 로드 실패:", error);
-        setError(
-          error instanceof Error ? error.message : "데이터 로드 실패"
-        );
+        const errorMsg = error instanceof Error ? error.message : "데이터 로드 실패";
+        setError(errorMsg);
+        setErrorState(errorMsg);
 
         // 실패해도 빈 스쿼드 생성
         setSquad({
@@ -109,5 +111,5 @@ export const useInitialLoad = () => {
     setError,
   ]);
 
-  return { isLoading };
+  return { isLoading, error };
 };
