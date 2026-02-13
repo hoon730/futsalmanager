@@ -223,6 +223,26 @@ export const loadDivisionsFromSupabase = async (
   }
 };
 
+export const saveDivisionToSupabase = async (division: IDivision) => {
+  try {
+    const { error } = await supabase.from("divisions").insert({
+      id: division.id,
+      squad_id: division.squadId,
+      division_date: division.divisionDate,
+      notes: division.notes,
+      period: division.period,
+      teams: division.teams,
+      team_count: division.teamCount,
+    });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error("이력 저장 실패:", error);
+    return { success: false, error };
+  }
+};
+
 export const deleteDivisionFromSupabase = async (divisionId: string) => {
   try {
     const { error } = await supabase

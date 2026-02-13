@@ -11,6 +11,7 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { divideTeamsWithConstraints, updateTeammateHistory as updateHistory } from "@/lib/teamAlgorithm";
+import { saveDivisionToSupabase, syncTeammateHistoryToSupabase } from "@/lib/supabaseSync";
 import { AlertModal, ConfirmModal } from "@/components/modals";
 import type { IMember, IFixedTeam } from "@/types";
 
@@ -257,13 +258,13 @@ const DivisionPage = () => {
     setShowSavePeriodModal(true);
   };
 
-  const saveWithPeriod = (period: "전반전" | "후반전") => {
+  const saveWithPeriod = async (period: "전반전" | "후반전") => {
     if (!currentTeams || !squad) return;
 
     const date = new Date();
     const notes = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. ${period}`;
 
-    saveDivision({
+    const division = {
       id: Date.now().toString(),
       squadId: squad.id,
       divisionDate: date.toISOString(),
@@ -271,9 +272,20 @@ const DivisionPage = () => {
       period,
       teams: currentTeams,
       teamCount: currentTeams.length,
-    });
+    };
 
-    updateStoreHistory(updateHistory(currentTeams, teammateHistory));
+    // Supabase에 저장
+    await saveDivisionToSupabase(division);
+
+    // 로컬 스토어에 저장
+    saveDivision(division);
+
+    // 팀 메이트 이력 업데이트
+    const updatedHistory = updateHistory(currentTeams, teammateHistory);
+    updateStoreHistory(updatedHistory);
+
+    // Supabase에 팀 메이트 이력 동기화
+    await syncTeammateHistoryToSupabase(squad.id, updatedHistory);
 
     setSaveSuccessMessage(`${period} 결과가 저장되었습니다`);
     setShowSavePeriodModal(false);
