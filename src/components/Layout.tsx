@@ -1,82 +1,55 @@
-import { useState, useEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import { useState } from "react";
 import DivisionPage from "@/pages/DivisionPage";
 import AttendancePage from "@/pages/AttendancePage";
 import SettingsPage from "@/pages/SettingsPage";
-import { useSquadStore } from "@/stores/squadStore";
 
-interface ILayoutProps {
-  children?: ReactNode;
-}
-
-const Layout = (_props: ILayoutProps) => {
+const Layout = () => {
   const [activeTab, setActiveTab] = useState<"division" | "attendance" | "settings">("division");
-  const [headerHidden, setHeaderHidden] = useState(false);
-  const squad = useSquadStore((state) => state.squad);
-  const lastScrollY = useRef(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // 스크롤 다운 & 50px 이상
-        setHeaderHidden(true);
-      } else {
-        // 스크롤 업
-        setHeaderHidden(false);
-      }
-
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   return (
-    <div className="app-container">
-      {/* 헤더 */}
-      <header className={`app-header ${headerHidden ? "hidden" : ""}`}>
-        <h1>⚽ 풋살 매니저</h1>
-        <p className="squad-name">{squad?.name || "내 스쿼드"}</p>
-      </header>
-
+    <div className="min-h-screen pb-24">
       {/* 메인 컨텐츠 */}
-      <main className="app-main">
-        <div className={`tab-content ${activeTab === "division" ? "active" : ""}`}>
-          {activeTab === "division" && <DivisionPage />}
-        </div>
-        <div className={`tab-content ${activeTab === "attendance" ? "active" : ""}`}>
-          {activeTab === "attendance" && <AttendancePage />}
-        </div>
-        <div className={`tab-content ${activeTab === "settings" ? "active" : ""}`}>
-          {activeTab === "settings" && <SettingsPage />}
-        </div>
+      <main>
+        {activeTab === "division" && <DivisionPage />}
+        {activeTab === "attendance" && <AttendancePage />}
+        {activeTab === "settings" && <SettingsPage />}
       </main>
 
-      {/* 하단 탭 네비게이션 */}
-      <nav className="tab-nav">
+      {/* 하단 네비게이션 */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-background-dark/80 backdrop-blur-xl border-t border-white/5 h-20 flex items-center justify-around z-50 max-w-md mx-auto rounded-t-[2.5rem] px-8 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+        style={{
+          background: 'rgba(10, 21, 13, 0.8)',
+          borderColor: 'rgba(255, 255, 255, 0.05)'
+        }}
+      >
         <button
-          className={`tab-btn ${activeTab === "division" ? "active" : ""}`}
-          onClick={() => setActiveTab("division")}
+          onClick={() => setActiveTab('division')}
+          className={`flex flex-col items-center gap-1.5 transition-all ${
+            activeTab === 'division' ? 'text-primary scale-110' : 'text-white/20 hover:text-white/40'
+          }`}
         >
-          <span className="tab-icon">⚽</span>
-          <span className="tab-label">팀배정</span>
+          <span className="material-icons text-2xl">sports_soccer</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">팀 배정</span>
         </button>
+
         <button
-          className={`tab-btn ${activeTab === "attendance" ? "active" : ""}`}
-          onClick={() => setActiveTab("attendance")}
+          onClick={() => setActiveTab('attendance')}
+          className={`flex flex-col items-center gap-1.5 transition-all ${
+            activeTab === 'attendance' ? 'text-primary scale-110' : 'text-white/20 hover:text-white/40'
+          }`}
         >
-          <span className="tab-icon">📊</span>
-          <span className="tab-label">출석률</span>
+          <span className="material-icons text-2xl">analytics</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">기록</span>
         </button>
+
         <button
-          className={`tab-btn ${activeTab === "settings" ? "active" : ""}`}
-          onClick={() => setActiveTab("settings")}
+          onClick={() => setActiveTab('settings')}
+          className={`flex flex-col items-center gap-1.5 transition-all ${
+            activeTab === 'settings' ? 'text-primary scale-110' : 'text-white/20 hover:text-white/40'
+          }`}
         >
-          <span className="tab-icon">⚙️</span>
-          <span className="tab-label">설정</span>
+          <span className="material-icons text-2xl">settings</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">설정</span>
         </button>
       </nav>
     </div>
