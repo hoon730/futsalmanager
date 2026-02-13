@@ -364,13 +364,6 @@ export default function AttendancePage() {
         {isAdmin && (
           <div className="admin-badge" style={{ marginBottom: '15px' }}>✅ 관리자 인증됨</div>
         )}
-        <button
-          className="btn-danger"
-          style={{ width: '100%', marginBottom: '15px' }}
-          onClick={() => requestAdminAccess('all')}
-        >
-          🔒 전체 이력 삭제
-        </button>
         <div className="history-list">
           {divisionHistory.length === 0 ? (
             <p className="empty-message">저장된 기록이 없습니다</p>
@@ -434,6 +427,13 @@ export default function AttendancePage() {
             </>
           )}
         </div>
+        <button
+          className="btn-danger"
+          style={{ width: '100%', marginTop: '15px' }}
+          onClick={() => requestAdminAccess('all')}
+        >
+          🔒 전체 이력 삭제
+        </button>
       </section>
 
       {/* 이력 상세 보기 모달 */}
