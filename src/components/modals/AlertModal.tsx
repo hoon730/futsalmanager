@@ -12,7 +12,7 @@ export const AlertModal = ({ isOpen, onClose, title = "알림", message }: IAler
     <div className="modal">
       <div className="modal-content alert-modal">
         <h3>{title}</h3>
-        <p className="modal-message">{message}</p>
+        <p className="modal-message" style={{ whiteSpace: 'pre-line' }}>{message}</p>
         <div className="modal-actions">
           <button onClick={onClose}>확인</button>
         </div>

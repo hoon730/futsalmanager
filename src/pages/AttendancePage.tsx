@@ -196,8 +196,8 @@ export default function AttendancePage() {
       isOpen: true,
       title: '⚠️ 경고',
       message: '모든 경기 이력을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.',
-      onConfirm: () => {
-        clearAllDivisions();
+      onConfirm: async () => {
+        await clearAllDivisions();
         setAlertModal({ isOpen: true, message: '이력이 삭제되었습니다' });
         setConfirmModal({ ...confirmModal, isOpen: false });
       },
@@ -210,9 +210,9 @@ export default function AttendancePage() {
       isOpen: true,
       title: '이력 삭제',
       message: '이 기록을 삭제하시겠습니까?',
-      onConfirm: () => {
+      onConfirm: async () => {
         const reversedIndex = divisionHistory.length - 1 - index;
-        deleteDivision(divisionHistory[reversedIndex].id);
+        await deleteDivision(divisionHistory[reversedIndex].id);
         setConfirmModal({ ...confirmModal, isOpen: false });
       },
     });
