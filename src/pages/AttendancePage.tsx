@@ -67,6 +67,8 @@ export default function AttendancePage() {
     isOpen: false,
     detail: null,
   });
+  const [adminPasswordModal, setAdminPasswordModal] = useState(false);
+  const [pendingDeleteAction, setPendingDeleteAction] = useState<{type: 'single' | 'all', index?: number} | null>(null);
 
   // 출석 통계 계산
   useEffect(() => {
@@ -145,6 +147,59 @@ export default function AttendancePage() {
         notes: detail.notes || new Date(detail.divisionDate).toLocaleDateString('ko-KR'),
         date: detail.notes || new Date(detail.divisionDate).toLocaleDateString('ko-KR'),
         teams: detail.teams,
+      },
+    });
+  };
+
+  // 관리자 비밀번호 확인
+  const handleAdminPasswordSubmit = (password: string) => {
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+
+    if (password === adminPassword) {
+      setIsAdmin(true);
+      setAdminPasswordModal(false);
+      setAlertModal({ isOpen: true, message: '✅ 관리자 인증 성공' });
+
+      // 대기 중인 작업 실행
+      if (pendingDeleteAction) {
+        if (pendingDeleteAction.type === 'all') {
+          confirmClearAllHistory();
+        } else if (pendingDeleteAction.type === 'single' && pendingDeleteAction.index !== undefined) {
+          confirmDeleteHistory(pendingDeleteAction.index);
+        }
+        setPendingDeleteAction(null);
+      }
+    } else {
+      setAdminPasswordModal(false);
+      setAlertModal({ isOpen: true, message: '❌ 비밀번호가 틀렸습니다' });
+      setPendingDeleteAction(null);
+    }
+  };
+
+  // 관리자 권한 요청
+  const requestAdminAccess = (type: 'single' | 'all', index?: number) => {
+    if (isAdmin) {
+      if (type === 'all') {
+        confirmClearAllHistory();
+      } else if (index !== undefined) {
+        confirmDeleteHistory(index);
+      }
+    } else {
+      setPendingDeleteAction({ type, index });
+      setAdminPasswordModal(true);
+    }
+  };
+
+  // 전체 이력 삭제 확인
+  const confirmClearAllHistory = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: '⚠️ 경고',
+      message: '모든 경기 이력을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.',
+      onConfirm: () => {
+        clearAllDivisions();
+        setAlertModal({ isOpen: true, message: '이력이 삭제되었습니다' });
+        setConfirmModal({ ...confirmModal, isOpen: false });
       },
     });
   };
@@ -306,6 +361,16 @@ export default function AttendancePage() {
       {/* 전체 이력 섹션 */}
       <section className="section">
         <h2>📜 전체 이력</h2>
+        {isAdmin && (
+          <div className="admin-badge" style={{ marginBottom: '15px' }}>✅ 관리자 인증됨</div>
+        )}
+        <button
+          className="btn-danger"
+          style={{ width: '100%', marginBottom: '15px' }}
+          onClick={() => requestAdminAccess('all')}
+        >
+          🔒 전체 이력 삭제
+        </button>
         <div className="history-list">
           {divisionHistory.length === 0 ? (
             <p className="empty-message">저장된 기록이 없습니다</p>
@@ -329,10 +394,10 @@ export default function AttendancePage() {
                         className="delete-history-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          confirmDeleteHistory(reversedIndex);
+                          requestAdminAccess('single', reversedIndex);
                         }}
                       >
-                        삭제
+                        🔒 삭제
                       </button>
                     </div>
                     <div className="history-teams-preview">
@@ -441,6 +506,16 @@ export default function AttendancePage() {
         message={confirmModal.message}
         onConfirm={confirmModal.onConfirm}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {/* AdminPasswordModal */}
+      <AdminPasswordModal
+        isOpen={adminPasswordModal}
+        onConfirm={handleAdminPasswordSubmit}
+        onClose={() => {
+          setAdminPasswordModal(false);
+          setPendingDeleteAction(null);
+        }}
       />
     </div>
   );
