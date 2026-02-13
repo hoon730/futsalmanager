@@ -4,14 +4,23 @@
     box-sizing: border-box;
 }
 
+:root {
+    --color-primary: #0df23e;
+    --color-background: #0a150d;
+    --color-surface: #16261b;
+    --color-surface-light: rgba(22, 38, 27, 0.8);
+    --color-border: rgba(13, 242, 62, 0.1);
+    --color-glow: rgba(13, 242, 62, 0.5);
+}
+
 html {
-    background: #1a1a1a;
+    background: var(--color-background);
     overscroll-behavior: none;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans KR', sans-serif;
-    background: #1a1a1a;
+    font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans KR', sans-serif;
+    background: var(--color-background);
     min-height: 100vh;
     padding: 0;
     margin: 0;
@@ -19,6 +28,40 @@ body {
     -webkit-font-smoothing: antialiased;
     color: #fff;
     overscroll-behavior-y: none;
+}
+
+/* 축구장 그리드 배경 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        linear-gradient(rgba(13, 242, 62, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(13, 242, 62, 0.03) 1px, transparent 1px);
+    background-size: 100px 100px;
+    background-position: center;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#root {
+    position: relative;
+    z-index: 1;
+}
+
+/* 글래스모피즘 효과 */
+.glass-card {
+    background: var(--color-surface-light);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+}
+
+.neon-glow {
+    box-shadow: 0 0 20px var(--color-glow);
 }
 
 /* 스크롤바 숨기기 */
@@ -35,7 +78,7 @@ body {
 .app-container {
     max-width: 600px;
     margin: 0 auto;
-    background: #1a1a1a;
+    background: var(--color-background);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -55,8 +98,8 @@ body {
 
 /* 앱 헤더 */
 .app-header {
-    background: #1a1a1a;
-    background: linear-gradient(180deg, #222 0%, #1a1a1a 100%);
+    background: var(--color-background);
+    background: linear-gradient(180deg, #222 0%, var(--color-background) 100%);
     color: #fff;
     padding: 20px 20px 10px 20px;
     padding-top: calc(20px + env(safe-area-inset-top));
@@ -64,7 +107,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 100;
-    border-bottom: 3px solid #00ff41;
+    border-bottom: 3px solid var(--color-primary);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -88,7 +131,7 @@ body {
 
 .squad-name {
     font-size: 0.8em;
-    color: #00ff41;
+    color: var(--color-primary);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -142,7 +185,7 @@ header h1 {
     flex: 1;
     overflow-y: auto;
     padding-bottom: calc(75px + env(safe-area-inset-bottom)); /* 탭 네비게이션 공간 확보 */
-    background: #1a1a1a;
+    background: var(--color-background);
     position: relative;
     z-index: 1;
 }
@@ -216,14 +259,14 @@ main {
 .player-input input:focus,
 .member-input input:focus {
     outline: none;
-    border-color: #00ff41;
+    border-color: var(--color-primary);
     background: rgba(255, 255, 255, 0.1);
     box-shadow: 0 0 0 4px rgba(0, 255, 65, 0.1);
 }
 
 button {
     padding: 14px 28px;
-    background: #00ff41;
+    background: var(--color-primary);
     color: #000;
     border: none;
     border-radius: 12px;
@@ -353,7 +396,7 @@ button:active {
 }
 
 .team-settings select option {
-    background: #1a1a1a;
+    background: var(--color-background);
     color: #fff;
 }
 
@@ -403,14 +446,14 @@ button:active {
     width: 20px;
     height: 20px;
     cursor: pointer;
-    accent-color: #00ff41;
+    accent-color: var(--color-primary);
     border-radius: 4px;
     flex-shrink: 0;
     margin: 0 0 0 16px;
 }
 
 .checkbox-item input[type="checkbox"]:checked + label {
-    color: #00ff41;
+    color: var(--color-primary);
 }
 
 .checkbox-item label {
@@ -459,7 +502,7 @@ button:active {
 .divide-btn {
     width: 100%;
     padding: 20px;
-    background: linear-gradient(135deg, #00ff41 0%, #00cc34 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00cc34 100%);
     font-size: 1.15em;
     border-radius: 16px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -591,7 +634,7 @@ button:active {
 }
 
 .team-1 {
-    background: linear-gradient(135deg, #00ff41 0%, #00cc34 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00cc34 100%);
     border-color: rgba(0, 255, 65, 0.3);
     color: #000;
 }
@@ -767,7 +810,7 @@ button:active {
 
 .modal-date {
     text-align: center;
-    color: #00ff41;
+    color: var(--color-primary);
     font-weight: 700;
     margin-bottom: 30px;
     font-size: 1em;
@@ -794,7 +837,7 @@ button:active {
 }
 
 .first-half {
-    background: linear-gradient(135deg, #00ff41 0%, #00cc34 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00cc34 100%);
     color: #000;
     border: none;
     border-radius: 12px;
@@ -872,7 +915,7 @@ button:active {
 
 .history-date {
     font-weight: 900;
-    color: #00ff41;
+    color: var(--color-primary);
     text-transform: uppercase;
     font-size: 0.85em;
     letter-spacing: 1px;
@@ -1095,7 +1138,7 @@ footer {
     max-width: 600px;
     width: 100%;
     display: flex;
-    background: linear-gradient(180deg, #1f1f1f 0%, #1a1a1a 100%);
+    background: linear-gradient(180deg, #1f1f1f 0%, var(--color-background) 100%);
     z-index: 1000;
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
@@ -1128,8 +1171,8 @@ footer {
 }
 
 .tab-btn.active {
-    color: #00ff41;
-    border-top: 2px solid #00ff41;
+    color: var(--color-primary);
+    border-top: 2px solid var(--color-primary);
 }
 
 
@@ -1173,7 +1216,7 @@ footer {
 
 #selectedCount, #selectedMercenaryCount {
     font-weight: 700;
-    color: #00ff41;
+    color: var(--color-primary);
     font-size: 1rem;
     letter-spacing: 0.5px;
 }
@@ -1191,7 +1234,7 @@ footer {
     border-radius: 8px;
     border: 1px solid rgba(0, 255, 65, 0.5);
     background: rgba(0, 255, 65, 0.1);
-    color: #00ff41;
+    color: var(--color-primary);
     cursor: pointer;
     transition: all 0.3s;
     font-weight: 700;
@@ -1200,9 +1243,9 @@ footer {
 }
 
 .btn-small:hover {
-    background: #00ff41;
+    background: var(--color-primary);
     color: #000;
-    border-color: #00ff41;
+    border-color: var(--color-primary);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 255, 65, 0.4);
 }
@@ -1300,7 +1343,7 @@ footer {
 .stat-value {
     font-size: 2.2em;
     font-weight: 800;
-    color: #00ff41;
+    color: var(--color-primary);
     text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
 }
 
@@ -1369,7 +1412,7 @@ footer {
 
 .attendance-fill {
     height: 100%;
-    background: linear-gradient(90deg, #00ff41, #00cc34);
+    background: linear-gradient(90deg, var(--color-primary), #00cc34);
     border-radius: 10px;
     transition: width 0.5s ease;
     box-shadow: 0 0 15px rgba(0, 255, 65, 0.6);
@@ -1377,7 +1420,7 @@ footer {
 
 .attendance-rate {
     font-weight: 900;
-    color: #00ff41;
+    color: var(--color-primary);
     min-width: 50px;
     text-align: right;
 }
@@ -1455,7 +1498,7 @@ footer {
 .member-count {
     text-align: center;
     font-size: 1.1em;
-    color: #00ff41;
+    color: var(--color-primary);
     font-weight: 700;
     margin-bottom: 15px;
     letter-spacing: 0.5px;
@@ -1535,12 +1578,12 @@ footer {
 
 .btn-edit {
     background: rgba(0, 255, 65, 0.2);
-    color: #00ff41;
-    border: 1px solid #00ff41;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
 }
 
 .btn-edit:hover {
-    background: #00ff41;
+    background: var(--color-primary);
     color: #000;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 255, 65, 0.4);
@@ -1597,7 +1640,7 @@ footer {
 }
 
 .admin-badge {
-    background: linear-gradient(135deg, #00ff41 0%, #00cc33 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00cc33 100%);
     color: #000;
     padding: 8px 16px;
     border-radius: 20px;
@@ -1685,7 +1728,7 @@ footer {
 
 .recent-history-date {
     font-weight: 900;
-    color: #00ff41;
+    color: var(--color-primary);
     margin-bottom: 5px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1747,7 +1790,7 @@ footer {
 }
 
 .modal-actions button:first-child {
-    background: linear-gradient(135deg, #00ff41 0%, #00cc34 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00cc34 100%);
     color: #000;
     font-weight: 700;
     text-transform: uppercase;
@@ -1755,7 +1798,7 @@ footer {
 }
 
 .modal-actions button:first-child:hover {
-    background: linear-gradient(135deg, #00ff41 0%, #00aa2a 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00aa2a 100%);
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(0, 255, 65, 0.5);
 }
@@ -1816,7 +1859,7 @@ footer {
 
 .team-count-btn:hover {
     background: linear-gradient(145deg, #333 0%, #252525 100%);
-    border-color: #00ff41;
+    border-color: var(--color-primary);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 255, 65, 0.3);
 }
@@ -1871,7 +1914,7 @@ footer {
 }
 
 .modal-message span {
-    color: #00ff41;
+    color: var(--color-primary);
     font-weight: 700;
 }
 
@@ -1969,7 +2012,7 @@ footer {
 
 .team-badge {
     background: rgba(0, 255, 65, 0.15);
-    color: #00ff41;
+    color: var(--color-primary);
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 0.85em;
@@ -2013,7 +2056,7 @@ footer {
 .modal-input:focus {
     outline: none;
     background: rgba(255, 255, 255, 0.08);
-    border-color: #00ff41;
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(0, 255, 65, 0.1);
 }
 
@@ -2059,7 +2102,7 @@ footer {
     width: 80px;
     height: 80px;
     margin: 0 auto 20px auto;
-    background: linear-gradient(135deg, #00ff41 0%, #00cc34 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00cc34 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -2085,7 +2128,7 @@ footer {
 }
 
 .save-success-modal h3 {
-    color: #00ff41;
+    color: var(--color-primary);
     margin-bottom: 15px;
 }
 
@@ -2107,7 +2150,7 @@ footer {
 }
 
 .modal-hint strong {
-    color: #00ff41;
+    color: var(--color-primary);
     font-weight: 700;
 }
 
@@ -2161,7 +2204,7 @@ footer {
 }
 
 .period-btn.first-half:hover {
-    border-color: #00ff41;
+    border-color: var(--color-primary);
     background: linear-gradient(145deg, #2a2a2a 0%, #1f3f1f 100%);
     box-shadow: 0 8px 24px rgba(0, 255, 65, 0.3);
 }
@@ -2182,7 +2225,7 @@ footer {
 }
 
 .first-half .period-icon {
-    color: #00ff41;
+    color: var(--color-primary);
 }
 
 .second-half .period-icon {
@@ -2256,12 +2299,12 @@ footer {
 }
 
 .result-actions .save-btn {
-    background: linear-gradient(135deg, #00ff41 0%, #00cc34 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00cc34 100%);
     color: #000;
 }
 
 .result-actions .save-btn:hover {
-    background: linear-gradient(135deg, #00ff41 0%, #00aa2a 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #00aa2a 100%);
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(0, 255, 65, 0.5);
 }
@@ -2441,7 +2484,7 @@ footer {
 }
 
 .swiper-pagination-bullet-active {
-    background: #00ff41;
+    background: var(--color-primary);
     width: 24px;
     border-radius: 4px;
 }
@@ -2586,7 +2629,7 @@ footer {
 .pagination-btn {
     background: rgba(0, 255, 65, 0.15);
     border: 1px solid rgba(0, 255, 65, 0.3);
-    color: #00ff41;
+    color: var(--color-primary);
     padding: 8px 16px;
     border-radius: 8px;
     cursor: pointer;
@@ -2653,7 +2696,7 @@ footer {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    background: #1a1a1a;
+    background: var(--color-background);
     color: rgba(255, 255, 255, 0.9);
 }
 
@@ -2661,7 +2704,7 @@ footer {
     width: 50px;
     height: 50px;
     border: 4px solid rgba(0, 255, 65, 0.1);
-    border-top-color: #00ff41;
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 20px;
@@ -2683,7 +2726,7 @@ footer {
     top: 10px;
     right: 10px;
     background: rgba(0, 255, 65, 0.1);
-    color: #00ff41;
+    color: var(--color-primary);
     padding: 8px 16px;
     border-radius: 20px;
     font-size: 0.85em;
