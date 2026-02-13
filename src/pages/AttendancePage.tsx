@@ -5,8 +5,10 @@ import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
+import { useAdminStore } from '@/stores/adminStore';
 import { AlertModal } from '@/components/modals/AlertModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { AdminPasswordModal } from '@/components/modals/AdminPasswordModal';
 
 // 출석 통계 데이터 타입
 interface AttendanceData {
@@ -26,7 +28,8 @@ interface HistoryDetail {
 export default function AttendancePage() {
   const { squad } = useSquadStore();
   const members = squad?.members || [];
-  const { divisionHistory, deleteDivision } = useDivisionStore();
+  const { divisionHistory, deleteDivision, clearAllDivisions } = useDivisionStore();
+  const { isAdmin, setIsAdmin } = useAdminStore();
 
   // 상태 관리
   const [totalGames, setTotalGames] = useState(0);
