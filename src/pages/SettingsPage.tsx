@@ -7,6 +7,7 @@ import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
 import { AlertModal } from '@/components/modals/AlertModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { AdminPasswordModal } from '@/components/modals/AdminPasswordModal';
 
 export default function SettingsPage() {
   const { squad, updateSquadName, addMember, removeMember, clearAllData } = useSquadStore();
@@ -17,6 +18,13 @@ export default function SettingsPage() {
   // 입력 상태
   const [newMemberName, setNewMemberName] = useState('');
   const [editingSquadName, setEditingSquadName] = useState('');
+
+  // 관리자 인증 상태
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPasswordModal, setAdminPasswordModal] = useState(false);
+  const [pendingAdminAction, setPendingAdminAction] = useState<'clearHistory' | 'resetAll' | null>(
+    null
+  );
 
   // 모달 상태
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string }>({
@@ -107,6 +115,45 @@ export default function SettingsPage() {
     if (removeMemberModal.memberId) {
       removeMember(removeMemberModal.memberId);
       setDeleteMemberModal({ isOpen: false, memberId: '', memberName: '' });
+    }
+  };
+
+  // 관리자 비밀번호 확인
+  const handleAdminPasswordSubmit = (password: string) => {
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+
+    if (password === adminPassword) {
+      setIsAdmin(true);
+      setAdminPasswordModal(false);
+      setAlertModal({ isOpen: true, message: '✅ 관리자 인증 성공' });
+
+      // 대기 중인 작업 실행
+      if (pendingAdminAction === 'clearHistory') {
+        confirmClearHistory();
+      } else if (pendingAdminAction === 'resetAll') {
+        confirmResetAll();
+      }
+      setPendingAdminAction(null);
+    } else {
+      setAdminPasswordModal(false);
+      setAlertModal({ isOpen: true, message: '❌ 비밀번호가 틀렸습니다' });
+      setPendingAdminAction(null);
+    }
+  };
+
+  // 관리자 권한 요청
+  const requestAdminAccess = (action: 'clearHistory' | 'resetAll') => {
+    if (isAdmin) {
+      // 이미 인증된 경우 바로 실행
+      if (action === 'clearHistory') {
+        confirmClearHistory();
+      } else if (action === 'resetAll') {
+        confirmResetAll();
+      }
+    } else {
+      // 인증 필요
+      setPendingAdminAction(action);
+      setAdminPasswordModal(true);
     }
   };
 
@@ -278,12 +325,15 @@ export default function SettingsPage() {
 
       {/* 데이터 관리 섹션 */}
       <section className="section danger-zone">
-        <h2 className="danger-zone-title">🗑️ 데이터 관리</h2>
-        <button className="btn-danger" onClick={confirmClearHistory}>
-          이력 전체 삭제
+        <h2 className="danger-zone-title">🗑️ 데이터 관리 (관리자 전용)</h2>
+        {isAdmin && (
+          <div className="admin-badge">✅ 관리자 인증됨</div>
+        )}
+        <button className="btn-danger" onClick={() => requestAdminAccess('clearHistory')}>
+          🔒 이력 전체 삭제
         </button>
-        <button className="btn-danger" onClick={confirmResetAll}>
-          모든 데이터 초기화
+        <button className="btn-danger" onClick={() => requestAdminAccess('resetAll')}>
+          🔒 모든 데이터 초기화
         </button>
       </section>
 
@@ -352,6 +402,16 @@ export default function SettingsPage() {
         message={confirmModal.message}
         onConfirm={confirmModal.onConfirm}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {/* AdminPasswordModal */}
+      <AdminPasswordModal
+        isOpen={adminPasswordModal}
+        onConfirm={handleAdminPasswordSubmit}
+        onClose={() => {
+          setAdminPasswordModal(false);
+          setPendingAdminAction(null);
+        }}
       />
     </div>
   );
