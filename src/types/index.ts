@@ -5,6 +5,8 @@ export interface IMember {
   active: boolean;
   createdAt: string;
   isMercenary?: boolean; // 용병 여부
+  avatarUrl?: string; // 프로필 이미지
+  positionKey?: string; // 포지션 (FW, MF, DF, GK 등)
 }
 
 export interface ISquad {
