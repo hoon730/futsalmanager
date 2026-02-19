@@ -266,7 +266,7 @@ export default function SettingsPage() {
                         />
                       ) : (
                         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center border border-white/10">
-                          <span className="text-md font-bold">{member.name[0]}</span>
+                          <span className="text-md font-bold">{member.name.slice(1)}</span>
                         </div>
                       )}
 

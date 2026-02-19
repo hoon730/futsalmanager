@@ -9,7 +9,7 @@ interface FixedTeamModalProps {
   selectedMercenaries: string[];
   fixedTeams: IFixedTeam[];
   onClose: () => void;
-  onToggleLock: (playerId1: string, playerId2: string) => void;
+  onAddFixedTeam: (playerIds: string[]) => void;
 }
 
 const FixedTeamModal = ({
@@ -19,7 +19,7 @@ const FixedTeamModal = ({
   selectedMercenaries,
   fixedTeams,
   onClose,
-  onToggleLock,
+  onAddFixedTeam,
 }: FixedTeamModalProps) => {
   const [selection, setSelection] = useState<string[]>([]);
 
@@ -41,19 +41,14 @@ const FixedTeamModal = ({
 
   const handleSelect = (id: string) => {
     if (isLocked(id)) return;
-
-    if (selection.includes(id)) {
-      setSelection((prev) => prev.filter((sid) => sid !== id));
-    } else {
-      if (selection.length < 2) {
-        setSelection((prev) => [...prev, id]);
-      }
-    }
+    setSelection((prev) =>
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
+    );
   };
 
   const handleConfirm = () => {
-    if (selection.length === 2) {
-      onToggleLock(selection[0], selection[1]);
+    if (selection.length >= 2) {
+      onAddFixedTeam(selection);
       setSelection([]);
       onClose();
     }
@@ -75,15 +70,21 @@ const FixedTeamModal = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 배경 글로우 */}
-        <header className="mb-6">
-          <h2 className="text-2xl font-black italic uppercase text-white">고정팀 설정</h2>
-          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">
-            Select 2 players to pair
+        {/* 헤더 - DivisionPage 결과 모달 헤더 스타일 */}
+        <header className="mb-6 flex-shrink-0">
+          <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase leading-none">고정팀 설정</h1>
+          <div className="h-1 w-8 mt-1.5 rounded-full" style={{ backgroundColor: '#0DF23E' }}></div>
+          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-3">
+            고정으로 묶을 멤버를 2명 이상 선택하세요
           </p>
+          {selection.length > 0 && (
+            <p className="text-[10px] font-black mt-1" style={{ color: '#0DF23E' }}>
+              {selection.length}명 선택됨
+            </p>
+          )}
         </header>
 
-        <main className="flex-1 overflow-y-auto hide-scrollbar space-y-6">
+        <main className="flex-1 overflow-y-auto hide-scrollbar space-y-6 min-h-0">
           {/* 정규 멤버 */}
           {attendingMembers.length > 0 && (
             <div>
@@ -112,10 +113,13 @@ const FixedTeamModal = ({
                       />
                     ) : (
                       <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold">
-                        {member.name[0]}
+                        {member.name.slice(1)}
                       </div>
                     )}
                     <span className="text-xs font-bold truncate">{member.name}</span>
+                    {selection.includes(member.id) && (
+                      <span className="ml-auto material-icons text-primary text-sm flex-shrink-0">check_circle</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -134,7 +138,7 @@ const FixedTeamModal = ({
                     key={merc.id}
                     disabled={isLocked(merc.id)}
                     onClick={() => handleSelect(merc.id)}
-                    className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${
+                    className={`p-2.5 rounded-xl border-2 transition-all flex items-center gap-2 ${
                       selection.includes(merc.id)
                         ? "border-primary bg-primary/10"
                         : isLocked(merc.id)
@@ -146,6 +150,9 @@ const FixedTeamModal = ({
                       G
                     </div>
                     <span className="text-xs font-bold truncate">{merc.name}</span>
+                    {selection.includes(merc.id) && (
+                      <span className="ml-auto material-icons text-primary text-sm flex-shrink-0">check_circle</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -160,18 +167,18 @@ const FixedTeamModal = ({
           )}
         </main>
 
-        <footer className="mt-8 space-y-3">
+        <footer className="mt-6 space-y-3 flex-shrink-0">
           <button
-            disabled={selection.length !== 2}
+            disabled={selection.length < 2}
             onClick={handleConfirm}
-            className={`w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all ${
-              selection.length === 2
+            className={`w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all ${
+              selection.length >= 2
                 ? "bg-primary text-background-dark neon-glow"
                 : "bg-white/5 text-white/20"
             }`}
           >
-            <span className="material-icons">link</span>
-            팀 고정하기
+            <span className="material-icons text-base">link</span>
+            팀 고정하기 {selection.length >= 2 ? `(${selection.length}명)` : ''}
           </button>
           <button
             onClick={onClose}

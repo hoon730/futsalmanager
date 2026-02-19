@@ -394,7 +394,7 @@ export default function AttendancePage() {
                             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white"
                             style={{ backgroundColor: color }}
                           >
-                            {player.name[0]}
+                            {player.name.slice(1)}
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-bold text-white">{player.name}</p>

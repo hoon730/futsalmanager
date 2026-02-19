@@ -15,7 +15,7 @@ const TEAM_NAMES_MAP = ['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'EPSILON'];
 const DivisionPage = () => {
   const { squad, selectedParticipants, toggleParticipant, selectAllParticipants, clearAllParticipants } = useSquadStore();
   const { fixedTeams, addFixedTeam, removeFixedTeam } = useFixedTeamStore();
-  const { saveDivision, teammateHistory, updateTeammateHistory: updateStoreHistory } = useDivisionStore();
+  const { saveDivision, divisionHistory, teammateHistory, updateTeammateHistory: updateStoreHistory } = useDivisionStore();
 
   const [currentTime, setCurrentTime] = useState('');
   const [currentTeams, setCurrentTeams] = useState<IMember[][] | null>(null);
@@ -225,10 +225,9 @@ const DivisionPage = () => {
   };
 
   // ── 고정팀 ──
-  const handleToggleLock = (playerId1: string, playerId2: string) => {
-    const existing = fixedTeams.find(t => t.active && t.playerIds.includes(playerId1) && t.playerIds.includes(playerId2));
-    if (existing) { removeFixedTeam(existing.id); }
-    else { const newTeam: IFixedTeam = { id: `fixed-${Date.now()}`, playerIds: [playerId1, playerId2], active: true }; addFixedTeam(newTeam); }
+  const handleAddFixedTeam = (playerIds: string[]) => {
+    const newTeam: IFixedTeam = { id: `fixed-${Date.now()}`, playerIds, active: true };
+    addFixedTeam(newTeam);
   };
 
   return (
@@ -241,7 +240,7 @@ const DivisionPage = () => {
             <div className="h-1 w-8 mt-3 rounded-full shadow-[0_0_10px_#0df23e]" style={{ backgroundColor: '#0DF23E' }}></div>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Match #24</p>
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Match #{divisionHistory.length + 1}</p>
             <p className="text-[10px] font-black uppercase mt-1" style={{ color: '#0DF23E' }}>오늘 {currentTime}</p>
           </div>
         </div>
@@ -302,7 +301,7 @@ const DivisionPage = () => {
                                 <img alt={member.name} className="w-10 h-10 rounded-full object-cover border border-white/10" src={member.avatarUrl} />
                               ) : (
                                 <div className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10" style={{ background: 'rgba(13,242,62,0.2)' }}>
-                                  <span className="text-sm font-bold">{member.name[0]}</span>
+                                  <span className="text-sm font-bold">{member.name.slice(1)}</span>
                                 </div>
                               )}
                               <div className="min-w-0">
@@ -446,7 +445,7 @@ const DivisionPage = () => {
                         <div className="flex -space-x-2">
                           {teamMembers.map((m, i) => (
                             <div key={i} className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(13,242,62,0.2)', borderColor: '#0a150d' }}>
-                              {m?.name[0]}
+                              {m?.name.slice(1)}
                             </div>
                           ))}
                         </div>
@@ -571,7 +570,7 @@ const DivisionPage = () => {
         <div className="fixed inset-0 flex justify-center flex-col animate-fade-in" style={{ zIndex: 9000, background: 'rgba(10, 21, 13)' }}>
 
           {/* ① 헤더 - 고정 */}
-          <div className="px-6 pt-15 pb-5 flex items-center justify-between flex-shrink-0">
+          <div className="px-6 pt-10 pb-8 flex items-center justify-between flex-shrink-0">
             <div>
               <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">팀 배정 결과</h1>
               <div className="h-1 w-8 mt-1.5 rounded-full" style={{ backgroundColor: '#0DF23E' }}></div>
@@ -586,7 +585,7 @@ const DivisionPage = () => {
             </button>
           </div>
 
-          <div className="pb-3">
+          <div className="pb-5">
             {/* ② 카드 스와이퍼 */}
             <div
               ref={teamScrollRef}
@@ -646,7 +645,7 @@ const DivisionPage = () => {
                               className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0"
                               style={{ background: `${color}40`, color: '#fff' }}
                             >
-                              {member.name[0].toUpperCase()}
+                              {member.name.slice(1)}
                             </div>
                             <span className="font-semibold text-sm text-white/90 flex-1 truncate">{member.name}</span>
                             {member.isMercenary && (
@@ -678,7 +677,7 @@ const DivisionPage = () => {
           </div>
 
           {/* ④ 하단 버튼 - 고정 */}
-          <div className="px-5 pt-1 pb-15 space-y-2.5 flex-shrink-0">
+          <div className="px-5 pt-1 pb-10 space-y-2.5 flex-shrink-0">
             <button
               onClick={() => handleDivideTeams(currentTeams.length)}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 text-sm"
@@ -724,27 +723,55 @@ const DivisionPage = () => {
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5" style={{ background: 'rgba(13,242,62,0.1)', border: '1px solid rgba(13,242,62,0.2)' }}>
                 <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>save</span>
               </div>
-              <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">RECORD SAVE</h2>
+              <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">팀 결과 저장</h2>
               <p className="text-xs text-white/40 mt-3 font-medium">어느 시간대로 저장하시겠습니까?</p>
             </div>
-            <div className="space-y-4 mb-4">
+            <div className="flex gap-4 mb-4">
+              {/* 전반전 버튼 - 파랑 호버 */}
               <button
                 onClick={() => handleSave('전반전')}
-                className="w-full p-6 rounded-3xl text-white font-bold uppercase transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(13,242,62,0.5)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+                className="flex-1 py-6 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center gap-2"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget;
+                  el.style.borderColor = 'rgba(59,130,246,0.7)';
+                  el.style.color = '#3b82f6';
+                  el.style.background = 'rgba(59,130,246,0.08)';
+                  el.style.boxShadow = '0 0 20px rgba(59,130,246,0.2)';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget;
+                  el.style.borderColor = 'rgba(255,255,255,0.1)';
+                  el.style.color = 'rgba(255,255,255,0.7)';
+                  el.style.background = 'rgba(255,255,255,0.05)';
+                  el.style.boxShadow = 'none';
+                }}
               >
-                Save 1st Half (전반전)
+                <span className="material-icons text-3xl">arrow_left</span>
+                <span className="text-xs tracking-widest">전반전</span>
               </button>
+              {/* 후반전 버튼 - 빨강 호버 */}
               <button
                 onClick={() => handleSave('후반전')}
-                className="w-full p-6 rounded-3xl text-white font-bold uppercase transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(13,242,62,0.5)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+                className="flex-1 py-6 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center gap-2"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget;
+                  el.style.borderColor = 'rgba(239,68,68,0.7)';
+                  el.style.color = '#ef4444';
+                  el.style.background = 'rgba(239,68,68,0.08)';
+                  el.style.boxShadow = '0 0 20px rgba(239,68,68,0.2)';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget;
+                  el.style.borderColor = 'rgba(255,255,255,0.1)';
+                  el.style.color = 'rgba(255,255,255,0.7)';
+                  el.style.background = 'rgba(255,255,255,0.05)';
+                  el.style.boxShadow = 'none';
+                }}
               >
-                Save 2nd Half (후반전)
+                <span className="material-icons text-3xl">arrow_right</span>
+                <span className="text-xs tracking-widest">후반전</span>
               </button>
             </div>
             <button
@@ -794,7 +821,7 @@ const DivisionPage = () => {
                 {teamMembers.map((m, i) => (
                   <div key={i} className="flex items-center gap-4 p-4 rounded-2xl" style={{ background: 'rgba(13,242,62,0.05)', border: '1px solid rgba(13,242,62,0.15)' }}>
                     <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm" style={{ background: 'rgba(13,242,62,0.2)', color: '#0DF23E' }}>
-                      {m?.name[0]}
+                      {m?.name.slice(1)}
                     </div>
                     <span className="text-base font-bold text-white">{m?.name}</span>
                     {m?.isMercenary && <span className="ml-auto text-[10px] px-2 py-0.5 bg-orange-500/20 text-orange-500 rounded-full font-bold">용병</span>}
@@ -834,7 +861,7 @@ const DivisionPage = () => {
         <FixedTeamModal
           members={members} mercenaries={mercenaries}
           selectedParticipants={selectedParticipants} selectedMercenaries={selectedMercenaries}
-          fixedTeams={fixedTeams} onClose={() => setShowFixedTeamModal(false)} onToggleLock={handleToggleLock}
+          fixedTeams={fixedTeams} onClose={() => setShowFixedTeamModal(false)} onAddFixedTeam={handleAddFixedTeam}
         />
       )}
     </div>
