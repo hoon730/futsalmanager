@@ -70,15 +70,15 @@ const FixedTeamModal = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 - DivisionPage 결과 모달 헤더 스타일 */}
-        <header className="mb-6 flex-shrink-0">
-          <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase leading-none">고정팀 설정</h1>
-          <div className="h-1 w-8 mt-1.5 rounded-full" style={{ backgroundColor: '#0DF23E' }}></div>
-          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-3">
-            고정으로 묶을 멤버를 2명 이상 선택하세요
-          </p>
+        {/* 헤더 - 아이콘 + 중앙 정렬 */}
+        <header className="mb-6 flex-shrink-0 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'rgba(13,242,62,0.1)', border: '1px solid rgba(13,242,62,0.2)' }}>
+            <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>link</span>
+          </div>
+          <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">고정팀 설정</h2>
+          <p className="text-xs text-white/40 mt-2 font-medium">고정으로 묶을 멤버를 2명 이상 선택하세요</p>
           {selection.length > 0 && (
-            <p className="text-[10px] font-black mt-1" style={{ color: '#0DF23E' }}>
+            <p className="text-xs font-black mt-1" style={{ color: '#0DF23E' }}>
               {selection.length}명 선택됨
             </p>
           )}
