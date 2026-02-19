@@ -726,52 +726,56 @@ const DivisionPage = () => {
               <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">팀 결과 저장</h2>
               <p className="text-xs text-white/40 mt-3 font-medium">어느 시간대로 저장하시겠습니까?</p>
             </div>
-            <div className="flex gap-4 mb-4">
+            <div className="flex gap-5 mb-10">
               {/* 전반전 버튼 - 파랑 호버 */}
               <button
                 onClick={() => handleSave('전반전')}
-                className="flex-1 py-6 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center gap-2"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+                className="flex-1 py-3 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)' }}
                 onMouseEnter={e => {
                   const el = e.currentTarget;
                   el.style.borderColor = 'rgba(59,130,246,0.7)';
-                  el.style.color = '#3b82f6';
                   el.style.background = 'rgba(59,130,246,0.08)';
                   el.style.boxShadow = '0 0 20px rgba(59,130,246,0.2)';
+                  (el.querySelector('.half-icon') as HTMLElement).style.color = '#3b82f6';
+                  (el.querySelector('.half-label') as HTMLElement).style.color = '#3b82f6';
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget;
                   el.style.borderColor = 'rgba(255,255,255,0.1)';
-                  el.style.color = 'rgba(255,255,255,0.7)';
                   el.style.background = 'rgba(255,255,255,0.05)';
                   el.style.boxShadow = 'none';
+                  (el.querySelector('.half-icon') as HTMLElement).style.color = 'rgba(255,255,255,0.4)';
+                  (el.querySelector('.half-label') as HTMLElement).style.color = 'rgba(255,255,255,0.7)';
                 }}
               >
-                <span className="material-icons text-3xl">arrow_left</span>
-                <span className="text-xs tracking-widest">전반전</span>
+                <span className="half-icon material-icons transition-all" style={{ fontSize: '4rem', color: 'rgba(255,255,255,0.4)' }}>arrow_left</span>
+                <span className="half-label text-xs tracking-widest font-black transition-all" style={{ color: 'rgba(255,255,255,0.7)' }}>전반전</span>
               </button>
               {/* 후반전 버튼 - 빨강 호버 */}
               <button
                 onClick={() => handleSave('후반전')}
-                className="flex-1 py-6 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center gap-2"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+                className="flex-1 py-3 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)' }}
                 onMouseEnter={e => {
                   const el = e.currentTarget;
                   el.style.borderColor = 'rgba(239,68,68,0.7)';
-                  el.style.color = '#ef4444';
                   el.style.background = 'rgba(239,68,68,0.08)';
                   el.style.boxShadow = '0 0 20px rgba(239,68,68,0.2)';
+                  (el.querySelector('.half-icon') as HTMLElement).style.color = '#ef4444';
+                  (el.querySelector('.half-label') as HTMLElement).style.color = '#ef4444';
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget;
                   el.style.borderColor = 'rgba(255,255,255,0.1)';
-                  el.style.color = 'rgba(255,255,255,0.7)';
                   el.style.background = 'rgba(255,255,255,0.05)';
                   el.style.boxShadow = 'none';
+                  (el.querySelector('.half-icon') as HTMLElement).style.color = 'rgba(255,255,255,0.4)';
+                  (el.querySelector('.half-label') as HTMLElement).style.color = 'rgba(255,255,255,0.7)';
                 }}
               >
-                <span className="material-icons text-3xl">arrow_right</span>
-                <span className="text-xs tracking-widest">후반전</span>
+                <span className="half-icon material-icons transition-all" style={{ fontSize: '4rem', color: 'rgba(255,255,255,0.4)' }}>arrow_right</span>
+                <span className="half-label text-xs tracking-widest font-black transition-all" style={{ color: 'rgba(255,255,255,0.7)' }}>후반전</span>
               </button>
             </div>
             <button
