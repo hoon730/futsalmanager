@@ -246,7 +246,7 @@ export default function SettingsPage() {
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
             onMouseLeave={onMouseUp}
-            className="flex snap-x snap-mandatory overflow-x-auto hide-scrollbar touch-pan-x cursor-grab active:cursor-grabbing select-none"
+            className="flex snap-x snap-mandatory overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none"
           >
             {Array.from({ length: totalPages }).map((_, pageIdx) => (
               <div key={pageIdx} className="w-full flex-shrink-0 snap-center space-y-3">
