@@ -15,18 +15,20 @@ const App = () => {
   // 자동 동기화 활성화
   useAutoSync();
 
-  // 동기화 연결 실패 감지
+  // 동기화 연결 실패 감지 - 데이터가 없을 때만, 최초 연결 실패 시에만 표시
+  const hasData = (squad?.members?.length ?? 0) > 0;
   useEffect(() => {
-    if (squad?.id && !isConnected && !isLoading) {
-      // 3초 후에도 연결 안되면 에러 표시
-      const timer = setTimeout(() => {
-        if (!isConnected) {
-          setSyncErrorModal(true);
-        }
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isConnected, squad?.id, isLoading]);
+    // 이미 연결됐거나, 데이터가 있거나, 로딩 중이면 모달 표시 안 함
+    if (isConnected || hasData || isLoading || !squad?.id) return;
+
+    const timer = setTimeout(() => {
+      // 타이머 만료 시점에 다시 체크: 여전히 미연결이고 데이터도 없을 때만
+      if (!isConnected && !hasData) {
+        setSyncErrorModal(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isConnected, squad?.id, isLoading, hasData]);
 
   if (isLoading) {
     return (

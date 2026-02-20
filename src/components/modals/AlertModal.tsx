@@ -5,10 +5,14 @@ interface IAlertModalProps {
   onClose: () => void;
   title?: string;
   message: string;
+  icon?: string;
 }
 
-export const AlertModal = ({ isOpen, onClose, title = "알림", message }: IAlertModalProps) => {
+export const AlertModal = ({ isOpen, onClose, title = "알림", message, icon = "notifications" }: IAlertModalProps) => {
   if (!isOpen) return null;
+
+  // \n 이스케이프 문자 처리
+  const displayMessage = message.replace(/\\n/g, '\n');
 
   return createPortal(
     <div
@@ -26,8 +30,17 @@ export const AlertModal = ({ isOpen, onClose, title = "알림", message }: IAler
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-black italic uppercase text-white mb-3">{title}</h3>
-        <p className="text-sm text-white/60 font-medium leading-relaxed mb-8" style={{ whiteSpace: 'pre-line' }}>{message}</p>
+        {/* 헤더 - 아이콘 + 중앙 정렬 */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'rgba(13,242,62,0.1)', border: '1px solid rgba(13,242,62,0.2)' }}>
+            <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>{icon}</span>
+          </div>
+          <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">{title}</h2>
+        </div>
+
+        <p className="text-sm text-white/60 font-medium leading-relaxed mb-8 text-center" style={{ whiteSpace: 'pre-line' }}>
+          {displayMessage}
+        </p>
 
         <button
           onClick={onClose}
@@ -44,7 +57,7 @@ export const AlertModal = ({ isOpen, onClose, title = "알림", message }: IAler
             (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
           }}
         >
-          뒤로가기
+          확인
         </button>
       </div>
     </div>,
