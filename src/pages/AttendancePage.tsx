@@ -23,12 +23,8 @@ interface HistoryDetail {
 export default function AttendancePage() {
   const { squad } = useSquadStore();
   const members = squad?.members || [];
-  const { divisionHistory } = useDivisionStore();
-  const { setIsAdmin } = useAdminStore();
-
-  // 삭제 기능은 현재 디자인에 없으므로 미사용
-  // const { deleteDivision, clearAllDivisions } = useDivisionStore();
-  // const { isAdmin } = useAdminStore();
+  const { divisionHistory, deleteDivision } = useDivisionStore();
+  const { isAdmin, setIsAdmin } = useAdminStore();
 
   // 상태 관리
   const [totalGames, setTotalGames] = useState(0);
@@ -54,6 +50,7 @@ export default function AttendancePage() {
   });
   const [adminPasswordModal, setAdminPasswordModal] = useState(false);
   const [pendingDeleteAction, setPendingDeleteAction] = useState<{type: 'single' | 'all', id?: string} | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // 출석 통계 계산
   useEffect(() => {
@@ -131,7 +128,6 @@ export default function AttendancePage() {
     if (password === adminPassword) {
       setIsAdmin(true);
       setAdminPasswordModal(false);
-      setAlertModal({ isOpen: true, message: '✅ 관리자 인증 성공' });
 
       // 대기 중인 작업 실행
       if (pendingDeleteAction) {
@@ -149,19 +145,19 @@ export default function AttendancePage() {
     }
   };
 
-  // 관리자 권한 요청 (현재 미사용 - 참조 디자인에 삭제 기능 없음)
-  // const requestAdminAccess = (type: 'single' | 'all', id?: string) => {
-  //   if (isAdmin) {
-  //     if (type === 'all') {
-  //       confirmClearAllHistory();
-  //     } else if (id) {
-  //       confirmDeleteHistory(id);
-  //     }
-  //   } else {
-  //     setPendingDeleteAction({ type, id });
-  //     setAdminPasswordModal(true);
-  //   }
-  // };
+  // 관리자 권한 요청
+  const requestAdminAccess = (type: 'single' | 'all', id?: string) => {
+    if (isAdmin) {
+      if (type === 'all') {
+        confirmClearAllHistory();
+      } else if (id) {
+        confirmDeleteHistory(id);
+      }
+    } else {
+      setPendingDeleteAction({ type, id });
+      setAdminPasswordModal(true);
+    }
+  };
 
   // 전체 이력 삭제 확인 (현재 미사용)
   const confirmClearAllHistory = () => {
@@ -177,15 +173,15 @@ export default function AttendancePage() {
     });
   };
 
-  // 이력 삭제 확인 (현재 미사용)
-  const confirmDeleteHistory = (_id: string) => {
+  // 이력 삭제 확인
+  const confirmDeleteHistory = (id: string) => {
     setConfirmModal({
       isOpen: true,
-      title: '이력 삭제',
-      message: '이 기록을 삭제하시겠습니까?',
+      title: '기록 삭제',
+      message: '이 기록을 삭제하시겠습니까?\n삭제된 기록은 복구할 수 없습니다.',
       onConfirm: async () => {
-        // await deleteDivision(_id);
-        setConfirmModal({ ...confirmModal, isOpen: false });
+        await deleteDivision(id);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
     });
   };
@@ -304,6 +300,19 @@ export default function AttendancePage() {
               <span className="material-icons text-primary">history</span>
               최근 기록
             </h2>
+            {recentSessions.length > 0 && (
+              <button
+                onClick={() => setIsEditMode((v) => !v)}
+                className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all"
+                style={{
+                  color: isEditMode ? '#0DF23E' : 'rgba(255,255,255,0.4)',
+                  border: `1px solid ${isEditMode ? 'rgba(13,242,62,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                  background: isEditMode ? 'rgba(13,242,62,0.05)' : 'transparent',
+                }}
+              >
+                {isEditMode ? '완료' : '편집'}
+              </button>
+            )}
           </div>
           {recentSessions.length === 0 ? (
             <div className="py-12 text-center">
@@ -321,7 +330,7 @@ export default function AttendancePage() {
                     key={session.id}
                     className="glass-card p-4 rounded-3xl flex items-center gap-4 border border-white/5"
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center flex-shrink-0">
                       <span className="text-[10px] font-black text-white/40">{month}</span>
                       <span className="text-xl font-black text-primary">{day}</span>
                     </div>
@@ -334,12 +343,23 @@ export default function AttendancePage() {
                         <span>{participantCount}명</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => showHistoryDetail(session)}
-                      className="px-4 py-2 rounded-full bg-primary text-background-dark text-[10px] font-black"
-                    >
-                      상세보기
-                    </button>
+                    <div className="flex flex-col gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => showHistoryDetail(session)}
+                        className="px-4 py-2 rounded-full bg-primary text-background-dark text-[10px] font-black"
+                      >
+                        상세보기
+                      </button>
+                      {isEditMode && (
+                        <button
+                          onClick={() => requestAdminAccess('single', session.id)}
+                          className="px-4 py-2 rounded-full text-[10px] font-black transition-all"
+                          style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
