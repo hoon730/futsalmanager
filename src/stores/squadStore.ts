@@ -11,6 +11,7 @@ interface ISquadStore {
   updateSquadName: (name: string) => void;
   addMember: (member: IMember) => void;
   removeMember: (id: string) => void;
+  updateMember: (id: string, updates: Partial<IMember>) => void;
   toggleParticipant: (id: string) => void;
   selectAllParticipants: () => void;
   clearAllParticipants: () => void;
@@ -55,6 +56,18 @@ export const useSquadStore = create<ISquadStore>()((set) => ({
       selectedParticipants: state.selectedParticipants.filter(
         (pid) => pid !== id
       ),
+    })),
+
+  updateMember: (id, updates) =>
+    set((state) => ({
+      squad: state.squad
+        ? {
+            ...state.squad,
+            members: state.squad.members.map((m) =>
+              m.id === id ? { ...m, ...updates } : m
+            ),
+          }
+        : null,
     })),
 
   toggleParticipant: (id) =>
