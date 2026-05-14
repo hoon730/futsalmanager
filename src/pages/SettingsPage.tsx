@@ -6,13 +6,33 @@ import { useAdminStore } from '@/stores/adminStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { AlertModal, ConfirmModal, AdminPasswordModal } from '@/components/modals';
+import type { IMember } from '@/types';
 
 export default function SettingsPage() {
   const { squad, addMember, removeMember, clearAllData } = useSquadStore();
   const members = squad?.members || [];
   const { clearAllDivisions } = useDivisionStore();
   const { isAdmin, setIsAdmin } = useAdminStore();
-  const { user } = useAuthStore();
+  const { user, updateLinkedMember } = useAuthStore();
+
+  // 내 선수 프로필 연결
+  const [linkedMemberId, setLinkedMemberId] = useState<string | null>(
+    (user?.user_metadata?.member_id as string) ?? null
+  );
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [showLinkPicker, setShowLinkPicker] = useState(false);
+
+  const handleLinkMember = async (member: IMember | null) => {
+    setLinkLoading(true);
+    await updateLinkedMember(member?.id ?? null);
+    setLinkedMemberId(member?.id ?? null);
+    setLinkLoading(false);
+    setShowLinkPicker(false);
+    setAlertModal({
+      isOpen: true,
+      message: member ? `✅ "${member.name}"으로 연결되었습니다` : '선수 프로필 연결이 해제되었습니다',
+    });
+  };
 
   // v2: role 기반 관리자 여부 확인
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -230,6 +250,48 @@ export default function SettingsPage() {
 
       {/* 메인 */}
       <main className="flex-1 px-6">
+        {/* 내 선수 프로필 연결 (로그인 유저만) */}
+        {user && (
+          <div className="mb-6 bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">내 선수 프로필</p>
+            {linkedMemberId ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                    <span className="text-primary text-xs font-bold">
+                      {membersOnly.find(m => m.id === linkedMemberId)?.name?.slice(0, 1) ?? '?'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-sm">
+                      {membersOnly.find(m => m.id === linkedMemberId)?.name ?? '알 수 없음'}
+                    </p>
+                    <p className="text-primary text-[10px] font-black uppercase tracking-widest">연결됨</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowLinkPicker(true)}
+                  disabled={linkLoading}
+                  className="text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-colors"
+                >
+                  변경
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLinkPicker(true)}
+                disabled={linkLoading}
+                className="w-full flex items-center gap-3 py-2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                <span className="material-icons text-sm">link</span>
+                <span className="text-xs font-black uppercase tracking-widest">
+                  {linkLoading ? '처리 중...' : '내 이름 선택하기'}
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* 멤버 수 및 편집 모드 토글 */}
         <div className="flex items-center justify-between mb-6 bg-white/5 p-4 rounded-2xl border border-white/5">
           <div className="text-primary font-black text-md italic">
@@ -343,6 +405,62 @@ export default function SettingsPage() {
           RESET ALL DATA
         </button>
       </footer>
+
+      {/* 선수 프로필 선택 모달 */}
+      {showLinkPicker && createPortal(
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-lg flex items-end justify-center animate-fade-in"
+          style={{ zIndex: 9999 }}
+          onClick={() => setShowLinkPicker(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-[2.5rem] p-6 pb-10"
+            style={{ background: 'rgba(22,28,22,0.98)', border: '1px solid rgba(13,242,62,0.15)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
+            <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 선택</h3>
+            <p className="text-white/40 text-xs mb-5">명단에서 나의 이름을 선택하세요</p>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {membersOnly.map((member) => (
+                <button
+                  key={member.id}
+                  onClick={() => handleLinkMember(member)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                    linkedMemberId === member.id
+                      ? 'bg-primary/10 border-primary/30'
+                      : 'bg-white/5 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    linkedMemberId === member.id ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white/60'
+                  }`}>
+                    {member.name.slice(0, 1)}
+                  </div>
+                  <span className={`font-bold text-sm ${linkedMemberId === member.id ? 'text-primary' : 'text-white'}`}>
+                    {member.name}
+                  </span>
+                  {linkedMemberId === member.id && (
+                    <span className="material-icons text-primary text-sm ml-auto">check_circle</span>
+                  )}
+                </button>
+              ))}
+              {membersOnly.length === 0 && (
+                <p className="text-center text-white/20 text-xs py-6">등록된 멤버가 없습니다</p>
+              )}
+            </div>
+            {linkedMemberId && (
+              <button
+                onClick={() => handleLinkMember(null)}
+                className="w-full mt-4 py-3 text-red-400/60 hover:text-red-400 text-xs font-black uppercase tracking-widest transition-colors"
+              >
+                연결 해제
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 멤버 추가 모달 */}
       {addMemberModal && createPortal(
