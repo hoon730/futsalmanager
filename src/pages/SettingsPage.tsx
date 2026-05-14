@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
 import { useAdminStore } from '@/stores/adminStore';
+import { useAuthStore } from '@/stores/authStore';
+import { supabase } from '@/lib/supabase';
 import { AlertModal, ConfirmModal, AdminPasswordModal } from '@/components/modals';
 
 export default function SettingsPage() {
@@ -10,6 +12,22 @@ export default function SettingsPage() {
   const members = squad?.members || [];
   const { clearAllDivisions } = useDivisionStore();
   const { isAdmin, setIsAdmin } = useAdminStore();
+  const { user } = useAuthStore();
+
+  // v2: role 기반 관리자 여부 확인
+  const [userRole, setUserRole] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user || !squad?.id) return;
+    supabase
+      .from("squad_members")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("squad_id", squad.id)
+      .single()
+      .then(({ data }) => setUserRole(data?.role ?? null));
+  }, [user, squad?.id]);
+
+  const isOwnerOrAdmin = userRole === "owner" || userRole === "admin" || isAdmin;
 
   // 상태
   const [isEditMode, setIsEditMode] = useState(false);
@@ -155,7 +173,7 @@ export default function SettingsPage() {
 
   // 전체 데이터 초기화
   const handleReset = () => {
-    if (!isAdmin) {
+    if (!isOwnerOrAdmin) {
       setAdminPasswordModal(true);
       return;
     }
@@ -173,7 +191,7 @@ export default function SettingsPage() {
     });
   };
 
-  // 관리자 비밀번호 확인
+  // 관리자 비밀번호 확인 (v2 미인증 사용자용 레거시 fallback)
   const handleAdminPasswordSubmit = (password: string) => {
     const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
 
@@ -181,7 +199,6 @@ export default function SettingsPage() {
       setIsAdmin(true);
       setAdminPasswordModal(false);
       setAlertModal({ isOpen: true, message: '✅ 관리자 인증 성공' });
-      // 인증 후 초기화 진행
       handleReset();
     } else {
       setAdminPasswordModal(false);
