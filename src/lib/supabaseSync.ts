@@ -42,9 +42,10 @@ export const syncSquadToSupabase = async (squad: ISquad) => {
         skill_level: m.skillLevel ?? 3,
         active: m.active,
         created_at: m.createdAt,
-        is_mercenary: m.isMercenary ?? false,
-        avatar_url: m.avatarUrl ?? null,
-        position_key: m.positionKey ?? null,
+        // TODO: supabase/migrations/add_member_profile_columns.sql 적용 후 아래 주석 해제
+        // position_key: m.positionKey ?? null,
+        // is_mercenary: m.isMercenary ?? false,
+        // avatar_url: m.avatarUrl ?? null,
       }));
 
       const { error: membersError } = await supabase
