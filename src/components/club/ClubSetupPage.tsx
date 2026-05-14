@@ -2,6 +2,14 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
 import { useSquadStore } from "@/stores/squadStore";
+import { useFixedTeamStore } from "@/stores/fixedTeamStore";
+import { useDivisionStore } from "@/stores/divisionStore";
+import {
+  loadSquadFromSupabase,
+  loadFixedTeamsFromSupabase,
+  loadDivisionsFromSupabase,
+  loadTeammateHistoryFromSupabase,
+} from "@/lib/supabaseSync";
 
 type Mode = "select" | "create" | "join";
 
@@ -177,6 +185,8 @@ const CreateClub = ({ onBack }: { onBack: () => void }) => {
 const JoinClub = ({ onBack }: { onBack: () => void }) => {
   const { user } = useAuthStore();
   const { setSquad } = useSquadStore();
+  const { setFixedTeams } = useFixedTeamStore();
+  const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -207,7 +217,20 @@ const JoinClub = ({ onBack }: { onBack: () => void }) => {
 
       if (memberErr && !memberErr.message.includes("duplicate")) throw memberErr;
 
-      setSquad({ id: squad.id, name: squad.name, members: [], createdAt: squad.created_at });
+      // 전체 데이터 로드 (멤버, 고정팀, 이력 포함)
+      const [fullSquad, fixedTeams, divisions, history] = await Promise.all([
+        loadSquadFromSupabase(squad.id),
+        loadFixedTeamsFromSupabase(squad.id),
+        loadDivisionsFromSupabase(squad.id),
+        loadTeammateHistoryFromSupabase(squad.id),
+      ]);
+
+      if (fullSquad) {
+        setSquad(fullSquad);
+        setFixedTeams(fixedTeams);
+        setDivisionHistory(divisions);
+        updateTeammateHistory(history);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "참가 실패");
     } finally {
