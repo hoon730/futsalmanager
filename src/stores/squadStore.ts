@@ -7,6 +7,7 @@ interface ISquadStore {
   isLoading: boolean;
   error: string | null;
   setSquad: (squad: ISquad) => void;
+  clearSquad: () => void;
   updateSquadName: (name: string) => void;
   addMember: (member: IMember) => void;
   removeMember: (id: string) => void;
@@ -25,6 +26,8 @@ export const useSquadStore = create<ISquadStore>()((set) => ({
   error: null,
 
   setSquad: (squad) => set({ squad, error: null }),
+
+  clearSquad: () => set({ squad: null, selectedParticipants: [] }),
 
   updateSquadName: (name) =>
     set((state) => ({

@@ -44,3 +44,24 @@ export interface IAttendanceStats {
   total: number;
   rate: number;
 }
+
+export interface IMatch {
+  id: string;
+  squadId: string;
+  title: string;
+  matchDate: string;
+  location?: string;
+  maxPlayers: number;
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface IMatchAttendee {
+  id: string;
+  matchId: string;
+  userId: string;
+  memberId?: string;
+  status: 'attending' | 'absent';
+  registeredAt: string;
+}
