@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useSquadStore } from "@/stores/squadStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useDivisionStore } from "@/stores/divisionStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { divideTeamsWithConstraints, updateTeammateHistory as updateHistory } from "@/lib/teamAlgorithm";
 import { saveDivisionToSupabase, syncTeammateHistoryToSupabase } from "@/lib/supabaseSync";
 import { AlertModal, ConfirmModal, FixedTeamModal } from "@/components/modals";
@@ -16,6 +17,7 @@ const DivisionPage = () => {
   const { squad, selectedParticipants, toggleParticipant, selectAllParticipants, clearAllParticipants } = useSquadStore();
   const { fixedTeams, addFixedTeam, removeFixedTeam } = useFixedTeamStore();
   const { saveDivision, divisionHistory, teammateHistory, updateTeammateHistory: updateStoreHistory } = useDivisionStore();
+  const { matches, attendees, loadAttendees } = useMatchStore();
 
   const [currentTime, setCurrentTime] = useState('');
   const [currentTeams, setCurrentTeams] = useState<IMember[][] | null>(null);
@@ -74,6 +76,38 @@ const DivisionPage = () => {
   useEffect(() => {
     localStorage.setItem('mercenaries', JSON.stringify(mercenaries));
   }, [mercenaries]);
+
+  // 오늘 경기 감지 (±3시간 이내)
+  const todayMatch = useMemo(() => {
+    const now = new Date();
+    return matches.find((m) => {
+      const diff = Math.abs(new Date(m.matchDate).getTime() - now.getTime());
+      return diff <= 3 * 60 * 60 * 1000;
+    }) || null;
+  }, [matches]);
+
+  const todayAttendees = todayMatch ? (attendees[todayMatch.id] || []) : [];
+
+  useEffect(() => {
+    if (todayMatch && !attendees[todayMatch.id]) {
+      loadAttendees(todayMatch.id);
+    }
+  }, [todayMatch?.id]);
+
+  const loadTodayParticipants = () => {
+    if (!todayMatch || !squad) return;
+    const attendingMemberIds = todayAttendees
+      .filter((a) => a.status === 'attending' && a.memberId)
+      .map((a) => a.memberId as string);
+    const validIds = attendingMemberIds.filter((id) =>
+      squad.members.some((m) => m.id === id)
+    );
+    if (validIds.length > 0) {
+      // 기존 선택 초기화 후 참가자로 세팅
+      clearAllParticipants();
+      validIds.forEach((id) => toggleParticipant(id));
+    }
+  };
 
   const members = squad?.members || [];
   const sortedMembers = useMemo(() => [...members].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en'])), [members]);
@@ -245,6 +279,27 @@ const DivisionPage = () => {
           </div>
         </div>
       </header>
+
+      {/* ── 오늘 경기 배너 ── */}
+      {todayMatch && (
+        <div className="mx-6 mb-2">
+          <button
+            onClick={loadTodayParticipants}
+            className="w-full flex items-center gap-3 bg-primary/10 border border-primary/25 rounded-2xl px-4 py-3 transition-all active:scale-[0.98] hover:bg-primary/15"
+          >
+            <span className="material-icons text-primary text-sm">sports_soccer</span>
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-primary font-black text-xs uppercase tracking-widest truncate">
+                오늘 경기 — {todayMatch.title}
+              </p>
+              <p className="text-primary/60 text-[10px] mt-0.5">
+                참가자 {todayAttendees.filter(a => a.status === 'attending').length}명 자동으로 불러오기
+              </p>
+            </div>
+            <span className="material-icons text-primary/50 text-sm">arrow_forward</span>
+          </button>
+        </div>
+      )}
 
       <section className="space-y-6">
         {/* ── 참석 현황 ── */}

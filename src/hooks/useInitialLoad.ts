@@ -19,14 +19,19 @@ const DEFAULT_SQUAD_NAME = "내 스쿼드";
  * - Supabase에서 기본 스쿼드 데이터 로드
  * - 없으면 새로 생성
  */
-export const useInitialLoad = () => {
-  const [isLoading, setIsLoading] = useState(true);
+export const useInitialLoad = (enabled = true) => {
+  const [isLoading, setIsLoading] = useState(enabled);
   const [error, setErrorState] = useState<string | null>(null);
   const { setSquad, setLoading, setError } = useSquadStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const { setFixedTeams } = useFixedTeamStore();
 
   useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+
     const loadInitialData = async () => {
       try {
         setLoading(true);
@@ -103,6 +108,7 @@ export const useInitialLoad = () => {
 
     loadInitialData();
   }, [
+    enabled,
     setSquad,
     setFixedTeams,
     setDivisionHistory,
