@@ -51,8 +51,9 @@ export default function SchedulePage() {
     if (!user) return;
     setLoadingMatchId(matchId);
     try {
-      // member_id: squad 멤버 중 현재 유저와 연결된 멤버 (없으면 null)
-      await toggleAttendance(matchId, user.id, undefined);
+      // 유저 메타데이터에 저장된 member_id 자동 사용 (팀 배정 연동)
+      const linkedMemberId = user.user_metadata?.member_id as string | undefined;
+      await toggleAttendance(matchId, user.id, linkedMemberId);
     } finally {
       setLoadingMatchId(null);
     }

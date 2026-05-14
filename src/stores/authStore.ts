@@ -20,6 +20,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
+  updateLinkedMember: (memberId: string | null) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -105,4 +106,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  updateLinkedMember: async (memberId) => {
+    const { data, error } = await supabase.auth.updateUser({
+      data: { member_id: memberId },
+    });
+    if (!error && data.user) {
+      set((state) => ({ user: data.user, session: state.session }));
+    }
+  },
 }));
