@@ -151,6 +151,9 @@ const attemptDivision = (
 
 /**
  * 팀 나누기 점수 계산 (낮을수록 좋음)
+ * - 팀메이트 이력: 자주 같이 한 사람끼리 다른 팀으로
+ * - 실력 밸런싱: 팀 간 실력 합산 차이 최소화
+ * - GK 분배: GK가 한 팀에 몰리지 않도록
  */
 const calculateDivisionScore = (
   division: IDivisionResult,
@@ -158,17 +161,41 @@ const calculateDivisionScore = (
 ): number => {
   let score = 0;
 
+  // 1. 팀메이트 이력 페널티
   division.teams.forEach((team) => {
     for (let i = 0; i < team.length; i++) {
       for (let j = i + 1; j < team.length; j++) {
         const key = [team[i].id, team[j].id].sort().join("-");
         const count = teammateHistory[key] || 0;
-
-        // 함께한 횟수에 따라 점수 부여 (제곱으로 페널티 증가)
         score += Math.pow(count, 2);
       }
     }
   });
+
+  // 2. 실력 밸런싱 페널티 (가중치 × 3)
+  const teamSkills = division.teams.map((team) =>
+    team.reduce((sum, p) => sum + (p.skillLevel ?? 3), 0)
+  );
+  const avgSkill = teamSkills.reduce((a, b) => a + b, 0) / teamSkills.length;
+  const skillPenalty = teamSkills.reduce(
+    (s, ts) => s + Math.pow(ts - avgSkill, 2),
+    0
+  );
+  score += skillPenalty * 3;
+
+  // 3. GK 분배 페널티 (가중치 × 10 — 가장 중요)
+  const totalGKs = division.teams.reduce(
+    (sum, team) => sum + team.filter((p) => p.positionKey === "GK").length,
+    0
+  );
+  if (totalGKs > 0) {
+    const avgGKs = totalGKs / division.teams.length;
+    const gkPenalty = division.teams.reduce((s, team) => {
+      const gkCount = team.filter((p) => p.positionKey === "GK").length;
+      return s + Math.pow(gkCount - avgGKs, 2);
+    }, 0);
+    score += gkPenalty * 10;
+  }
 
   return score;
 };

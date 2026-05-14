@@ -39,9 +39,12 @@ export const syncSquadToSupabase = async (squad: ISquad) => {
         id: m.id,
         squad_id: squad.id,
         name: m.name,
-        skill_level: m.skillLevel || 5,
+        skill_level: m.skillLevel ?? 3,
         active: m.active,
         created_at: m.createdAt,
+        is_mercenary: m.isMercenary ?? false,
+        avatar_url: m.avatarUrl ?? null,
+        position_key: m.positionKey ?? null,
       }));
 
       const { error: membersError } = await supabase
@@ -81,9 +84,12 @@ export const loadSquadFromSupabase = async (squadId: string): Promise<ISquad | n
     const members: IMember[] = (membersData || []).map((m) => ({
       id: m.id,
       name: m.name,
-      skillLevel: m.skill_level,
+      skillLevel: m.skill_level ?? 3,
       active: m.active,
       createdAt: m.created_at,
+      isMercenary: m.is_mercenary ?? false,
+      avatarUrl: m.avatar_url ?? undefined,
+      positionKey: m.position_key ?? undefined,
     }));
 
     return {

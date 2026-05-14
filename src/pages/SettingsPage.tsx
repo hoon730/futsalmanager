@@ -9,7 +9,7 @@ import { AlertModal, ConfirmModal, AdminPasswordModal } from '@/components/modal
 import type { IMember } from '@/types';
 
 export default function SettingsPage() {
-  const { squad, addMember, removeMember, clearAllData } = useSquadStore();
+  const { squad, addMember, removeMember, updateMember, clearAllData } = useSquadStore();
   const members = squad?.members || [];
   const { clearAllDivisions } = useDivisionStore();
   const { isAdmin, setIsAdmin } = useAdminStore();
@@ -334,41 +334,94 @@ export default function SettingsPage() {
                   .map((member) => (
                     <div
                       key={member.id}
-                      className="rounded-2xl p-4 flex items-center gap-4 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group"
+                      className="rounded-2xl p-4 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group"
                     >
-                      {/* 프로필 이미지 or 첫 글자 */}
-                      {member.avatarUrl ? (
-                        <img
-                          className="w-12 h-12 rounded-full object-cover border border-white/10"
-                          src={member.avatarUrl}
-                          alt={member.name}
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center border border-white/10">
-                          <span className="text-md font-bold">{member.name.slice(1)}</span>
-                        </div>
-                      )}
-
-                      {/* 멤버 정보 */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-base text-white truncate">{member.name}</h3>
-                        {member.positionKey && (
-                          <p className="text-[10px] text-primary font-black uppercase tracking-widest mt-0.5">
-                            {member.positionKey}
-                          </p>
+                      {/* 상단 행: 아바타 + 이름 + 삭제 */}
+                      <div className="flex items-center gap-4">
+                        {member.avatarUrl ? (
+                          <img
+                            className="w-12 h-12 rounded-full object-cover border border-white/10 flex-shrink-0"
+                            src={member.avatarUrl}
+                            alt={member.name}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center border border-white/10 flex-shrink-0">
+                            <span className="text-md font-bold">{member.name.slice(0, 1)}</span>
+                          </div>
                         )}
+
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-base text-white truncate">{member.name}</h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {member.positionKey && (
+                              <span className="text-[10px] text-primary font-black uppercase tracking-widest">
+                                {member.positionKey}
+                              </span>
+                            )}
+                            {(member.skillLevel ?? 0) > 0 && (
+                              <span className="text-[10px] text-yellow-400/70">
+                                {'★'.repeat(member.skillLevel ?? 3)}{'☆'.repeat(5 - (member.skillLevel ?? 3))}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {isEditMode && isOwnerOrAdmin ? (
+                          <button
+                            onClick={() => handleRemoveMember(member.id, member.name)}
+                            className="w-9 h-9 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20 flex-shrink-0"
+                          >
+                            <span className="material-icons text-lg">delete</span>
+                          </button>
+                        ) : !isEditMode ? (
+                          <span className="material-icons text-white/10 group-hover:text-primary transition-colors">chevron_right</span>
+                        ) : null}
                       </div>
 
-                      {isEditMode ?  (
-                      // 삭제 버튼 (편집 모드일 때만)
-                        <button
-                          onClick={() => handleRemoveMember(member.id, member.name)}
-                          className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20"
-                        >
-                          <span className="material-icons text-xl">delete</span>
-                        </button>
-                      ) : (
-                         <span className="material-icons text-white/10 group-hover:text-primary transition-colors">chevron_right</span>
+                      {/* 편집 모드 (운영자): 포지션 + 별점 */}
+                      {isEditMode && isOwnerOrAdmin && (
+                        <div className="mt-3 pt-3 border-t border-white/5 space-y-2.5">
+                          {/* 포지션 선택 */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 w-10 flex-shrink-0">포지션</span>
+                            <div className="flex gap-1.5">
+                              {(['GK','DF','MF','FW'] as const).map((pos) => (
+                                <button
+                                  key={pos}
+                                  onClick={() => updateMember(member.id, {
+                                    positionKey: member.positionKey === pos ? undefined : pos,
+                                  })}
+                                  className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all"
+                                  style={member.positionKey === pos
+                                    ? { backgroundColor: '#0DF23E', color: '#0a150d' }
+                                    : { backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.08)' }
+                                  }
+                                >
+                                  {pos}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* 별점 선택 */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 w-10 flex-shrink-0">실력</span>
+                            <div className="flex gap-1">
+                              {[1,2,3,4,5].map((star) => (
+                                <button
+                                  key={star}
+                                  onClick={() => updateMember(member.id, {
+                                    skillLevel: member.skillLevel === star ? 3 : star,
+                                  })}
+                                  className="text-xl leading-none transition-all active:scale-90"
+                                  style={{ color: star <= (member.skillLevel ?? 3) ? '#FBBF24' : 'rgba(255,255,255,0.12)' }}
+                                >
+                                  ★
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
