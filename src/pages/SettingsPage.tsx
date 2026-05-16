@@ -2,10 +2,9 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
-import { useAdminStore } from '@/stores/adminStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
-import { AlertModal, ConfirmModal, AdminPasswordModal } from '@/components/modals';
+import { AlertModal, ConfirmModal } from '@/components/modals';
 import {
   isPushSupported,
   getPermission,
@@ -20,7 +19,6 @@ export default function SettingsPage() {
   const { squad, addMember, removeMember, updateMember, clearAllData } = useSquadStore();
   const members = squad?.members || [];
   const { clearAllDivisions } = useDivisionStore();
-  const { isAdmin, setIsAdmin } = useAdminStore();
   const { user, updateLinkedMember } = useAuthStore();
 
   // 내 선수 프로필 연결
@@ -103,7 +101,7 @@ export default function SettingsPage() {
       .then(({ data }) => setUserRole(data?.role ?? null));
   }, [user, squad?.id]);
 
-  const isOwnerOrAdmin = userRole === "owner" || userRole === "admin" || isAdmin;
+  const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
 
   // 푸시 알림 설정
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
@@ -254,7 +252,6 @@ export default function SettingsPage() {
   }, [addMemberModal, newMemberName]);
 
   // 모달 상태
-  const [adminPasswordModal, setAdminPasswordModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string }>({
     isOpen: false,
     message: '',
@@ -371,10 +368,10 @@ export default function SettingsPage() {
     });
   };
 
-  // 전체 데이터 초기화
+  // 전체 데이터 초기화 (운영자 전용)
   const handleReset = () => {
     if (!isOwnerOrAdmin) {
-      setAdminPasswordModal(true);
+      setAlertModal({ isOpen: true, message: '❌ 운영자 권한이 필요합니다' });
       return;
     }
 
@@ -389,21 +386,6 @@ export default function SettingsPage() {
         setAlertModal({ isOpen: true, message: '모든 데이터가 초기화되었습니다' });
       },
     });
-  };
-
-  // 관리자 비밀번호 확인 (v2 미인증 사용자용 레거시 fallback)
-  const handleAdminPasswordSubmit = (password: string) => {
-    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
-
-    if (password === adminPassword) {
-      setIsAdmin(true);
-      setAdminPasswordModal(false);
-      setAlertModal({ isOpen: true, message: '✅ 관리자 인증 성공' });
-      handleReset();
-    } else {
-      setAdminPasswordModal(false);
-      setAlertModal({ isOpen: true, message: '❌ 비밀번호가 틀렸습니다' });
-    }
   };
 
   return (
@@ -943,12 +925,6 @@ export default function SettingsPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {/* AdminPasswordModal */}
-      <AdminPasswordModal
-        isOpen={adminPasswordModal}
-        onConfirm={handleAdminPasswordSubmit}
-        onClose={() => setAdminPasswordModal(false)}
-      />
     </div>
   );
 }
