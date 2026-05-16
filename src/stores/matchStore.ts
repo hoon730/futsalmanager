@@ -1,25 +1,113 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
-import type { IMatch, IMatchAttendee } from "@/types";
+import type { IMatch, IMatchAttendee, IMatchComment, IMember } from "@/types";
 
 interface IMatchStore {
   matches: IMatch[];
   attendees: Record<string, IMatchAttendee[]>;
+  comments: Record<string, IMatchComment[]>;
+  matchMercenaries: Record<string, IMember[]>;
   isLoading: boolean;
   loadMatches: (squadId: string) => Promise<void>;
   createMatch: (squadId: string, data: Omit<IMatch, "id" | "createdAt" | "squadId">) => Promise<void>;
   deleteMatch: (matchId: string) => Promise<void>;
   loadAttendees: (matchId: string) => Promise<void>;
-  toggleAttendance: (matchId: string, userId: string, memberId?: string) => Promise<void>;
+  setAttendance: (
+    matchId: string,
+    userId: string,
+    status: "attending" | "absent" | "pending" | "waitlist",
+    memberId?: string
+  ) => Promise<void>;
+  loadComments: (matchId: string) => Promise<void>;
+  addComment: (
+    matchId: string,
+    userId: string,
+    username: string,
+    content: string,
+    parentId?: string
+  ) => Promise<void>;
+  updateComment: (commentId: string, matchId: string, content: string) => Promise<void>;
+  deleteComment: (commentId: string, matchId: string) => Promise<void>;
   setMatches: (matches: IMatch[]) => void;
+  addMatchMercenary: (matchId: string, name: string) => void;
+  removeMatchMercenary: (matchId: string, mercenaryId: string) => void;
+  updateMatch: (matchId: string, data: Partial<Omit<IMatch, "id" | "createdAt" | "squadId">>) => Promise<void>;
+  updateMatchResult: (matchId: string, result: string) => Promise<void>;
 }
+
+const loadMatchMercenaries = (): Record<string, IMember[]> => {
+  try {
+    const saved = localStorage.getItem("match_mercenaries");
+    return saved ? JSON.parse(saved) : {};
+  } catch { return {}; }
+};
+
+const saveMatchMercenaries = (data: Record<string, IMember[]>) => {
+  try { localStorage.setItem("match_mercenaries", JSON.stringify(data)); } catch { /* ignore */ }
+};
 
 export const useMatchStore = create<IMatchStore>()((set, get) => ({
   matches: [],
   attendees: {},
+  comments: {},
+  matchMercenaries: loadMatchMercenaries(),
   isLoading: false,
 
   setMatches: (matches) => set({ matches }),
+
+  addMatchMercenary: (matchId, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const current = get().matchMercenaries[matchId] || [];
+    if (current.some((m) => m.name === trimmed)) return;
+    const newMerc: IMember = {
+      id: `mercenary-${Date.now()}`,
+      name: trimmed,
+      isMercenary: true,
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = { ...get().matchMercenaries, [matchId]: [...current, newMerc] };
+    saveMatchMercenaries(updated);
+    set({ matchMercenaries: updated });
+  },
+
+  removeMatchMercenary: (matchId, mercenaryId) => {
+    const current = get().matchMercenaries[matchId] || [];
+    const updated = { ...get().matchMercenaries, [matchId]: current.filter((m) => m.id !== mercenaryId) };
+    saveMatchMercenaries(updated);
+    set({ matchMercenaries: updated });
+  },
+
+  updateMatch: async (matchId, data) => {
+    const { error } = await supabase
+      .from("matches")
+      .update({
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.matchDate !== undefined && { match_date: data.matchDate }),
+        ...(data.location !== undefined && { location: data.location || null }),
+        ...(data.maxPlayers !== undefined && { max_players: data.maxPlayers }),
+        ...(data.notes !== undefined && { notes: data.notes || null }),
+      })
+      .eq("id", matchId);
+    if (error) throw error;
+    set((state) => ({
+      matches: state.matches
+        .map((m) => (m.id === matchId ? { ...m, ...data } : m))
+        .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()),
+    }));
+  },
+
+  updateMatchResult: async (matchId, result) => {
+    const { error } = await supabase
+      .from("matches")
+      .update({ result: result || null })
+      .eq("id", matchId);
+    if (error) throw error;
+    set((state) => ({
+      matches: state.matches.map((m) => (m.id === matchId ? { ...m, result } : m)),
+    }));
+  },
 
   loadMatches: async (squadId) => {
     set({ isLoading: true });
@@ -42,6 +130,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         notes: m.notes,
         createdBy: m.created_by,
         createdAt: m.created_at,
+        result: m.result ?? undefined,
       }));
 
       set({ matches });
@@ -86,6 +175,19 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
       ),
     }));
+
+    // 비동기로 푸시 알림 전송 (실패해도 경기 생성에 영향 없음)
+    supabase.functions
+      .invoke('send-match-notification', {
+        body: {
+          matchId: created.id,
+          squadId,
+          title: created.title,
+          matchDate: created.match_date,
+          location: created.location ?? null,
+        },
+      })
+      .catch(() => { /* 알림 실패 무시 */ });
   },
 
   deleteMatch: async (matchId) => {
@@ -102,15 +204,28 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       .select("*")
       .eq("match_id", matchId);
 
-    if (error) return;
+    if (error || !data) return;
 
-    const attendees: IMatchAttendee[] = (data || []).map((a) => ({
+    const userIds = [...new Set(data.map((a) => a.user_id))];
+    let profileMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", userIds);
+      profileMap = Object.fromEntries(
+        (profiles || []).map((p) => [p.id, p.username ?? ""])
+      );
+    }
+
+    const attendees: IMatchAttendee[] = data.map((a) => ({
       id: a.id,
       matchId: a.match_id,
       userId: a.user_id,
       memberId: a.member_id,
       status: a.status,
       registeredAt: a.registered_at,
+      username: profileMap[a.user_id] || undefined,
     }));
 
     set((state) => ({
@@ -118,32 +233,51 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
     }));
   },
 
-  toggleAttendance: async (matchId, userId, memberId) => {
+  setAttendance: async (matchId, userId, status, memberId) => {
     const current = get().attendees[matchId] || [];
     const existing = current.find((a) => a.userId === userId);
 
     if (existing) {
-      // 이미 있으면 삭제 (참가 취소)
-      const { error } = await supabase
-        .from("match_attendees")
-        .delete()
-        .eq("match_id", matchId)
-        .eq("user_id", userId);
-      if (error) throw error;
+      if (existing.status === status) return;
 
       set((state) => ({
         attendees: {
           ...state.attendees,
-          [matchId]: current.filter((a) => a.userId !== userId),
+          [matchId]: current.map((a) =>
+            a.userId === userId
+              ? { ...a, status, ...(memberId !== undefined ? { memberId } : {}) }
+              : a
+          ),
         },
       }));
+
+      const { error } = await supabase
+        .from("match_attendees")
+        .update({
+          status,
+          ...(memberId !== undefined ? { member_id: memberId } : {}),
+        })
+        .eq("match_id", matchId)
+        .eq("user_id", userId);
+
+      if (error) {
+        set((state) => ({
+          attendees: { ...state.attendees, [matchId]: current },
+        }));
+        throw error;
+      }
     } else {
-      // 없으면 추가 (참가 신청)
       const { data, error } = await supabase
         .from("match_attendees")
-        .insert({ match_id: matchId, user_id: userId, member_id: memberId || null, status: "attending" })
+        .insert({
+          match_id: matchId,
+          user_id: userId,
+          member_id: memberId ?? null,
+          status,
+        })
         .select()
         .single();
+
       if (error) throw error;
 
       const newAttendee: IMatchAttendee = {
@@ -162,5 +296,144 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         },
       }));
     }
+  },
+
+  loadComments: async (matchId) => {
+    const { data, error } = await supabase
+      .from("match_comments")
+      .select("*")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: true });
+
+    if (error || !data) return;
+
+    const userIds = [...new Set(data.map((c) => c.user_id))];
+    let profileMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", userIds);
+      profileMap = Object.fromEntries(
+        (profiles || []).map((p) => [p.id, p.username ?? ""])
+      );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mapRow = (c: any): IMatchComment => ({
+      id: c.id,
+      matchId: c.match_id,
+      userId: c.user_id,
+      username: profileMap[c.user_id] || "알 수 없음",
+      content: c.content,
+      createdAt: c.created_at,
+      updatedAt: c.updated_at ?? undefined,
+      parentId: c.parent_id ?? undefined,
+      replies: [],
+    });
+
+    // 루트 → 대댓글 트리 조립
+    const roots = data.filter((c) => !c.parent_id).map(mapRow);
+    const replyRows = data.filter((c) => c.parent_id);
+    const comments: IMatchComment[] = roots.map((root) => ({
+      ...root,
+      replies: replyRows.filter((r) => r.parent_id === root.id).map(mapRow),
+    }));
+
+    set((state) => ({
+      comments: { ...state.comments, [matchId]: comments },
+    }));
+  },
+
+  addComment: async (matchId, userId, username, content, parentId) => {
+    const { data, error } = await supabase
+      .from("match_comments")
+      .insert({
+        match_id: matchId,
+        user_id: userId,
+        content,
+        parent_id: parentId ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const newComment: IMatchComment = {
+      id: data.id,
+      matchId: data.match_id,
+      userId: data.user_id,
+      username,
+      content: data.content,
+      createdAt: data.created_at,
+      parentId: data.parent_id ?? undefined,
+      replies: [],
+    };
+
+    set((state) => {
+      const list = state.comments[matchId] || [];
+      if (parentId) {
+        // 대댓글: 부모의 replies에 추가
+        return {
+          comments: {
+            ...state.comments,
+            [matchId]: list.map((c) =>
+              c.id === parentId
+                ? { ...c, replies: [...(c.replies || []), newComment] }
+                : c
+            ),
+          },
+        };
+      }
+      return {
+        comments: { ...state.comments, [matchId]: [...list, newComment] },
+      };
+    });
+  },
+
+  updateComment: async (commentId, matchId, content) => {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("match_comments")
+      .update({ content, updated_at: now })
+      .eq("id", commentId);
+
+    if (error) throw error;
+
+    set((state) => ({
+      comments: {
+        ...state.comments,
+        [matchId]: (state.comments[matchId] || []).map((c) => {
+          if (c.id === commentId) return { ...c, content, updatedAt: now };
+          return {
+            ...c,
+            replies: (c.replies || []).map((r) =>
+              r.id === commentId ? { ...r, content, updatedAt: now } : r
+            ),
+          };
+        }),
+      },
+    }));
+  },
+
+  deleteComment: async (commentId, matchId) => {
+    const { error } = await supabase
+      .from("match_comments")
+      .delete()
+      .eq("id", commentId);
+
+    if (error) throw error;
+
+    set((state) => ({
+      comments: {
+        ...state.comments,
+        [matchId]: (state.comments[matchId] || [])
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({
+            ...c,
+            replies: (c.replies || []).filter((r) => r.id !== commentId),
+          })),
+      },
+    }));
   },
 }));

@@ -187,6 +187,7 @@ export const syncDivisionToSupabase = async (division: IDivision) => {
     const { error } = await supabase.from("divisions").insert({
       id: division.id,
       squad_id: division.squadId,
+      match_id: division.matchId ?? null,
       division_date: division.divisionDate,
       notes: division.notes,
       period: division.period,
@@ -217,6 +218,7 @@ export const loadDivisionsFromSupabase = async (
     return (data || []).map((d) => ({
       id: d.id,
       squadId: d.squad_id,
+      matchId: d.match_id ?? undefined,
       divisionDate: d.division_date,
       notes: d.notes,
       period: d.period as "전반전" | "후반전",
@@ -234,6 +236,7 @@ export const saveDivisionToSupabase = async (division: IDivision) => {
     const { error } = await supabase.from("divisions").insert({
       id: division.id,
       squad_id: division.squadId,
+      match_id: division.matchId ?? null,
       division_date: division.divisionDate,
       notes: division.notes,
       period: division.period,

@@ -6,6 +6,14 @@ import { useAdminStore } from '@/stores/adminStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { AlertModal, ConfirmModal, AdminPasswordModal } from '@/components/modals';
+import {
+  isPushSupported,
+  getPermission,
+  requestPermission,
+  getCurrentSubscription,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '@/lib/pushNotification';
 import type { IMember } from '@/types';
 
 export default function SettingsPage() {
@@ -22,16 +30,64 @@ export default function SettingsPage() {
   const [linkLoading, setLinkLoading] = useState(false);
   const [showLinkPicker, setShowLinkPicker] = useState(false);
 
+  // user 스토어가 업데이트되면 linkedMemberId도 동기화
+  useEffect(() => {
+    const memberId = (user?.user_metadata?.member_id as string) ?? null;
+    setLinkedMemberId(memberId);
+  }, [user?.user_metadata?.member_id]);
+
   const handleLinkMember = async (member: IMember | null) => {
     setLinkLoading(true);
-    await updateLinkedMember(member?.id ?? null);
-    setLinkedMemberId(member?.id ?? null);
-    setLinkLoading(false);
-    setShowLinkPicker(false);
-    setAlertModal({
-      isOpen: true,
-      message: member ? `✅ "${member.name}"으로 연결되었습니다` : '선수 프로필 연결이 해제되었습니다',
+    try {
+      await updateLinkedMember(member?.id ?? null);
+      // 성공 시에만 로컬 state 업데이트 (authStore의 user도 함께 갱신됨)
+      setLinkedMemberId(member?.id ?? null);
+      setShowLinkPicker(false);
+      setAlertModal({
+        isOpen: true,
+        message: member ? `✅ "${member.name}"으로 연결되었습니다` : '선수 프로필 연결이 해제되었습니다',
+      });
+    } catch {
+      // 실패 시 로컬 state 변경하지 않음 (user_metadata와 desync 방지)
+      setShowLinkPicker(false);
+      setAlertModal({
+        isOpen: true,
+        message: '연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      });
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  // 초대 코드
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteRegenerating, setInviteRegenerating] = useState(false);
+
+  useEffect(() => {
+    if (!squad?.id) return;
+    supabase.from("squads").select("invite_code").eq("id", squad.id).single()
+      .then(({ data }) => { if (data) setInviteCode(data.invite_code); });
+  }, [squad?.id]);
+
+  const handleCopyInviteCode = () => {
+    if (!inviteCode) return;
+    navigator.clipboard.writeText(inviteCode).then(() => {
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
     });
+  };
+
+  const handleRegenerateCode = async () => {
+    if (!squad?.id) return;
+    setInviteRegenerating(true);
+    try {
+      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      await supabase.from("squads").update({ invite_code: newCode }).eq("id", squad.id);
+      setInviteCode(newCode);
+    } finally {
+      setInviteRegenerating(false);
+    }
   };
 
   // v2: role 기반 관리자 여부 확인
@@ -48,6 +104,130 @@ export default function SettingsPage() {
   }, [user, squad?.id]);
 
   const isOwnerOrAdmin = userRole === "owner" || userRole === "admin" || isAdmin;
+
+  // 푸시 알림 설정
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    setNotifPermission(getPermission());
+    getCurrentSubscription().then((sub) => setIsSubscribed(!!sub));
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    if (!user || !squad?.id) return;
+    setNotifLoading(true);
+    try {
+      const perm = await requestPermission();
+      setNotifPermission(perm);
+      if (perm === 'granted') {
+        await subscribeToPush(squad.id, user.id);
+        setIsSubscribed(true);
+        setAlertModal({ isOpen: true, message: '✅ 경기 알림이 켜졌습니다' });
+      }
+    } catch {
+      setAlertModal({ isOpen: true, message: '알림 설정에 실패했습니다.' });
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleDisableNotifications = async () => {
+    if (!user || !squad?.id) return;
+    setNotifLoading(true);
+    try {
+      await unsubscribeFromPush(squad.id, user.id);
+      setIsSubscribed(false);
+      setAlertModal({ isOpen: true, message: '알림이 해제되었습니다.' });
+    } catch {
+      setAlertModal({ isOpen: true, message: '알림 해제에 실패했습니다.' });
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  // 동호회 회원 (인증 유저) 목록
+  interface ISquadUserRow { userId: string; role: "owner" | "admin" | "member"; username: string; }
+  const [squadUsers, setSquadUsers] = useState<ISquadUserRow[]>([]);
+  const [squadUsersLoading, setSquadUsersLoading] = useState(false);
+
+  const loadSquadUsers = async () => {
+    if (!squad?.id) return;
+    setSquadUsersLoading(true);
+    try {
+      const { data: memberRows, error } = await supabase
+        .from("squad_members")
+        .select("user_id, role")
+        .eq("squad_id", squad.id);
+      if (error || !memberRows) return;
+
+      const userIds = memberRows.map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", userIds);
+      const profileMap: Record<string, string> = Object.fromEntries(
+        (profiles || []).map((p) => [p.id, p.username ?? "알 수 없음"])
+      );
+
+      const rows: ISquadUserRow[] = memberRows.map((m) => ({
+        userId: m.user_id,
+        role: m.role as ISquadUserRow["role"],
+        username: profileMap[m.user_id] ?? "알 수 없음",
+      }));
+      // owner 먼저, 그 다음 admin, 그 다음 member
+      rows.sort((a, b) => {
+        const order = { owner: 0, admin: 1, member: 2 };
+        return order[a.role] - order[b.role];
+      });
+      setSquadUsers(rows);
+    } finally {
+      setSquadUsersLoading(false);
+    }
+  };
+
+  useEffect(() => { loadSquadUsers(); }, [squad?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleChangeRole = async (userId: string, newRole: "admin" | "member") => {
+    if (!squad?.id || userRole !== "owner") return;
+    const { error } = await supabase
+      .from("squad_members")
+      .update({ role: newRole })
+      .eq("squad_id", squad.id)
+      .eq("user_id", userId);
+    if (error) {
+      setAlertModal({ isOpen: true, message: "역할 변경에 실패했습니다." });
+      return;
+    }
+    setSquadUsers((prev) =>
+      prev.map((u) => (u.userId === userId ? { ...u, role: newRole } : u))
+        .sort((a, b) => ({ owner: 0, admin: 1, member: 2 }[a.role] - { owner: 0, admin: 1, member: 2 }[b.role]))
+    );
+  };
+
+  const handleRemoveSquadMember = (userId: string, username: string) => {
+    if (!squad?.id) return;
+    setConfirmModal({
+      isOpen: true,
+      title: "회원 내보내기",
+      message: `${username}님을 동호회에서 내보내시겠습니까?`,
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from("squad_members")
+          .delete()
+          .eq("squad_id", squad.id)
+          .eq("user_id", userId);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        if (error) {
+          setAlertModal({ isOpen: true, message: "내보내기에 실패했습니다." });
+          return;
+        }
+        setSquadUsers((prev) => prev.filter((u) => u.userId !== userId));
+      },
+    });
+  };
 
   // 상태
   const [isEditMode, setIsEditMode] = useState(false);
@@ -447,6 +627,174 @@ export default function SettingsPage() {
           </div>
         )}
       </main>
+
+      {/* 동호회 회원 (인증 유저) 섹션 */}
+      <div className="px-6 mb-4 mt-6">
+        <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
+              동호회 회원 {squadUsers.length > 0 ? `· ${squadUsers.length}명` : ""}
+            </p>
+            <button
+              onClick={loadSquadUsers}
+              disabled={squadUsersLoading}
+              className="text-white/20 hover:text-white/50 transition-colors"
+            >
+              <span className="material-icons text-sm">refresh</span>
+            </button>
+          </div>
+
+          {squadUsersLoading ? (
+            <p className="text-white/20 text-xs py-2">로딩 중...</p>
+          ) : squadUsers.length === 0 ? (
+            <p className="text-white/20 text-xs py-2">회원 정보가 없습니다</p>
+          ) : (
+            <div className="space-y-2">
+              {squadUsers.map((u) => {
+                const isMe = u.userId === user?.id;
+                const roleBadge: Record<string, { label: string; color: string }> = {
+                  owner: { label: "OWNER", color: "#FFD700" },
+                  admin: { label: "ADMIN", color: "#0DF23E" },
+                  member: { label: "MEMBER", color: "rgba(255,255,255,0.3)" },
+                };
+                const badge = roleBadge[u.role];
+                return (
+                  <div key={u.userId} className="flex items-center gap-3 py-1.5">
+                    {/* 아바타 */}
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                      style={{ backgroundColor: isMe ? "rgba(13,242,62,0.15)" : "rgba(255,255,255,0.07)", color: isMe ? "#0DF23E" : "rgba(255,255,255,0.5)" }}
+                    >
+                      {u.username[0]?.toUpperCase() ?? "?"}
+                    </div>
+                    {/* 이름 */}
+                    <span className="flex-1 text-sm font-bold text-white truncate">
+                      {u.username}
+                      {isMe && <span className="ml-1.5 text-[9px] text-white/30 font-black uppercase tracking-widest">나</span>}
+                    </span>
+                    {/* 역할 배지 */}
+                    <span className="text-[9px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: badge.color }}>
+                      {badge.label}
+                    </span>
+                    {/* owner 전용: 역할 변경 + 내보내기 */}
+                    {userRole === "owner" && !isMe && (
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {u.role === "member" && (
+                          <button
+                            onClick={() => handleChangeRole(u.userId, "admin")}
+                            className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all"
+                            style={{ backgroundColor: "rgba(13,242,62,0.08)", color: "#0DF23E", border: "1px solid rgba(13,242,62,0.2)" }}
+                          >
+                            관리자↑
+                          </button>
+                        )}
+                        {u.role === "admin" && (
+                          <button
+                            onClick={() => handleChangeRole(u.userId, "member")}
+                            className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all"
+                            style={{ backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}
+                          >
+                            일반↓
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemoveSquadMember(u.userId, u.username)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                          style={{ backgroundColor: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.5)", border: "1px solid rgba(239,68,68,0.15)" }}
+                        >
+                          <span className="material-icons text-sm">person_remove</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 초대 코드 섹션 */}
+      <div className="px-6 mb-4 mt-0">
+        <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">동호회 초대 코드</p>
+          {inviteCode ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 justify-between">
+                <span className="text-2xl font-black tracking-[0.4em] font-mono text-primary">{inviteCode}</span>
+                <button
+                  onClick={handleCopyInviteCode}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-wider transition-all active:scale-95"
+                >
+                  <span className="material-icons text-sm">{inviteCopied ? "check" : "content_copy"}</span>
+                  {inviteCopied ? "복사됨" : "복사"}
+                </button>
+              </div>
+              <p className="text-white/20 text-[10px]">멤버에게 이 코드를 공유하면 동호회에 참가할 수 있습니다</p>
+              {isOwnerOrAdmin && (
+                <button
+                  onClick={handleRegenerateCode}
+                  disabled={inviteRegenerating}
+                  className="text-white/25 hover:text-white/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors disabled:opacity-40"
+                >
+                  <span className="material-icons text-xs">refresh</span>
+                  {inviteRegenerating ? "재생성 중..." : "코드 재생성"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-white/20 text-xs">로딩 중...</p>
+          )}
+        </div>
+      </div>
+
+      {/* 알림 설정 */}
+      {isPushSupported() && (
+        <div className="px-6 mb-4">
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">경기 알림</p>
+
+            {notifPermission === 'denied' ? (
+              <div className="flex items-center gap-3">
+                <span className="material-icons text-white/20 text-sm">notifications_off</span>
+                <div className="flex-1">
+                  <p className="text-white/50 text-xs font-bold">브라우저에서 알림이 차단됨</p>
+                  <p className="text-white/20 text-[10px] mt-0.5">브라우저 설정에서 알림을 허용해주세요</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span
+                    className="material-icons text-sm flex-shrink-0"
+                    style={{ color: isSubscribed ? '#0DF23E' : 'rgba(255,255,255,0.2)' }}
+                  >
+                    {isSubscribed ? 'notifications_active' : 'notifications_none'}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-white/70 text-sm font-bold">새 경기 알림</p>
+                    <p className="text-white/30 text-[10px] mt-0.5 truncate">
+                      {isSubscribed ? '경기가 추가되면 알림을 받습니다' : '경기 추가 시 알림 받기'}
+                    </p>
+                  </div>
+                </div>
+                {/* 토글 스위치 */}
+                <button
+                  onClick={isSubscribed ? handleDisableNotifications : handleEnableNotifications}
+                  disabled={notifLoading}
+                  className="relative w-12 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50"
+                  style={{ backgroundColor: isSubscribed ? '#0DF23E' : 'rgba(255,255,255,0.1)' }}
+                >
+                  <span
+                    className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200"
+                    style={{ left: isSubscribed ? '1.375rem' : '0.125rem' }}
+                  />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 푸터 - 전체 초기화 버튼 */}
       <footer className="px-6 py-8 mt-auto">

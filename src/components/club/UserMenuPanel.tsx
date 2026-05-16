@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { useSquadStore } from "@/stores/squadStore";
+import { useFixedTeamStore } from "@/stores/fixedTeamStore";
+import { useDivisionStore } from "@/stores/divisionStore";
 import { supabase } from "@/lib/supabase";
+import {
+  loadSquadFromSupabase,
+  loadFixedTeamsFromSupabase,
+  loadDivisionsFromSupabase,
+  loadTeammateHistoryFromSupabase,
+} from "@/lib/supabaseSync";
 
 interface Club {
   id: string;
@@ -19,8 +27,11 @@ interface Props {
 export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const { user, profile, signOut } = useAuthStore();
   const { squad, clearSquad, setSquad } = useSquadStore();
+  const { setFixedTeams } = useFixedTeamStore();
+  const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -49,14 +60,30 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   };
 
   const handleSwitchClub = async (club: Club) => {
-    const { data } = await supabase
-      .from("squads")
-      .select("*, members(*)")
-      .eq("id", club.id)
-      .single();
-    if (data) {
-      setSquad({ id: data.id, name: data.name, members: data.members || [], createdAt: data.created_at });
+    const [fullSquad, fixedTeams, divisions, history] = await Promise.all([
+      loadSquadFromSupabase(club.id),
+      loadFixedTeamsFromSupabase(club.id),
+      loadDivisionsFromSupabase(club.id),
+      loadTeammateHistoryFromSupabase(club.id),
+    ]);
+    if (fullSquad) {
+      setSquad(fullSquad);
+      setFixedTeams(fixedTeams);
+      setDivisionHistory(divisions);
+      updateTeammateHistory(history);
     }
+    onClose();
+  };
+
+  const handleLeaveClub = async () => {
+    if (!user || !squad?.id) return;
+    await supabase
+      .from("squad_members")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("squad_id", squad.id);
+    setLeaveConfirm(false);
+    clearSquad();
     onClose();
   };
 
@@ -146,6 +173,52 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                   ))}
               </div>
             </div>
+          )}
+
+          {/* 동호회 탈퇴 */}
+          {currentClub && (
+            isOwner ? (
+              <div className="w-full flex items-center gap-3 rounded-xl px-4 py-3 mb-2"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <span className="material-icons text-white/15 text-sm">exit_to_app</span>
+                <span className="text-white/20 text-xs font-black uppercase tracking-widest flex-1">동호회 탈퇴</span>
+                <span className="text-[9px] text-white/20 font-black uppercase tracking-widest">운영자는 탈퇴 불가</span>
+              </div>
+            ) : leaveConfirm ? (
+              <div className="rounded-xl p-3 mb-2 space-y-2"
+                style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <p className="text-xs text-red-400/80 font-bold text-center">
+                  정말 <span className="font-black">{currentClub.name}</span>에서 탈퇴할까요?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setLeaveConfirm(false)}
+                    className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white/40"
+                    style={{ background: "rgba(255,255,255,0.05)" }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleLeaveClub}
+                    className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white"
+                    style={{ background: "rgba(239,68,68,0.6)" }}
+                  >
+                    탈퇴
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setLeaveConfirm(true)}
+                className="w-full flex items-center gap-3 rounded-xl px-4 py-3 mb-2 transition-all text-left active:scale-[0.98]"
+                style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)" }}
+              >
+                <span className="material-icons text-sm" style={{ color: "rgba(239,68,68,0.5)" }}>exit_to_app</span>
+                <span className="text-xs font-black uppercase tracking-widest" style={{ color: "rgba(239,68,68,0.6)" }}>
+                  동호회 탈퇴
+                </span>
+              </button>
+            )
           )}
 
           {/* 다른 동호회 참가/생성 */}

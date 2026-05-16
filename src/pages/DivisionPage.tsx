@@ -17,7 +17,7 @@ const DivisionPage = () => {
   const { squad, selectedParticipants, toggleParticipant, selectAllParticipants, clearAllParticipants } = useSquadStore();
   const { fixedTeams, addFixedTeam, removeFixedTeam } = useFixedTeamStore();
   const { saveDivision, divisionHistory, teammateHistory, updateTeammateHistory: updateStoreHistory } = useDivisionStore();
-  const { matches, attendees, loadAttendees } = useMatchStore();
+  const { matches, attendees, matchMercenaries, loadAttendees, loadMatches } = useMatchStore();
 
   const [currentTime, setCurrentTime] = useState('');
   const [currentTeams, setCurrentTeams] = useState<IMember[][] | null>(null);
@@ -87,12 +87,47 @@ const DivisionPage = () => {
   }, [matches]);
 
   const todayAttendees = todayMatch ? (attendees[todayMatch.id] || []) : [];
+  const todayMatchMercenaries = todayMatch ? (matchMercenaries[todayMatch.id] || []) : [];
+
+  useEffect(() => {
+    if (squad?.id && matches.length === 0) {
+      loadMatches(squad.id);
+    }
+  }, [squad?.id]);
 
   useEffect(() => {
     if (todayMatch && !attendees[todayMatch.id]) {
       loadAttendees(todayMatch.id);
     }
   }, [todayMatch?.id]);
+
+  // 오늘 경기 참석자가 로드되면 자동으로 참석 현황에 체크
+  useEffect(() => {
+    if (!todayMatch || !squad) return;
+    const attending = todayAttendees.filter((a) => a.status === 'attending' && a.memberId);
+    if (attending.length === 0) return;
+    if (selectedParticipants.length === 0) {
+      loadTodayParticipants();
+    }
+  // todayAttendees 길이 변화 또는 경기 전환 시에만 실행
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayAttendees.length, todayMatch?.id]);
+
+  // 경기에서 추가된 용병 자동 동기화
+  useEffect(() => {
+    if (todayMatchMercenaries.length === 0) return;
+    setMercenaries((prev) => {
+      const existingIds = new Set(prev.map((m) => m.id));
+      const newOnes = todayMatchMercenaries.filter((m) => !existingIds.has(m.id));
+      return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
+    });
+    setSelectedMercenaries((prev) => {
+      const existing = new Set(prev);
+      const newIds = todayMatchMercenaries.map((m) => m.id).filter((id) => !existing.has(id));
+      return newIds.length > 0 ? [...prev, ...newIds] : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayMatchMercenaries.length, todayMatch?.id]);
 
   const loadTodayParticipants = () => {
     if (!todayMatch || !squad) return;
@@ -247,7 +282,7 @@ const DivisionPage = () => {
     if (!currentTeams || !squad) return;
     const date = new Date();
     const notes = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. ${period}`;
-    const division = { id: Date.now().toString(), squadId: squad.id, divisionDate: date.toISOString(), notes, period, teams: currentTeams, teamCount: currentTeams.length };
+    const division = { id: Date.now().toString(), squadId: squad.id, matchId: todayMatch?.id, divisionDate: date.toISOString(), notes, period, teams: currentTeams, teamCount: currentTeams.length };
     await saveDivisionToSupabase(division);
     saveDivision(division);
     const updatedHistory = updateHistory(currentTeams, teammateHistory);
@@ -280,26 +315,6 @@ const DivisionPage = () => {
         </div>
       </header>
 
-      {/* ── 오늘 경기 배너 ── */}
-      {todayMatch && (
-        <div className="mx-6 mb-2">
-          <button
-            onClick={loadTodayParticipants}
-            className="w-full flex items-center gap-3 bg-primary/10 border border-primary/25 rounded-2xl px-4 py-3 transition-all active:scale-[0.98] hover:bg-primary/15"
-          >
-            <span className="material-icons text-primary text-sm">sports_soccer</span>
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-primary font-black text-xs uppercase tracking-widest truncate">
-                오늘 경기 — {todayMatch.title}
-              </p>
-              <p className="text-primary/60 text-[10px] mt-0.5">
-                참가자 {todayAttendees.filter(a => a.status === 'attending').length}명 자동으로 불러오기
-              </p>
-            </div>
-            <span className="material-icons text-primary/50 text-sm">arrow_forward</span>
-          </button>
-        </div>
-      )}
 
       <section className="space-y-6">
         {/* ── 참석 현황 ── */}

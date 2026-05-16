@@ -18,6 +18,7 @@ interface AuthState {
   initialize: () => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithKakao: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
   updateLinkedMember: (memberId: string | null) => Promise<void>;
@@ -50,11 +51,28 @@ export const useAuthStore = create<AuthState>((set) => ({
     // 세션 변경 감지
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const { data: profile } = await supabase
+        let { data: profile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
           .single();
+
+        // 카카오 등 OAuth 신규 유저 → 프로필 자동 생성
+        if (!profile) {
+          const defaultUsername =
+            (session.user.user_metadata?.name as string) ||
+            (session.user.user_metadata?.full_name as string) ||
+            session.user.email?.split("@")[0] ||
+            "사용자";
+          await supabase.from("profiles").upsert({ id: session.user.id, username: defaultUsername });
+          const { data: created } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+          profile = created;
+        }
+
         set({ user: session.user, session, profile });
       } else {
         set({ user: null, session: null, profile: null });
@@ -100,6 +118,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
+  signInWithKakao: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "kakao",
+      options: {
+        redirectTo: window.location.origin,
+        scopes: "profile_nickname profile_image account_email",
+      },
+    });
+    if (error) throw error;
+  },
+
   signOut: async () => {
     await supabase.auth.signOut();
     set({ user: null, session: null, profile: null });
@@ -111,7 +140,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data, error } = await supabase.auth.updateUser({
       data: { member_id: memberId },
     });
-    if (!error && data.user) {
+    if (error) throw error;
+    if (data.user) {
       set((state) => ({ user: data.user, session: state.session }));
     }
   },
