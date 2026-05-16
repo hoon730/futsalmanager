@@ -19,6 +19,7 @@ export interface ISquad {
 export interface IDivision {
   id: string;
   squadId: string;
+  matchId?: string;
   divisionDate: string;
   notes?: string;
   period: "전반전" | "후반전";
@@ -55,6 +56,7 @@ export interface IMatch {
   notes?: string;
   createdBy?: string;
   createdAt: string;
+  result?: string;
 }
 
 export interface IMatchAttendee {
@@ -62,6 +64,19 @@ export interface IMatchAttendee {
   matchId: string;
   userId: string;
   memberId?: string;
-  status: 'attending' | 'absent';
+  status: 'attending' | 'absent' | 'pending' | 'waitlist';
   registeredAt: string;
+  username?: string; // profiles 조인 결과
+}
+
+export interface IMatchComment {
+  id: string;
+  matchId: string;
+  userId: string;
+  username: string;
+  content: string;
+  createdAt: string;
+  updatedAt?: string;
+  parentId?: string;       // 대댓글이면 부모 댓글 ID
+  replies?: IMatchComment[]; // 클라이언트에서 조립
 }

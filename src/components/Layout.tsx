@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DivisionPage from "@/pages/DivisionPage";
 import AttendancePage from "@/pages/AttendancePage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -6,14 +6,40 @@ import SchedulePage from "@/pages/SchedulePage";
 import { UserMenuPanel } from "@/components/club/UserMenuPanel";
 import { useAuthStore } from "@/stores/authStore";
 import { useSquadStore } from "@/stores/squadStore";
+import { useMatchStore } from "@/stores/matchStore";
 
 type Tab = "division" | "schedule" | "attendance" | "settings";
+
+const LAST_SCHEDULE_VISIT_KEY = "lastScheduleVisit";
 
 const Layout = () => {
   const [activeTab, setActiveTab] = useState<Tab>("division");
   const [menuOpen, setMenuOpen] = useState(false);
   const { profile, user } = useAuthStore();
   const { squad } = useSquadStore();
+  const { matches, loadMatches } = useMatchStore();
+
+  // 경기 목록 미리 로드 (배지용)
+  useEffect(() => {
+    if (squad?.id && matches.length === 0) loadMatches(squad.id);
+  }, [squad?.id]);
+
+  // 알림 배지: 마지막 일정 탭 방문 이후 추가된 경기 수
+  const [lastVisit] = useState<number>(() => {
+    const v = localStorage.getItem(LAST_SCHEDULE_VISIT_KEY);
+    return v ? Number(v) : 0;
+  });
+  const newMatchCount = matches.filter(
+    (m) => new Date(m.createdAt).getTime() > lastVisit
+  ).length;
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    if (tab === "schedule") {
+      const now = Date.now();
+      localStorage.setItem(LAST_SCHEDULE_VISIT_KEY, String(now));
+    }
+  };
 
   const avatarLetter = (profile?.username || user?.email || "?")[0].toUpperCase();
 
@@ -41,7 +67,7 @@ const Layout = () => {
       {/* 메인 컨텐츠 */}
       <main className="flex-1 overflow-y-auto hide-scrollbar pb-28">
         {activeTab === "division"   && <DivisionPage />}
-        {activeTab === "schedule"   && <SchedulePage />}
+        {activeTab === "schedule"   && <SchedulePage onGoToDivision={() => setActiveTab("division")} />}
         {activeTab === "attendance" && <AttendancePage />}
         {activeTab === "settings"   && <SettingsPage />}
       </main>
@@ -61,7 +87,7 @@ const Layout = () => {
         ).map(({ id, icon, label }) => (
           <button
             key={id}
-            onClick={() => setActiveTab(id)}
+            onClick={() => handleTabChange(id)}
             className="flex flex-col items-center justify-center gap-1.5 h-full transition-all"
             style={{
               width: "25%",
@@ -69,7 +95,17 @@ const Layout = () => {
               transform: activeTab === id ? "scale(1.1)" : "scale(1)",
             }}
           >
-            <span className="material-icons text-2xl">{icon}</span>
+            <div className="relative">
+              <span className="material-icons text-2xl">{icon}</span>
+              {id === "schedule" && newMatchCount > 0 && activeTab !== "schedule" && (
+                <span
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black"
+                  style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
+                >
+                  {newMatchCount > 9 ? "9+" : newMatchCount}
+                </span>
+              )}
+            </div>
             <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
           </button>
         ))}

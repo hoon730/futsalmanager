@@ -6,7 +6,8 @@ interface Props {
 }
 
 export const LoginForm = ({ onSwitchToSignup }: Props) => {
-  const { signIn, isLoading, error, clearError } = useAuthStore();
+  const { signIn, signInWithKakao, isLoading, error, clearError } = useAuthStore();
+  const [kakaoLoading, setKakaoLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -65,6 +66,28 @@ export const LoginForm = ({ onSwitchToSignup }: Props) => {
         {isLoading ? "로그인 중..." : "로그인"}
       </button>
 
+      {/* 구분선 */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-white/10" />
+        <span className="text-[10px] font-black uppercase tracking-widest text-white/20">또는</span>
+        <div className="flex-1 h-px bg-white/10" />
+      </div>
+
+      {/* 카카오 로그인 */}
+      <button
+        type="button"
+        disabled={kakaoLoading || isLoading}
+        onClick={async () => {
+          setKakaoLoading(true);
+          try { await signInWithKakao(); } catch { setKakaoLoading(false); }
+        }}
+        className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-sm tracking-wide transition-all active:scale-95 disabled:opacity-40"
+        style={{ backgroundColor: "#FEE500", color: "#3C1E1E" }}
+      >
+        <KakaoIcon />
+        {kakaoLoading ? "연결 중..." : "카카오로 시작하기"}
+      </button>
+
       <p className="text-center text-white/30 text-xs">
         계정이 없으신가요?{" "}
         <button
@@ -78,6 +101,12 @@ export const LoginForm = ({ onSwitchToSignup }: Props) => {
     </form>
   );
 };
+
+const KakaoIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="#3C1E1E" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 3C6.477 3 2 6.582 2 11c0 2.83 1.67 5.318 4.19 6.82L5.1 21.5l4.53-2.97C10.35 18.84 11.16 19 12 19c5.523 0 10-3.582 10-8s-4.477-8-10-8z" />
+  </svg>
+);
 
 const translateError = (msg: string) => {
   if (msg.includes("Invalid login credentials")) return "이메일 또는 비밀번호가 올바르지 않습니다.";
