@@ -73,4 +73,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // 프로덕션 빌드에서 console.* / debugger 제거 (정보 노출 방지)
+  esbuild: {
+    drop: ["console", "debugger"],
+  },
 });

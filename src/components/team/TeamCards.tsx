@@ -2,9 +2,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCards } from "swiper/modules";
 import type { IMember } from "@/types";
 
-// @ts-expect-error - CSS import
 import "swiper/css";
-// @ts-expect-error - CSS import
 import "swiper/css/effect-cards";
 
 interface ITeamCardsProps {
