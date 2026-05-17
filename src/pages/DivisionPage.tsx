@@ -77,7 +77,7 @@ const DivisionPage = () => {
     localStorage.setItem('mercenaries', JSON.stringify(mercenaries));
   }, [mercenaries]);
 
-  // 오늘 경기 감지 (±3시간 이내)
+  // 오늘 경기 감지 (±3시간 이내) — 참석자 자동 연동용
   const todayMatch = useMemo(() => {
     const now = new Date();
     return matches.find((m) => {
@@ -85,6 +85,27 @@ const DivisionPage = () => {
       return diff <= 3 * 60 * 60 * 1000;
     }) || null;
   }, [matches]);
+
+  // 다음 예정 경기 — 헤더 D-day 표시용 (오늘 포함 가장 가까운 미래 경기)
+  const nextMatch = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return (
+      matches
+        .filter((m) => new Date(m.matchDate) >= todayStart)
+        .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime())[0] || null
+    );
+  }, [matches]);
+
+  const getDDay = (matchDate: string): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const match = new Date(matchDate);
+    match.setHours(0, 0, 0, 0);
+    const diff = Math.floor((match.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return 'D-Day';
+    return `D-${diff}`;
+  };
 
   const todayAttendees = todayMatch ? (attendees[todayMatch.id] || []) : [];
   const todayMatchMercenaries = todayMatch ? (matchMercenaries[todayMatch.id] || []) : [];
@@ -309,15 +330,23 @@ const DivisionPage = () => {
             <div className="h-1 w-8 mt-3 rounded-full shadow-[0_0_10px_#0df23e]" style={{ backgroundColor: '#0DF23E' }}></div>
           </div>
           <div className="text-right">
-            {todayMatch ? (
-              <>
-                <p className="text-[10px] font-black text-white/80 tracking-tight leading-tight max-w-[140px] truncate">{todayMatch.title}</p>
-                <p className="text-[10px] font-black mt-0.5" style={{ color: '#0DF23E' }}>
-                  {new Date(todayMatch.matchDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                  {todayMatch.location ? ` · ${todayMatch.location}` : ''}
-                </p>
-              </>
-            ) : (
+            {nextMatch ? (() => {
+              const dday = getDDay(nextMatch.matchDate);
+              const isToday = dday === 'D-Day';
+              return (
+                <>
+                  <p className="text-[10px] font-black text-white/70 tracking-tight leading-tight max-w-[140px] truncate">
+                    {nextMatch.title}
+                  </p>
+                  <p
+                    className={`text-sm font-black mt-0.5 tracking-widest uppercase ${isToday ? 'animate-pulse' : ''}`}
+                    style={{ color: '#0DF23E', textShadow: isToday ? '0 0 10px #0df23e' : 'none' }}
+                  >
+                    {dday}
+                  </p>
+                </>
+              );
+            })() : (
               <>
                 <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Match #{divisionHistory.length + 1}</p>
                 <p className="text-[10px] font-black uppercase mt-1" style={{ color: '#0DF23E' }}>오늘 {currentTime}</p>
