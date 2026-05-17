@@ -15,6 +15,7 @@ interface IAnnouncementStore {
   isLoading: boolean;
   loadAnnouncements: (squadId: string) => Promise<void>;
   addAnnouncement: (squadId: string, content: string, createdBy: string) => Promise<void>;
+  updateAnnouncement: (id: string, content: string) => Promise<void>;
   deleteAnnouncement: (id: string) => Promise<void>;
   togglePin: (id: string, pinned: boolean) => Promise<void>;
 }
@@ -70,6 +71,19 @@ export const useAnnouncementStore = create<IAnnouncementStore>()((set) => ({
 
     set((state) => ({
       announcements: [newItem, ...state.announcements],
+    }));
+  },
+
+  updateAnnouncement: async (id, content) => {
+    const { error } = await supabase
+      .from("announcements")
+      .update({ content })
+      .eq("id", id);
+    if (error) throw error;
+    set((state) => ({
+      announcements: state.announcements.map((a) =>
+        a.id === id ? { ...a, content } : a
+      ),
     }));
   },
 

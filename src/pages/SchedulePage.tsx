@@ -43,7 +43,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   } = useMatchStore();
 
   const { divisionHistory } = useDivisionStore();
-  const { announcements, loadAnnouncements, addAnnouncement, deleteAnnouncement, togglePin } = useAnnouncementStore();
+  const { announcements, loadAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement, togglePin } = useAnnouncementStore();
 
   const [userRole, setUserRole] = useState<string>("member");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,6 +51,9 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   const [pastPage, setPastPage] = useState(1);
   const [selectedMatch, setSelectedMatch] = useState<IMatch | null>(null);
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
+  const [noticeMode, setNoticeMode] = useState<"list" | "write">("list");
+  const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [newNotice, setNewNotice] = useState("");
   const [noticeLoading, setNoticeLoading] = useState(false);
 
@@ -137,7 +140,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
 
   return (
     <div className="animate-fade-in flex flex-col min-h-full">
-      <header className="px-6 pt-12 pb-10">
+      <header className="px-6 pt-12 pb-14">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
@@ -151,151 +154,238 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
               style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
             >
-              <span className="material-icons text-sm">add</span>추가
+              <span className="material-icons text-xl">add</span>추가
             </button>
           )}
         </div>
       </header>
 
       {/* 공지사항 배너 */}
-      {announcements.length > 0 && (
-        <div className="px-6 mb-2">
+      {(announcements.length > 0 || isAdmin) && (
+        <div className="px-6 mb-5">
           <div
             className="rounded-2xl border border-primary/20 overflow-hidden cursor-pointer active:opacity-80 transition-opacity"
             style={{ background: "rgba(13,242,62,0.04)" }}
             onClick={() => setShowAllAnnouncements(true)}
           >
-            {/* 핀 고정 or 최신 공지 1개 */}
-            <div className="flex items-start gap-3 px-4 py-3">
-              <span className="material-icons text-primary/60 text-base flex-shrink-0 mt-0.5">campaign</span>
-              <p className="text-sm text-white/80 flex-1 leading-relaxed line-clamp-2">
-                {announcements[0].content}
-              </p>
-              {announcements.length > 1 && (
-                <span className="text-[10px] font-black text-primary/60 flex-shrink-0 mt-0.5 uppercase tracking-widest">
-                  +{announcements.length - 1}
-                </span>
-              )}
-            </div>
-            <div className="px-4 pb-2.5 flex items-center justify-between">
-              <span className="text-[10px] text-white/20">
-                {new Date(announcements[0].createdAt).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}
-                {announcements[0].pinned && (
-                  <span className="ml-2 text-primary/50 font-black">· 고정</span>
-                )}
-              </span>
-              <span className="text-[10px] font-black text-white/25 uppercase tracking-widest">
-                {announcements.length > 1 ? "전체 보기" : "탭하여 열기"}
-              </span>
-            </div>
+            {announcements.length > 0 ? (
+              <>
+                {/* 핀 고정 or 최신 공지 1개 */}
+                <div className="flex items-start gap-3 px-4 py-3">
+                  <span className="material-icons text-primary/60 text-base flex-shrink-0 mt-0.5">campaign</span>
+                  <p className="text-sm text-white/80 flex-1 leading-relaxed line-clamp-2">
+                    {announcements[0].content}
+                  </p>
+                  {announcements.length > 1 && (
+                    <span className="text-[10px] font-black text-primary/60 flex-shrink-0 mt-0.5 uppercase tracking-widest">
+                      +{announcements.length - 1}
+                    </span>
+                  )}
+                </div>
+                <div className="px-4 pb-2.5 flex items-center justify-between">
+                  <span className="text-[10px] text-white/20">
+                    {new Date(announcements[0].createdAt).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}
+                    {announcements[0].pinned && (
+                      <span className="ml-2 text-primary/50 font-black">· 고정</span>
+                    )}
+                  </span>
+                  <span className="text-[10px] font-black text-white/25 uppercase tracking-widest">
+                    {announcements.length > 1 ? "전체 보기" : "탭하여 열기"}
+                  </span>
+                </div>
+              </>
+            ) : (
+              /* 관리자 전용 — 공지 없을 때 작성 유도 */
+              <div className="flex items-center gap-3 px-4 py-3">
+                <span className="material-icons text-primary/40 text-base flex-shrink-0">campaign</span>
+                <p className="text-xs text-white/30 flex-1">공지사항을 작성해보세요</p>
+                <span className="material-icons text-primary/40 text-sm">add</span>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* 공지 전체 보기 + 관리 모달 */}
+      {/* 공지 모달 — 목록 / 작성 모드 분리 */}
       {showAllAnnouncements && createPortal(
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-end justify-center z-[9999] animate-fade-in"
-          onClick={() => { setShowAllAnnouncements(false); setNewNotice(""); }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
+          onClick={() => { setShowAllAnnouncements(false); setNoticeMode("list"); setNewNotice(""); setEditingNoticeId(null); setOpenMenuId(null); }}
         >
           <div
-            className="w-full max-w-md rounded-t-[2.5rem] p-6 pb-10"
-            style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }}
+            className="w-full max-w-sm rounded-2xl p-6 overflow-y-auto"
+            style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)", maxHeight: "85vh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
-            <div className="flex items-center gap-2 mb-5">
-              <span className="material-icons text-primary text-lg">campaign</span>
-              <h3 className="text-lg font-black italic uppercase tracking-tighter text-white">공지사항</h3>
-            </div>
-
-            {/* 운영자 전용: 공지 작성 */}
-            {isAdmin && (
-              <div className="flex gap-2 mb-4">
-                <textarea
-                  value={newNotice}
-                  onChange={(e) => setNewNotice(e.target.value)}
-                  placeholder="공지 내용을 입력하세요"
-                  rows={2}
-                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none resize-none transition-all"
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(13,242,62,0.5)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                />
-                <button
-                  onClick={async () => {
-                    if (!newNotice.trim() || !squad?.id || !user?.id) return;
-                    setNoticeLoading(true);
-                    try { await addAnnouncement(squad.id, newNotice.trim(), user.id); setNewNotice(""); }
-                    finally { setNoticeLoading(false); }
-                  }}
-                  disabled={noticeLoading || !newNotice.trim()}
-                  className="px-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30 flex-shrink-0 self-stretch"
-                  style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
-                >
-                  {noticeLoading ? "..." : "등록"}
-                </button>
-              </div>
-            )}
-
-            {/* 공지 목록 */}
-            <div className="space-y-3 max-h-80 overflow-y-auto hide-scrollbar">
-              {announcements.length === 0 ? (
-                <p className="text-center text-white/20 text-xs py-6">등록된 공지가 없습니다</p>
-              ) : announcements.map((a) => (
-                <div
-                  key={a.id}
-                  className="p-4 rounded-2xl border"
-                  style={{
-                    background: a.pinned ? "rgba(13,242,62,0.05)" : "rgba(255,255,255,0.03)",
-                    borderColor: a.pinned ? "rgba(13,242,62,0.2)" : "rgba(255,255,255,0.06)",
-                  }}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      {a.pinned && (
-                        <div className="flex items-center gap-1 mb-1.5">
-                          <span className="material-icons text-primary/60 text-xs">push_pin</span>
-                          <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest">고정</span>
-                        </div>
-                      )}
-                      <p className="text-sm text-white/80 leading-relaxed">{a.content}</p>
-                      <p className="text-[10px] text-white/25 mt-2">
-                        {new Date(a.createdAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
-                      </p>
-                    </div>
-                    {/* 운영자 전용: 핀 + 삭제 */}
-                    {isAdmin && (
-                      <div className="flex gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={() => togglePin(a.id, !a.pinned)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                          style={a.pinned
-                            ? { backgroundColor: "rgba(13,242,62,0.15)", color: "#0DF23E" }
-                            : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.25)" }
-                          }
-                        >
-                          <span className="material-icons text-sm">push_pin</span>
-                        </button>
-                        <button
-                          onClick={() => deleteAnnouncement(a.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                          style={{ backgroundColor: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.5)" }}
-                        >
-                          <span className="material-icons text-sm">delete</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+            {noticeMode === "list" ? (
+              <>
+                {/* 헤더 */}
+                <div className="flex items-center gap-2 mb-5">
+                  <span className="material-icons text-primary text-lg">campaign</span>
+                  <h3 className="text-lg font-black italic uppercase tracking-tighter text-white">공지사항</h3>
                 </div>
-              ))}
-            </div>
 
-            <button
-              onClick={() => { setShowAllAnnouncements(false); setNewNotice(""); }}
-              className="w-full mt-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-white/40 border border-white/10"
-            >
-              닫기
-            </button>
+                {/* 공지 목록 */}
+                <div className="space-y-3 max-h-80 overflow-y-auto hide-scrollbar">
+                  {announcements.length === 0 ? (
+                    <p className="text-center text-white/20 text-xs py-10">등록된 공지가 없습니다</p>
+                  ) : announcements.map((a) => (
+                    <div
+                      key={a.id}
+                      className="p-4 rounded-2xl border"
+                      style={{
+                        background: a.pinned ? "rgba(13,242,62,0.05)" : "rgba(255,255,255,0.03)",
+                        borderColor: a.pinned ? "rgba(13,242,62,0.2)" : "rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          {a.pinned && (
+                            <div className="flex items-center gap-1 mb-1.5">
+                              <span className="material-icons text-primary/60 text-xs">push_pin</span>
+                              <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest">고정</span>
+                            </div>
+                          )}
+                          <p className="text-sm text-white/80 leading-relaxed">{a.content}</p>
+                          <p className="text-[10px] text-white/25 mt-2">
+                            {new Date(a.createdAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
+                          </p>
+                        </div>
+                        {/* 운영자 전용: 핀 + 삭제 */}
+                        {isAdmin && (
+                          <div className="flex gap-1 flex-shrink-0 -mr-1.5 -mt-1.5">
+                            <button
+                              onClick={() => togglePin(a.id, !a.pinned)}
+                              className="w-7 h-7 flex items-center justify-center transition-all active:scale-90"
+                              style={{ color: a.pinned ? "#0DF23E" : "rgba(255,255,255,0.2)" }}
+                            >
+                              <span className="material-icons" style={{ fontSize: "16px" }}>push_pin</span>
+                            </button>
+                            <div className="relative">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === a.id ? null : a.id); }}
+                                className="w-7 h-7 flex items-center justify-center transition-all active:scale-90 text-white/30 hover:text-white/60"
+                              >
+                                <span className="material-icons" style={{ fontSize: "16px" }}>more_vert</span>
+                              </button>
+                              {openMenuId === a.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }}
+                                  />
+                                  <div
+                                    className="absolute right-0 top-7 z-20 rounded-lg overflow-hidden whitespace-nowrap shadow-lg"
+                                    style={{ background: "rgba(28,34,28,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
+                                  >
+                                    <button
+                                      onClick={() => {
+                                        setEditingNoticeId(a.id);
+                                        setNewNotice(a.content);
+                                        setNoticeMode("write");
+                                        setOpenMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-white/80 hover:bg-white/5 transition-colors"
+                                    >
+                                      <span className="material-icons" style={{ fontSize: "12px" }}>edit</span>
+                                      수정
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        deleteAnnouncement(a.id);
+                                        setOpenMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 transition-colors border-t border-white/5"
+                                    >
+                                      <span className="material-icons" style={{ fontSize: "12px" }}>delete</span>
+                                      삭제
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 관리자 전용: 공지 작성 진입 버튼 */}
+                {isAdmin && (
+                  <button
+                    onClick={() => setNoticeMode("write")}
+                    className="w-full mt-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
+                  >
+                    <span className="material-icons text-base">add</span>
+                    공지 작성
+                  </button>
+                )}
+
+                {/* 닫기 */}
+                <button
+                  onClick={() => { setShowAllAnnouncements(false); setNoticeMode("list"); setNewNotice(""); setEditingNoticeId(null); setOpenMenuId(null); }}
+                  className="w-full mt-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-white/40 border border-white/10"
+                >
+                  닫기
+                </button>
+              </>
+            ) : (
+              <>
+                {/* 작성/수정 모드 헤더 */}
+                <div className="flex items-center gap-2 mb-5">
+                  <button
+                    onClick={() => { setNoticeMode("list"); setNewNotice(""); setEditingNoticeId(null); }}
+                    className="text-white/40 hover:text-white transition-colors"
+                  >
+                    <span className="material-icons text-lg">arrow_back</span>
+                  </button>
+                  <h3 className="text-lg font-black italic uppercase tracking-tighter text-white">
+                    {editingNoticeId ? "공지 수정" : "공지 작성"}
+                  </h3>
+                </div>
+
+                {/* 작성/수정 폼 */}
+                <div className="flex flex-col gap-3">
+                  <textarea
+                    value={newNotice}
+                    onChange={(e) => setNewNotice(e.target.value)}
+                    placeholder="공지 내용을 입력하세요"
+                    rows={5}
+                    autoFocus
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none resize-none focus:border-primary/50 transition-all"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!newNotice.trim() || !squad?.id || !user?.id) return;
+                      setNoticeLoading(true);
+                      try {
+                        if (editingNoticeId) {
+                          await updateAnnouncement(editingNoticeId, newNotice.trim());
+                        } else {
+                          await addAnnouncement(squad.id, newNotice.trim(), user.id);
+                        }
+                        setNewNotice("");
+                        setEditingNoticeId(null);
+                        setNoticeMode("list");
+                      } finally { setNoticeLoading(false); }
+                    }}
+                    disabled={noticeLoading || !newNotice.trim()}
+                    className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+                    style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
+                  >
+                    {noticeLoading ? "저장 중..." : editingNoticeId ? "수정 완료" : "등록"}
+                  </button>
+                  <button
+                    onClick={() => { setNoticeMode("list"); setNewNotice(""); setEditingNoticeId(null); }}
+                    className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-white/40 border border-white/10"
+                  >
+                    취소
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>,
         document.body
@@ -325,7 +415,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
           />
         ))}
         {past.length > 0 && (
-          <div>
+          <div className="mt-10">
             <button
               onClick={() => { setShowPast((v) => !v); setPastPage(1); }}
               className="flex items-center gap-2 text-white/30 text-xs font-black uppercase tracking-widest py-2"
@@ -645,8 +735,17 @@ function MatchDetailSheet({
   const [commentLoading, setCommentLoading] = useState(false);
   const [showDeleteMatchConfirm, setShowDeleteMatchConfirm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [matchMenuOpen, setMatchMenuOpen] = useState(false);
   const [mercenaryName, setMercenaryName] = useState("");
   const [locationCopied, setLocationCopied] = useState(false);
+  const [expanded, setExpanded] = useState({
+    notes: false,
+    mercenary: false,
+    divisions: false,
+  });
+  const toggleSection = (key: keyof typeof expanded) =>
+    setExpanded((p) => ({ ...p, [key]: !p[key] }));
+  const [attendeesSheetOpen, setAttendeesSheetOpen] = useState(false);
 
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [editingComment, setEditingComment] = useState<IMatchComment | null>(null);
@@ -782,133 +881,230 @@ function MatchDetailSheet({
             <div className="w-10 h-1 rounded-full bg-white/20" />
           </div>
 
-          {/* 헤더 */}
-          <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-white/5">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-base font-black text-white truncate">{match.title}</h2>
-              <p className="text-xs text-white/40 mt-0.5">{dateStr} · {timeStr}</p>
-            </div>
-            {(isAdmin || match.createdBy === userId) && (
-              <>
-                <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-xl bg-white/8 flex items-center justify-center text-white/40 hover:text-white transition-colors flex-shrink-0">
-                  <span className="material-icons text-sm">edit</span>
-                </button>
-                <button onClick={() => setShowDeleteMatchConfirm(true)} className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400/50 hover:text-red-400 transition-colors flex-shrink-0">
-                  <span className="material-icons text-sm">delete</span>
-                </button>
-              </>
-            )}
-            <button onClick={handleClose} className="w-8 h-8 rounded-xl bg-white/8 flex items-center justify-center flex-shrink-0">
-              <span className="material-icons text-sm text-white/50">close</span>
+          {/* 액션바 — 좌(닫기) / 우(케밥) 대칭 분리 */}
+          <div className="flex-shrink-0 flex items-center justify-between px-3 pt-1 pb-1">
+            <button
+              onClick={handleClose}
+              className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
+            >
+              <span className="material-icons text-lg">close</span>
             </button>
+
+            {(isAdmin || match.createdBy === userId) ? (
+              <div className="relative">
+                <button
+                  onClick={() => setMatchMenuOpen(v => !v)}
+                  className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
+                >
+                  <span className="material-icons text-lg">more_vert</span>
+                </button>
+                {matchMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setMatchMenuOpen(false)} />
+                    <div
+                      className="absolute right-0 top-10 z-20 rounded-lg overflow-hidden whitespace-nowrap shadow-lg"
+                      style={{ background: "rgba(28,34,28,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    >
+                      <button
+                        onClick={() => { setShowEditModal(true); setMatchMenuOpen(false); }}
+                        className="w-full flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors"
+                      >
+                        <span className="material-icons" style={{ fontSize: "14px" }}>edit</span>
+                        수정
+                      </button>
+                      <button
+                        onClick={() => { setShowDeleteMatchConfirm(true); setMatchMenuOpen(false); }}
+                        className="w-full flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 transition-colors border-t border-white/5"
+                      >
+                        <span className="material-icons" style={{ fontSize: "14px" }}>delete</span>
+                        삭제
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="w-9 h-9" />
+            )}
+          </div>
+
+          {/* 제목 영역 — 별도 섹션으로 격상 */}
+          <div className="flex-shrink-0 px-5 pb-5 border-b border-white/5">
+            <h2 className="text-2xl font-black text-white tracking-tight leading-tight">{match.title}</h2>
+            <p className="text-xs text-white/40 mt-1.5 font-bold">{dateStr} · {timeStr}</p>
           </div>
 
           {/* 스크롤 본문 */}
           <div className="flex-1 overflow-y-auto hide-scrollbar">
 
-            {/* 경기 정보 */}
-            {(match.location || match.notes) && (
-              <div className="px-5 py-5 space-y-3 border-b border-white/5">
-                {match.location && (
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2 text-sm text-white/70">
-                      <span className="material-icons text-base text-white/40 mt-0.5">location_on</span>
-                      <span className="flex-1 leading-relaxed break-all">{match.location}</span>
-                    </div>
-                    <div className="flex gap-1.5 pl-7 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(match.location!);
-                            setLocationCopied(true);
-                            setTimeout(() => setLocationCopied(false), 1500);
-                          } catch {/* ignore */}
-                        }}
-                        className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/70 transition-all active:scale-95"
-                      >
-                        <span className="material-icons" style={{ fontSize: 12 }}>
-                          {locationCopied ? "check" : "content_copy"}
-                        </span>
-                        {locationCopied ? "복사됨" : "주소 복사"}
-                      </button>
-                      <a
-                        href={`https://map.kakao.com/?q=${encodeURIComponent(match.location)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all active:scale-95"
-                        style={{ background: "rgba(250,204,21,0.10)", borderColor: "rgba(250,204,21,0.25)", color: "rgba(254,240,138,0.95)" }}
-                      >
-                        <span className="material-icons" style={{ fontSize: 12 }}>map</span>
-                        카카오맵
-                      </a>
-                      <a
-                        href={`https://map.naver.com/v5/search/${encodeURIComponent(match.location)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all active:scale-95"
-                        style={{ background: "rgba(34,197,94,0.10)", borderColor: "rgba(34,197,94,0.25)", color: "rgba(134,239,172,0.95)" }}
-                      >
-                        <span className="material-icons" style={{ fontSize: 12 }}>map</span>
-                        네이버지도
-                      </a>
-                    </div>
-                  </div>
-                )}
-                {match.notes && (
-                  <div className="flex items-start gap-2 text-sm text-white/40">
-                    <span className="material-icons text-base text-white/25 mt-0.5">notes</span>
-                    <span className="leading-relaxed">{match.notes}</span>
+            {/* 장소 — 항상 표시 */}
+            {match.location && (
+              <div className="px-5 py-5 border-b border-white/5">
+                <div className="flex items-start gap-2 text-sm text-white/70 mb-2">
+                  <span className="material-icons text-base text-white/40 mt-0.5">location_on</span>
+                  <span className="flex-1 leading-relaxed break-all">{match.location}</span>
+                </div>
+                <div className="flex gap-1.5 pl-7 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(match.location!);
+                        setLocationCopied(true);
+                        setTimeout(() => setLocationCopied(false), 1500);
+                      } catch {/* ignore */}
+                    }}
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/70 transition-all active:scale-95"
+                  >
+                    <span className="material-icons" style={{ fontSize: 12 }}>
+                      {locationCopied ? "check" : "content_copy"}
+                    </span>
+                    {locationCopied ? "복사됨" : "주소 복사"}
+                  </button>
+                  <a
+                    href={`https://map.kakao.com/?q=${encodeURIComponent(match.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all active:scale-95"
+                    style={{ background: "rgba(250,204,21,0.10)", borderColor: "rgba(250,204,21,0.25)", color: "rgba(254,240,138,0.95)" }}
+                  >
+                    <span className="material-icons" style={{ fontSize: 12 }}>map</span>
+                    카카오맵
+                  </a>
+                  <a
+                    href={`https://map.naver.com/v5/search/${encodeURIComponent(match.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all active:scale-95"
+                    style={{ background: "rgba(34,197,94,0.10)", borderColor: "rgba(34,197,94,0.25)", color: "rgba(134,239,172,0.95)" }}
+                  >
+                    <span className="material-icons" style={{ fontSize: 12 }}>map</span>
+                    네이버지도
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* 메모 — 접기/펼치기 */}
+            {match.notes && (
+              <div className="border-b border-white/5">
+                <button
+                  onClick={() => toggleSection("notes")}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                >
+                  <span className="flex items-center gap-3 text-sm font-bold text-white/80">
+                    <span className="material-icons text-base text-white/50">notes</span>
+                    메모
+                  </span>
+                  <span
+                    className="material-icons text-base text-white/30 transition-transform"
+                    style={{ transform: expanded.notes ? "rotate(90deg)" : "rotate(0deg)" }}
+                  >
+                    chevron_right
+                  </span>
+                </button>
+                {expanded.notes && (
+                  <div className="px-5 pb-5">
+                    <p className="text-sm text-white/60 leading-relaxed pl-7">{match.notes}</p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* 통계 3박스 (참석/불참/대기) + 보류는 있을 때만 */}
-            <div className="px-5 py-5 border-b border-white/5">
-              <div className={`grid gap-2 mb-3 ${pending.length > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
-                {[
-                  { count: attending.length, label: "참석", color: "text-primary",           bg: "rgba(13,242,62,0.08)" },
-                  { count: absent.length,    label: "불참", color: "text-white/50",           bg: "rgba(255,255,255,0.05)" },
-                  { count: waitlist.length,  label: "대기", color: "text-orange-400/70",      bg: "rgba(255,255,255,0.05)" },
-                  ...(pending.length > 0 ? [{ count: pending.length, label: "보류", color: "text-yellow-500/60", bg: "rgba(255,255,255,0.05)" }] : []),
-                ].map(({ count, label, color, bg }) => (
-                  <div key={label} className="rounded-xl p-3 text-center" style={{ background: bg }}>
-                    <p className={`text-2xl font-black ${color}`}>{count}</p>
-                    <p className="text-[10px] font-black text-white/30 mt-0.5">{label}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((attending.length / match.maxPlayers) * 100, 100)}%`, backgroundColor: isOverCapacity ? "#f97316" : "#0DF23E" }} />
+            {/* 참석 현황 카드 — 카카오톡 투표 스타일 */}
+            <div className="px-5 py-6 border-b border-white/5">
+              {/* 큰 숫자 + 정원 */}
+              <div className="flex items-baseline justify-between mb-4">
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-4xl font-black ${isOverCapacity ? "text-orange-400" : "text-primary"}`}>
+                    {attending.length}
+                  </span>
+                  <span className="text-sm font-bold text-white/40">/ {match.maxPlayers}명</span>
                 </div>
-                <span className={`text-xs font-black ${isOverCapacity ? "text-orange-400" : "text-white/30"}`}>
-                  {attending.length} / {match.maxPlayers}명
-                </span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">참석 현황</span>
               </div>
+
+              {/* 프로그레스바 */}
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-4">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.min((attending.length / match.maxPlayers) * 100, 100)}%`,
+                    backgroundColor: isOverCapacity ? "#f97316" : "#0DF23E",
+                  }}
+                />
+              </div>
+
+              {/* 아바타 스택 + 전체 보기 */}
+              {attending.length > 0 || absent.length > 0 || waitlist.length > 0 || pending.length > 0 ? (
+                <button
+                  onClick={() => setAttendeesSheetOpen(true)}
+                  className="w-full flex items-center gap-3 -mx-1 px-1 py-1 rounded-xl hover:bg-white/[0.03] transition-colors"
+                >
+                  <div className="flex -space-x-2">
+                    {attending.slice(0, 5).map((a) => (
+                      <div
+                        key={a.id}
+                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-[11px] font-black"
+                        style={{ background: "rgba(13,242,62,0.25)", color: "#0DF23E", borderColor: "#0a150d" }}
+                      >
+                        {getMemberName(a).slice(0, 1)}
+                      </div>
+                    ))}
+                    {attending.length > 5 && (
+                      <div
+                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-[10px] font-black bg-white/10 text-white/60"
+                        style={{ borderColor: "#0a150d" }}
+                      >
+                        +{attending.length - 5}
+                      </div>
+                    )}
+                    {attending.length === 0 && (
+                      <div
+                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-white/20"
+                        style={{ background: "rgba(255,255,255,0.03)", borderColor: "#0a150d" }}
+                      >
+                        <span className="material-icons text-sm">person</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-xs font-bold text-white/70">
+                      {attending.length > 0 ? "참석자 보기" : "아직 참석자가 없습니다"}
+                    </p>
+                    {(waitlist.length > 0 || absent.length > 0) && (
+                      <p className="text-[10px] text-white/40 mt-0.5">
+                        {waitlist.length > 0 && <span className="text-orange-400/70">대기 {waitlist.length}</span>}
+                        {waitlist.length > 0 && absent.length > 0 && <span className="mx-1">·</span>}
+                        {absent.length > 0 && <span>불참 {absent.length}</span>}
+                      </p>
+                    )}
+                  </div>
+                  <span className="material-icons text-white/30 text-base">chevron_right</span>
+                </button>
+              ) : null}
+
               {isOverCapacity && !isPast && (
-                <p className="mt-2 text-xs text-red-400/70 flex items-center gap-1">
+                <p className="mt-3 text-xs text-red-400/70 flex items-center gap-1">
                   <span className="material-icons text-sm">lock</span>정원 마감
                 </p>
               )}
             </div>
 
-            {/* 내 응답 */}
-            {isPast ? null : isOverCapacity && myStatus !== "attending" ? (
-              /* 정원 찼고 내가 참석 중이 아닐 때 — 신청 불가 */
+            {/* 참석 여부 */}
+            {isPast ? null : (
               <div className="px-5 py-5 border-b border-white/5">
-                <div className="flex items-center gap-2 py-2 px-3 rounded-xl bg-red-500/8 border border-red-500/20">
-                  <span className="material-icons text-sm text-red-400/60">lock</span>
-                  <p className="text-xs text-red-400/60 font-bold">정원이 마감되었습니다 ({match.maxPlayers}/{match.maxPlayers}명)</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">참석 여부</p>
+                  {isOverCapacity && myStatus !== "attending" && (
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-red-500/15 text-red-400/70 border border-red-500/20">정원 마감</span>
+                  )}
                 </div>
-              </div>
-            ) : (
-              /* 신청 가능하거나, 내가 이미 참석 중인 경우 (취소 허용) */
-              <div className="px-5 py-5 border-b border-white/5">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-3">내 응답</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {(["attending", "absent"] as const).map((status) => {
+                  {(isOverCapacity && myStatus !== "attending"
+                    ? (["waitlist", "absent"] as const)
+                    : (["attending", "absent"] as const)
+                  ).map((status) => {
                     const cfg = STATUS_CONFIG[status];
                     const isSelected = myStatus === status;
                     return (
@@ -919,7 +1115,9 @@ function MatchDetailSheet({
                         className="py-3.5 rounded-xl text-xs font-black tracking-widest transition-all active:scale-95 disabled:opacity-40 border"
                         style={{ backgroundColor: isSelected ? cfg.color : "transparent", color: isSelected ? cfg.textColor : "rgba(255,255,255,0.35)", borderColor: isSelected ? cfg.color : "rgba(255,255,255,0.08)" }}
                       >
-                        {rsvpLoading && isSelected ? <span className="material-icons text-sm animate-spin">refresh</span> : cfg.label}
+                        {rsvpLoading && isSelected
+                          ? <span className="material-icons text-sm animate-spin">refresh</span>
+                          : status === "waitlist" ? (isSelected ? "대기 중" : "대기 신청") : cfg.label}
                       </button>
                     );
                   })}
@@ -927,71 +1125,29 @@ function MatchDetailSheet({
               </div>
             )}
 
-            {/* 참석자 명단 — 컴팩트 2열 그리드 */}
-            {(attending.length > 0 || absent.length > 0 || waitlist.length > 0 || pending.length > 0) && (
-              <div className="px-5 py-5 border-b border-white/5 space-y-4">
-                {attending.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60 mb-2">참석 ({attending.length})</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {attending.map((a) => (
-                        <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
-                          style={{ background: "rgba(13,242,62,0.07)", borderColor: "rgba(13,242,62,0.25)" }}>
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
-                            style={{ background: "rgba(13,242,62,0.25)", color: "#0DF23E" }}>
-                            {getMemberName(a).slice(0, 1)}
-                          </div>
-                          <span className="text-xs font-bold text-white truncate">{getMemberName(a)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {waitlist.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-orange-400/60 mb-2">대기 ({waitlist.length})</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {waitlist.map((a) => (
-                        <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
-                          style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.2)" }}>
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
-                            style={{ background: "rgba(249,115,22,0.2)", color: "#fb923c" }}>
-                            {getMemberName(a).slice(0, 1)}
-                          </div>
-                          <span className="text-xs font-bold text-white/60 truncate">{getMemberName(a)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {absent.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/20 mb-2">불참 ({absent.length})</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {absent.map((a) => (
-                        <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border opacity-40"
-                          style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.06)" }}>
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black bg-white/10 text-white/40">
-                            {getMemberName(a).slice(0, 1)}
-                          </div>
-                          <span className="text-xs font-bold text-white/40 truncate">{getMemberName(a)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* 용병 추가 */}
-            <div className="px-5 py-5 border-b border-white/5">
-              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-3 flex items-center gap-2">
-                <span className="material-icons text-sm" style={{ color: "#0DF23E" }}>person_add</span>
-                용병 추가
-                {mercenaries.length > 0 && (
-                  <span style={{ color: "rgba(13,242,62,0.6)" }}>({mercenaries.length}명)</span>
-                )}
-              </p>
+            {/* 용병 추가 — 접기/펼치기 */}
+            <div className="border-b border-white/5">
+              <button
+                onClick={() => toggleSection("mercenary")}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+              >
+                <span className="flex items-center gap-3 text-sm font-bold text-white/80">
+                  <span className="material-icons text-base" style={{ color: "#0DF23E" }}>person_add</span>
+                  용병 추가
+                  {mercenaries.length > 0 && (
+                    <span className="text-xs font-bold text-primary/70">{mercenaries.length}</span>
+                  )}
+                </span>
+                <span
+                  className="material-icons text-base text-white/30 transition-transform"
+                  style={{ transform: expanded.mercenary ? "rotate(90deg)" : "rotate(0deg)" }}
+                >
+                  chevron_right
+                </span>
+              </button>
+              {expanded.mercenary && (
+                <div className="px-5 pb-5">
               <div className="flex gap-2 mb-3">
                 <input
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all"
@@ -1032,6 +1188,8 @@ function MatchDetailSheet({
                   ))}
                 </div>
               )}
+                </div>
+              )}
             </div>
 
             {/* 팀 나누기 버튼 */}
@@ -1049,13 +1207,27 @@ function MatchDetailSheet({
               </div>
             )}
 
-            {/* 팀 배정 결과 */}
+            {/* 팀 배정 결과 — 접기/펼치기 */}
             {matchDivisions.length > 0 && (
-              <div className="px-5 py-4 border-b border-white/5">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-3">
-                  팀 배정 결과
-                </p>
-                <div className="space-y-4">
+              <div className="border-b border-white/5">
+                <button
+                  onClick={() => toggleSection("divisions")}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                >
+                  <span className="flex items-center gap-3 text-sm font-bold text-white/80">
+                    <span className="material-icons text-base text-primary">groups</span>
+                    팀 배정 결과
+                    <span className="text-xs font-bold text-primary/70">{matchDivisions.length}</span>
+                  </span>
+                  <span
+                    className="material-icons text-base text-white/30 transition-transform"
+                    style={{ transform: expanded.divisions ? "rotate(90deg)" : "rotate(0deg)" }}
+                  >
+                    chevron_right
+                  </span>
+                </button>
+                {expanded.divisions && (
+                  <div className="px-5 pb-5 space-y-4">
                   {matchDivisions.map((div) => {
                     const TEAM_COLORS = [
                       { bg: "rgba(13,242,62,0.10)",  text: "#0DF23E" },
@@ -1094,50 +1266,49 @@ function MatchDetailSheet({
                       </div>
                     );
                   })}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
 
             {/* 댓글 섹션 */}
-            <div className="px-5 py-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1">
-                댓글{totalComments > 0 ? ` (${totalComments})` : ""}
-              </p>
-              <p className="text-[10px] text-white/15 mb-4">
-                {window.matchMedia("(pointer: coarse)").matches
-                  ? "← 스와이프: 답글 · 길게 누르기: 수정/삭제"
-                  : "← 스와이프: 답글 · 우클릭: 수정/삭제"}
-              </p>
-
-              {totalComments === 0 ? (
-                <p className="text-xs text-white/20 text-center py-6">첫 번째 댓글을 남겨보세요</p>
-              ) : (
-                <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="space-y-3">
-                      <CommentItem
-                        comment={comment}
-                        userId={userId}
-                        onReply={(pid, name) => { setReplyTo({ parentId: pid, mentionName: name }); setTimeout(() => inputRef.current?.focus(), 50); }}
-                        onAction={handleActionRequest}
-                      />
-                      {(comment.replies || []).map((reply) => (
+            <div>
+              <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+                <span className="material-icons text-base text-primary">forum</span>
+                <span className="text-sm font-bold text-white/80">댓글</span>
+                {totalComments > 0 && <span className="text-xs font-bold text-white/40">{totalComments}</span>}
+              </div>
+              <div className="px-5 pb-5">
+                {totalComments === 0 ? (
+                  <p className="text-xs text-white/20 text-center py-6">첫 번째 댓글을 남겨보세요</p>
+                ) : (
+                  <div className="space-y-4">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="space-y-3">
                         <CommentItem
-                          key={reply.id}
-                          comment={reply}
-                          parentId={comment.id}
-                          isReply
+                          comment={comment}
                           userId={userId}
                           onReply={(pid, name) => { setReplyTo({ parentId: pid, mentionName: name }); setTimeout(() => inputRef.current?.focus(), 50); }}
                           onAction={handleActionRequest}
                         />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="h-2" />
+                        {(comment.replies || []).map((reply) => (
+                          <CommentItem
+                            key={reply.id}
+                            comment={reply}
+                            parentId={comment.id}
+                            isReply
+                            userId={userId}
+                            onReply={(pid, name) => { setReplyTo({ parentId: pid, mentionName: name }); setTimeout(() => inputRef.current?.focus(), 50); }}
+                            onAction={handleActionRequest}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="h-2" />
+              </div>
             </div>
           </div>
 
@@ -1238,6 +1409,83 @@ function MatchDetailSheet({
         />
       )}
 
+      {/* 참석자 전체 명단 시트 */}
+      {attendeesSheetOpen && createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[100000] animate-fade-in"
+          onClick={() => setAttendeesSheetOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl overflow-hidden"
+            style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
+              <h3 className="text-base font-black text-white">참석 명단</h3>
+              <button onClick={() => setAttendeesSheetOpen(false)} className="w-9 h-9 flex items-center justify-center text-white/40 hover:text-white transition-colors active:scale-90">
+                <span className="material-icons text-lg">close</span>
+              </button>
+            </div>
+            <div className="overflow-y-auto hide-scrollbar p-5 space-y-5">
+              {attending.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60 mb-3">참석 ({attending.length})</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {attending.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
+                        style={{ background: "rgba(13,242,62,0.07)", borderColor: "rgba(13,242,62,0.25)" }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
+                          style={{ background: "rgba(13,242,62,0.25)", color: "#0DF23E" }}>
+                          {getMemberName(a).slice(0, 1)}
+                        </div>
+                        <span className="text-xs font-bold text-white truncate">{getMemberName(a)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {waitlist.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-orange-400/60 mb-3">대기 ({waitlist.length})</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {waitlist.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
+                        style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.2)" }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
+                          style={{ background: "rgba(249,115,22,0.2)", color: "#fb923c" }}>
+                          {getMemberName(a).slice(0, 1)}
+                        </div>
+                        <span className="text-xs font-bold text-white/60 truncate">{getMemberName(a)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {absent.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/20 mb-3">불참 ({absent.length})</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {absent.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border opacity-40"
+                        style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.06)" }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black bg-white/10 text-white/40">
+                          {getMemberName(a).slice(0, 1)}
+                        </div>
+                        <span className="text-xs font-bold text-white/40 truncate">{getMemberName(a)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {attending.length === 0 && waitlist.length === 0 && absent.length === 0 && (
+                <p className="text-center text-white/30 text-sm py-10">아직 응답이 없습니다</p>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* PC 우클릭 컨텍스트 메뉴 */}
       {contextMenu && createPortal(
         <div className="fixed inset-0 z-[99999]" onClick={() => setContextMenu(null)} onContextMenu={(e) => e.preventDefault()}>
@@ -1318,9 +1566,8 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-lg flex items-end justify-center z-[9999] animate-fade-in" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-[2.5rem] p-6 pb-10" style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }} onClick={(e) => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl p-6 overflow-y-auto" style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)", maxHeight: "90vh" }} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-black italic uppercase tracking-tighter text-white mb-1">경기 추가</h2>
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -1401,9 +1648,8 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-lg flex items-end justify-center z-[99999] animate-fade-in" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-[2.5rem] p-6 pb-10" style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }} onClick={(e) => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl p-6 overflow-y-auto" style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)", maxHeight: "90vh" }} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-black italic uppercase tracking-tighter text-white mb-1">경기 수정</h2>
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
         <form onSubmit={handleSubmit} className="space-y-5">
