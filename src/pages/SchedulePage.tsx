@@ -4,6 +4,7 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useMatchStore } from "@/stores/matchStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useDivisionStore } from "@/stores/divisionStore";
+import { useAnnouncementStore } from "@/stores/announcementStore";
 import { supabase } from "@/lib/supabase";
 import type { IMatch, IMatchAttendee, IMatchComment, ISquad, IMember, IDivision } from "@/types";
 
@@ -41,12 +42,14 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   } = useMatchStore();
 
   const { divisionHistory } = useDivisionStore();
+  const { announcements, loadAnnouncements } = useAnnouncementStore();
 
   const [userRole, setUserRole] = useState<string>("member");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [pastPage, setPastPage] = useState(1);
   const [selectedMatch, setSelectedMatch] = useState<IMatch | null>(null);
+  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
 
   const PAST_PAGE_SIZE = 5;
 
@@ -60,6 +63,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   useEffect(() => {
     if (!squad?.id) return;
     loadMatches(squad.id);
+    loadAnnouncements(squad.id);
   }, [squad?.id]);
 
   useEffect(() => {
@@ -149,6 +153,98 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
           )}
         </div>
       </header>
+
+      {/* 공지사항 배너 */}
+      {announcements.length > 0 && (
+        <div className="px-6 mb-2">
+          <div
+            className="rounded-2xl border border-primary/20 overflow-hidden"
+            style={{ background: "rgba(13,242,62,0.04)" }}
+          >
+            {/* 핀 고정 or 최신 공지 1개 */}
+            <div className="flex items-start gap-3 px-4 py-3">
+              <span className="material-icons text-primary/60 text-base flex-shrink-0 mt-0.5">campaign</span>
+              <p className="text-sm text-white/80 flex-1 leading-relaxed line-clamp-2">
+                {announcements[0].content}
+              </p>
+              {announcements.length > 1 && (
+                <button
+                  onClick={() => setShowAllAnnouncements(true)}
+                  className="text-[10px] font-black text-primary/60 flex-shrink-0 mt-0.5 uppercase tracking-widest"
+                >
+                  +{announcements.length - 1}
+                </button>
+              )}
+            </div>
+            <div className="px-4 pb-2.5 flex items-center justify-between">
+              <span className="text-[10px] text-white/20">
+                {new Date(announcements[0].createdAt).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}
+                {announcements[0].pinned && (
+                  <span className="ml-2 text-primary/50 font-black">· 고정</span>
+                )}
+              </span>
+              {announcements.length > 1 && (
+                <button
+                  onClick={() => setShowAllAnnouncements(true)}
+                  className="text-[10px] font-black text-white/25 uppercase tracking-widest hover:text-white/50 transition-colors"
+                >
+                  전체 보기
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 공지 전체 보기 모달 */}
+      {showAllAnnouncements && createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-end justify-center z-[9999] animate-fade-in"
+          onClick={() => setShowAllAnnouncements(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-[2.5rem] p-6 pb-10"
+            style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
+            <div className="flex items-center gap-2 mb-5">
+              <span className="material-icons text-primary text-lg">campaign</span>
+              <h3 className="text-lg font-black italic uppercase tracking-tighter text-white">공지사항</h3>
+            </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto hide-scrollbar">
+              {announcements.map((a) => (
+                <div
+                  key={a.id}
+                  className="p-4 rounded-2xl border"
+                  style={{
+                    background: a.pinned ? "rgba(13,242,62,0.05)" : "rgba(255,255,255,0.03)",
+                    borderColor: a.pinned ? "rgba(13,242,62,0.2)" : "rgba(255,255,255,0.06)",
+                  }}
+                >
+                  {a.pinned && (
+                    <div className="flex items-center gap-1 mb-2">
+                      <span className="material-icons text-primary/60 text-xs">push_pin</span>
+                      <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest">고정</span>
+                    </div>
+                  )}
+                  <p className="text-sm text-white/80 leading-relaxed">{a.content}</p>
+                  <p className="text-[10px] text-white/25 mt-2">
+                    {new Date(a.createdAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowAllAnnouncements(false)}
+              className="w-full mt-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-white/40 border border-white/10"
+            >
+              닫기
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
 
       <main className="flex-1 px-6 pb-8 space-y-3">
         {isLoading && matches.length === 0 && (
