@@ -49,7 +49,7 @@ const Layout = () => {
       {/* 상단 헤더 */}
       <header className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0" style={{ zIndex: 40 }}>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[#00ff41] text-xs font-black opacity-60">⚽</span>
+          <span className="text-primary text-xs font-black opacity-60">⚽</span>
           <span className="text-white/70 text-sm font-bold truncate max-w-[160px]">
             {squad?.name || "풋살 매니저"}
           </span>
@@ -57,9 +57,9 @@ const Layout = () => {
         {user && (
           <button
             onClick={() => setMenuOpen(true)}
-            className="w-8 h-8 rounded-full bg-[#00ff41]/20 border border-[#00ff41]/30 flex items-center justify-center flex-shrink-0 hover:bg-[#00ff41]/30 transition-colors"
+            className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0 hover:bg-primary/30 transition-colors"
           >
-            <span className="text-[#00ff41] text-xs font-bold">{avatarLetter}</span>
+            <span className="text-primary text-xs font-bold">{avatarLetter}</span>
           </button>
         )}
       </header>

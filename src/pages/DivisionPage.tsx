@@ -307,11 +307,11 @@ const DivisionPage = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">팀 배정</h1>
-            <div className="h-1 w-8 mt-3 rounded-full shadow-[0_0_10px_#0df23e]" style={{ backgroundColor: '#0DF23E' }}></div>
+            <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]" />
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Match #{divisionHistory.length + 1}</p>
-            <p className="text-[10px] font-black uppercase mt-1" style={{ color: '#0DF23E' }}>오늘 {currentTime}</p>
+            <p className="text-[10px] font-black text-primary uppercase mt-1">오늘 {currentTime}</p>
           </div>
         </div>
       </header>
@@ -321,17 +321,16 @@ const DivisionPage = () => {
         {/* ── 참석 현황 ── */}
         <div>
           <div className="flex justify-between items-center mb-4 px-6">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="material-icons text-sm" style={{ color: '#0DF23E' }}>groups</span>
+            <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+              <span className="material-icons text-sm text-primary">groups</span>
               참석 현황
-              <span className="text-xs ml-1" style={{ color: 'rgba(13,242,62,0.6)' }}>({attendingCount}명 선택됨)</span>
+              <span className="text-xs font-black text-primary/60 normal-case tracking-normal">({attendingCount}명)</span>
             </h2>
             <button
               onClick={() => isAllSelected ? clearAllParticipants() : selectAllParticipants()}
-              className={`text-xs font-bold px-4 py-1.5 rounded-full border active:scale-95 transition-all ${
-                isAllSelected ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'border-primary/20 bg-primary/10'
+              className={`text-xs font-black px-4 py-1.5 rounded-xl border active:scale-95 transition-all ${
+                isAllSelected ? 'text-red-400 bg-red-500/10 border-red-500/20' : 'text-primary bg-primary/10 border-primary/20'
               }`}
-              style={!isAllSelected ? { color: '#0DF23E' } : {}}
             >
               {isAllSelected ? '전체 해제' : '전체 선택'}
             </button>
@@ -419,15 +418,14 @@ const DivisionPage = () => {
           {/* ── 용병 추가 ── */}
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <span className="material-icons text-sm" style={{ color: '#0DF23E' }}>person_add</span>
+              <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+                <span className="material-icons text-sm text-primary">person_add</span>
                 용병 추가
-                <span className="text-xs ml-1" style={{ color: 'rgba(13,242,62,0.6)' }}>({attendingMercenaryCount}명 선택됨)</span>
+                <span className="text-xs font-black text-primary/60 normal-case tracking-normal">({attendingMercenaryCount}명)</span>
               </h2>
               <button
                 onClick={() => setShowFixedTeamModal(true)}
-                className="text-xs font-bold px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 active:scale-95 transition-all"
-                style={{ color: '#0DF23E' }}
+                className="text-xs font-black px-4 py-1.5 bg-primary/10 rounded-xl border border-primary/20 active:scale-95 transition-all text-primary"
               >
                 고정팀 설정
               </button>
@@ -440,14 +438,11 @@ const DivisionPage = () => {
                   onChange={(e) => setMercenaryName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddMercenary()}
                   placeholder="용병 이름 입력"
-                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
-                  style={{ color: 'white' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(13,242,62,0.5)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all"
                 />
                 <button
                   onClick={handleAddMercenary}
-                  className="px-4 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+                  className="px-4 py-3 rounded-xl font-black text-sm active:scale-95 transition-all"
                   style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
                 >
                   추가
@@ -481,7 +476,7 @@ const DivisionPage = () => {
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRemoveMercenary(merc.id); }}
-                          className="text-xs font-bold px-3 py-1 rounded-full border text-red-400 bg-red-500/10 border-red-500/20 active:scale-95 transition-all"
+                          className="text-xs font-black px-3 py-1.5 rounded-xl border border-red-500/20 text-red-400 bg-red-500/10 active:scale-95 transition-all"
                         >
                           삭제
                         </button>
@@ -496,8 +491,8 @@ const DivisionPage = () => {
           {/* ── 고정 팀 현황 ── */}
           {fixedTeams.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                <span className="material-icons text-sm" style={{ color: '#0DF23E' }}>lock</span>
+              <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 mb-4 text-white/80">
+                <span className="material-icons text-sm text-primary">lock</span>
                 고정팀 현황
               </h2>
               <div className="space-y-2">
@@ -524,7 +519,7 @@ const DivisionPage = () => {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); removeFixedTeam(team.id); }}
-                        className="text-xs font-bold px-3 py-1 rounded-full border text-red-400 bg-red-500/10 border-red-500/20 active:scale-95 transition-all"
+                        className="text-xs font-black px-3 py-1.5 rounded-xl border border-red-500/20 text-red-400 bg-red-500/10 active:scale-95 transition-all"
                       >
                         삭제
                       </button>
@@ -572,10 +567,10 @@ const DivisionPage = () => {
           팀 개수 선택 모달
       ══════════════════════════════════════ */}
       {showTeamCountModal && createPortal(
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9000 }} onClick={() => setShowTeamCountModal(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9000 }} onClick={() => setShowTeamCountModal(false)}>
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden animate-fade-in"
-            style={{ background: 'rgba(22,38,27,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(13,242,62,0.3)' }}
+            style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-10">
@@ -614,18 +609,7 @@ const DivisionPage = () => {
             </div>
             <button
               onClick={() => setShowTeamCountModal(false)}
-              className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-              }}
+              className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
             >
               뒤로가기
             </button>
@@ -644,7 +628,7 @@ const DivisionPage = () => {
           <div className="px-6 pt-10 pb-8 flex items-center justify-between flex-shrink-0">
             <div>
               <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">팀 배정 결과</h1>
-              <div className="h-1 w-8 mt-1.5 rounded-full" style={{ backgroundColor: '#0DF23E' }}></div>
+              <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]" />
             </div>
             <button
               onClick={() => setShowSavePeriodModal(true)}
@@ -751,7 +735,7 @@ const DivisionPage = () => {
           <div className="px-5 pt-1 pb-10 space-y-2.5 flex-shrink-0">
             <button
               onClick={() => handleDivideTeams(currentTeams.length)}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 text-sm"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
               style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
             >
               <span className="material-icons text-lg">autorenew</span>
@@ -759,18 +743,7 @@ const DivisionPage = () => {
             </button>
             <button
               onClick={() => setShowResultModal(false)}
-              className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-              }}
+              className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
             >
               뒤로가기
             </button>
@@ -784,10 +757,10 @@ const DivisionPage = () => {
           저장 모달
       ══════════════════════════════════════ */}
       {showSavePeriodModal && createPortal(
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9100 }} onClick={() => setShowSavePeriodModal(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9100 }} onClick={() => setShowSavePeriodModal(false)}>
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden animate-fade-in"
-            style={{ background: 'rgba(22,38,27,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(13,242,62,0.2)' }}
+            style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-10">
@@ -851,18 +824,7 @@ const DivisionPage = () => {
             </div>
             <button
               onClick={() => setShowSavePeriodModal(false)}
-              className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-              }}
+              className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
             >
               뒤로가기
             </button>
@@ -882,7 +844,7 @@ const DivisionPage = () => {
           <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 animate-fade-in" style={{ zIndex: 9200 }} onClick={() => setSelectedFixedTeam(null)}>
             <div
               className="w-full max-w-sm rounded-[2.5rem] p-8 animate-fade-in"
-              style={{ background: 'rgba(22,38,27,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(13,242,62,0.2)' }}
+              style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center mb-8">
@@ -905,18 +867,7 @@ const DivisionPage = () => {
               </div>
               <button
                 onClick={() => setSelectedFixedTeam(null)}
-                className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-                }}
+                className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
               >
                 뒤로가기
               </button>
