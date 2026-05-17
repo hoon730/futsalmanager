@@ -392,7 +392,7 @@ export default function SettingsPage() {
   return (
     <div className="animate-fade-in flex flex-col min-h-full relative">
       {/* 헤더 */}
-      <header className="px-6 pt-12 pb-10">
+      <header className="px-6 pt-12 pb-14">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
@@ -612,7 +612,7 @@ export default function SettingsPage() {
       </main>
 
       {/* 동호회 회원 (인증 유저) 섹션 */}
-      <div className="px-6 mb-6 mt-8">
+      <div className="px-6 mb-6 mt-14">
         <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
@@ -793,16 +793,14 @@ export default function SettingsPage() {
       {/* 선수 프로필 선택 모달 */}
       {showLinkPicker && createPortal(
         <div
-          className="fixed inset-0 bg-black/85 backdrop-blur-lg flex items-end justify-center animate-fade-in"
-          style={{ zIndex: 9999 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
           onClick={() => setShowLinkPicker(false)}
         >
           <div
-            className="w-full max-w-md rounded-t-[2.5rem] p-6 pb-10"
-            style={{ background: 'rgba(22,28,22,0.98)', border: '1px solid rgba(13,242,62,0.15)' }}
+            className="w-full max-w-sm rounded-2xl p-6 overflow-y-auto"
+            style={{ background: 'rgba(22,28,22,0.98)', border: '1px solid rgba(13,242,62,0.15)', maxHeight: '85vh' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
             <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 선택</h3>
             <p className="text-white/40 text-xs mb-5">명단에서 나의 이름을 선택하세요</p>
             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -849,8 +847,7 @@ export default function SettingsPage() {
       {/* 멤버 추가 모달 */}
       {addMemberModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/85 backdrop-blur-lg flex items-center justify-center px-6 animate-fade-in"
-          style={{ zIndex: 9999 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
           onClick={() => { setAddMemberModal(false); setNewMemberName(''); }}
         >
           <div

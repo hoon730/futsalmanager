@@ -107,14 +107,14 @@ export default function AttendancePage() {
   return (
     <div className="animate-fade-in">
       {/* 헤더 */}
-      <header className="px-6 pt-12 pb-10">
+      <header className="px-6 pt-12 pb-14">
         <div>
           <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">기록 및 순위</h1>
           <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]" />
         </div>
       </header>
 
-      <div className="px-6 space-y-12">
+      <div className="px-6 space-y-14">
 
         {/* 경기 참석률 원형 차트 */}
         <section className="flex flex-col items-center">
@@ -329,8 +329,7 @@ export default function AttendancePage() {
       {/* 이력 상세 모달 */}
       {selectedSession && createPortal(
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 animate-fade-in"
-          style={{ zIndex: 9999 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
           onClick={() => setSelectedSession(null)}
         >
           <div

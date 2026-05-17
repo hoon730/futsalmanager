@@ -303,7 +303,7 @@ const DivisionPage = () => {
   return (
     <div className="animate-fade-in">
       {/* 헤더 */}
-      <header className="px-6 pt-12 pb-10">
+      <header className="px-6 pt-12 pb-14">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">팀 배정</h1>
@@ -317,7 +317,7 @@ const DivisionPage = () => {
       </header>
 
 
-      <section className="space-y-8">
+      <section className="space-y-14">
         {/* ── 참석 현황 ── */}
         <div>
           <div className="flex justify-between items-center mb-5 px-6">
@@ -430,7 +430,7 @@ const DivisionPage = () => {
                 고정팀 설정
               </button>
             </div>
-            <div className="glass-card rounded-2xl p-5 space-y-5">
+            <div className="glass-card rounded-2xl p-4 space-y-4">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -567,7 +567,7 @@ const DivisionPage = () => {
           팀 개수 선택 모달
       ══════════════════════════════════════ */}
       {showTeamCountModal && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9000 }} onClick={() => setShowTeamCountModal(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={() => setShowTeamCountModal(false)}>
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden animate-fade-in"
             style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
@@ -757,7 +757,7 @@ const DivisionPage = () => {
           저장 모달
       ══════════════════════════════════════ */}
       {showSavePeriodModal && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9100 }} onClick={() => setShowSavePeriodModal(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={() => setShowSavePeriodModal(false)}>
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden animate-fade-in"
             style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
@@ -841,7 +841,7 @@ const DivisionPage = () => {
           members.find(m => m.id === id) || mercenaries.find(m => m.id === id)
         ).filter(Boolean);
         return createPortal(
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 animate-fade-in" style={{ zIndex: 9200 }} onClick={() => setSelectedFixedTeam(null)}>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={() => setSelectedFixedTeam(null)}>
             <div
               className="w-full max-w-sm rounded-[2.5rem] p-8 animate-fade-in"
               style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
