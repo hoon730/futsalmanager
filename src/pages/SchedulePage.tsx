@@ -239,11 +239,23 @@ interface MatchCardProps {
   onOpen: () => void;
 }
 
+function getDDay(matchDate: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const match = new Date(matchDate);
+  match.setHours(0, 0, 0, 0);
+  const diff = Math.floor((match.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return "D-Day";
+  return `D-${diff}`;
+}
+
 function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps) {
   const attending = attendees.filter((a) => a.status === "attending");
   const myStatus = attendees.find((a) => a.userId === userId)?.status ?? null;
   const date = new Date(match.matchDate);
   const statusCfg = myStatus ? STATUS_CONFIG[myStatus] : null;
+  const dday = !isPast ? getDDay(match.matchDate) : null;
+  const isDDay = dday === "D-Day";
 
   return (
     <button
@@ -257,9 +269,18 @@ function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps)
               {date.toLocaleDateString("ko-KR", { month: "short" })}
             </span>
             <span className="text-xl font-black text-white leading-tight">{date.getDate()}</span>
-            <span className={`text-[10px] font-black ${myStatus === "attending" && !isPast ? "text-primary/70" : "text-white/20"}`}>
-              {date.toLocaleDateString("ko-KR", { weekday: "short" })}
-            </span>
+            {dday ? (
+              <span
+                className={`text-[9px] font-black leading-tight ${isDDay ? "animate-pulse" : ""}`}
+                style={{ color: "#0DF23E", textShadow: isDDay ? "0 0 8px #0df23e" : "none" }}
+              >
+                {dday}
+              </span>
+            ) : (
+              <span className={`text-[10px] font-black ${myStatus === "attending" && !isPast ? "text-primary/70" : "text-white/20"}`}>
+                {date.toLocaleDateString("ko-KR", { weekday: "short" })}
+              </span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
