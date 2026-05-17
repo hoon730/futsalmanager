@@ -17,6 +17,7 @@ export default function AttendancePage() {
   const { divisionHistory, deleteDivision } = useDivisionStore();
   const { matches, attendees, loadMatches, loadAttendees } = useMatchStore();
 
+  const [statsPage, setStatsPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [selectedSession, setSelectedSession] = useState<HistoryDetail | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -65,6 +66,10 @@ export default function AttendancePage() {
 
     return { totalMatches, memberStats, overallRate };
   }, [matches, attendees, members]);
+
+  const STATS_PAGE_SIZE = 5;
+  const statsTotalPages = Math.ceil(matchStats.memberStats.length / STATS_PAGE_SIZE);
+  const pagedStats = matchStats.memberStats.slice((statsPage - 1) * STATS_PAGE_SIZE, statsPage * STATS_PAGE_SIZE);
 
   const HISTORY_PAGE_SIZE = 5;
   const reversedHistory = [...divisionHistory].reverse();
@@ -191,21 +196,42 @@ export default function AttendancePage() {
               <span className="material-icons text-primary">bar_chart</span>전체 현황
             </h2>
             <div className="space-y-2">
-              {matchStats.memberStats.map((s, i) => (
-                <div key={s.id} className="flex items-center gap-3 py-2">
-                  <span className="text-[10px] font-black text-white/20 w-4 text-right">{i + 1}</span>
-                  <span className="text-sm font-bold text-white flex-1 min-w-0 truncate">{s.name}</span>
-                  <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${s.rate}%`, backgroundColor: s.rate >= 80 ? "#0DF23E" : s.rate >= 50 ? "#f59e0b" : "#ef4444" }}
-                    />
+              {pagedStats.map((s, i) => {
+                const rank = (statsPage - 1) * STATS_PAGE_SIZE + i + 1;
+                return (
+                  <div key={s.id} className="flex items-center gap-3 py-2">
+                    <span className="text-[10px] font-black text-white/20 w-4 text-right">{rank}</span>
+                    <span className="text-sm font-bold text-white flex-1 min-w-0 truncate">{s.name}</span>
+                    <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${s.rate}%`, backgroundColor: s.rate >= 80 ? "#0DF23E" : s.rate >= 50 ? "#f59e0b" : "#ef4444" }}
+                      />
+                    </div>
+                    <span className="text-xs font-black text-white/40 w-10 text-right">{s.rate}%</span>
+                    <span className="text-[10px] text-white/20 w-8 text-right">{s.attended}/{s.total}</span>
                   </div>
-                  <span className="text-xs font-black text-white/40 w-10 text-right">{s.rate}%</span>
-                  <span className="text-[10px] text-white/20 w-8 text-right">{s.attended}/{s.total}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
+            {statsTotalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-4">
+                {Array.from({ length: statsTotalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setStatsPage(page)}
+                    className="w-8 h-8 rounded-full text-xs font-black transition-all"
+                    style={
+                      page === statsPage
+                        ? { backgroundColor: '#0DF23E', color: '#0a150d' }
+                        : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }
+                    }
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
