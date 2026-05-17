@@ -42,7 +42,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   } = useMatchStore();
 
   const { divisionHistory } = useDivisionStore();
-  const { announcements, loadAnnouncements } = useAnnouncementStore();
+  const { announcements, loadAnnouncements, addAnnouncement, deleteAnnouncement, togglePin } = useAnnouncementStore();
 
   const [userRole, setUserRole] = useState<string>("member");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -50,6 +50,8 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   const [pastPage, setPastPage] = useState(1);
   const [selectedMatch, setSelectedMatch] = useState<IMatch | null>(null);
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
+  const [newNotice, setNewNotice] = useState("");
+  const [noticeLoading, setNoticeLoading] = useState(false);
 
   const PAST_PAGE_SIZE = 5;
 
@@ -158,8 +160,9 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
       {announcements.length > 0 && (
         <div className="px-6 mb-2">
           <div
-            className="rounded-2xl border border-primary/20 overflow-hidden"
+            className="rounded-2xl border border-primary/20 overflow-hidden cursor-pointer active:opacity-80 transition-opacity"
             style={{ background: "rgba(13,242,62,0.04)" }}
+            onClick={() => setShowAllAnnouncements(true)}
           >
             {/* 핀 고정 or 최신 공지 1개 */}
             <div className="flex items-start gap-3 px-4 py-3">
@@ -168,12 +171,9 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                 {announcements[0].content}
               </p>
               {announcements.length > 1 && (
-                <button
-                  onClick={() => setShowAllAnnouncements(true)}
-                  className="text-[10px] font-black text-primary/60 flex-shrink-0 mt-0.5 uppercase tracking-widest"
-                >
+                <span className="text-[10px] font-black text-primary/60 flex-shrink-0 mt-0.5 uppercase tracking-widest">
                   +{announcements.length - 1}
-                </button>
+                </span>
               )}
             </div>
             <div className="px-4 pb-2.5 flex items-center justify-between">
@@ -183,24 +183,19 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                   <span className="ml-2 text-primary/50 font-black">· 고정</span>
                 )}
               </span>
-              {announcements.length > 1 && (
-                <button
-                  onClick={() => setShowAllAnnouncements(true)}
-                  className="text-[10px] font-black text-white/25 uppercase tracking-widest hover:text-white/50 transition-colors"
-                >
-                  전체 보기
-                </button>
-              )}
+              <span className="text-[10px] font-black text-white/25 uppercase tracking-widest">
+                {announcements.length > 1 ? "전체 보기" : "탭하여 열기"}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 공지 전체 보기 모달 */}
+      {/* 공지 전체 보기 + 관리 모달 */}
       {showAllAnnouncements && createPortal(
         <div
           className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-end justify-center z-[9999] animate-fade-in"
-          onClick={() => setShowAllAnnouncements(false)}
+          onClick={() => { setShowAllAnnouncements(false); setNewNotice(""); }}
         >
           <div
             className="w-full max-w-md rounded-t-[2.5rem] p-6 pb-10"
@@ -212,8 +207,40 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
               <span className="material-icons text-primary text-lg">campaign</span>
               <h3 className="text-lg font-black italic uppercase tracking-tighter text-white">공지사항</h3>
             </div>
-            <div className="space-y-3 max-h-96 overflow-y-auto hide-scrollbar">
-              {announcements.map((a) => (
+
+            {/* 운영자 전용: 공지 작성 */}
+            {isAdmin && (
+              <div className="flex gap-2 mb-4">
+                <textarea
+                  value={newNotice}
+                  onChange={(e) => setNewNotice(e.target.value)}
+                  placeholder="공지 내용을 입력하세요"
+                  rows={2}
+                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none resize-none transition-all"
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(13,242,62,0.5)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                />
+                <button
+                  onClick={async () => {
+                    if (!newNotice.trim() || !squad?.id || !user?.id) return;
+                    setNoticeLoading(true);
+                    try { await addAnnouncement(squad.id, newNotice.trim(), user.id); setNewNotice(""); }
+                    finally { setNoticeLoading(false); }
+                  }}
+                  disabled={noticeLoading || !newNotice.trim()}
+                  className="px-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30 flex-shrink-0 self-stretch"
+                  style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
+                >
+                  {noticeLoading ? "..." : "등록"}
+                </button>
+              </div>
+            )}
+
+            {/* 공지 목록 */}
+            <div className="space-y-3 max-h-80 overflow-y-auto hide-scrollbar">
+              {announcements.length === 0 ? (
+                <p className="text-center text-white/20 text-xs py-6">등록된 공지가 없습니다</p>
+              ) : announcements.map((a) => (
                 <div
                   key={a.id}
                   className="p-4 rounded-2xl border"
@@ -222,21 +249,48 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                     borderColor: a.pinned ? "rgba(13,242,62,0.2)" : "rgba(255,255,255,0.06)",
                   }}
                 >
-                  {a.pinned && (
-                    <div className="flex items-center gap-1 mb-2">
-                      <span className="material-icons text-primary/60 text-xs">push_pin</span>
-                      <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest">고정</span>
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      {a.pinned && (
+                        <div className="flex items-center gap-1 mb-1.5">
+                          <span className="material-icons text-primary/60 text-xs">push_pin</span>
+                          <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest">고정</span>
+                        </div>
+                      )}
+                      <p className="text-sm text-white/80 leading-relaxed">{a.content}</p>
+                      <p className="text-[10px] text-white/25 mt-2">
+                        {new Date(a.createdAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
+                      </p>
                     </div>
-                  )}
-                  <p className="text-sm text-white/80 leading-relaxed">{a.content}</p>
-                  <p className="text-[10px] text-white/25 mt-2">
-                    {new Date(a.createdAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
-                  </p>
+                    {/* 운영자 전용: 핀 + 삭제 */}
+                    {isAdmin && (
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => togglePin(a.id, !a.pinned)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                          style={a.pinned
+                            ? { backgroundColor: "rgba(13,242,62,0.15)", color: "#0DF23E" }
+                            : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.25)" }
+                          }
+                        >
+                          <span className="material-icons text-sm">push_pin</span>
+                        </button>
+                        <button
+                          onClick={() => deleteAnnouncement(a.id)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                          style={{ backgroundColor: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.5)" }}
+                        >
+                          <span className="material-icons text-sm">delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+
             <button
-              onClick={() => setShowAllAnnouncements(false)}
+              onClick={() => { setShowAllAnnouncements(false); setNewNotice(""); }}
               className="w-full mt-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-white/40 border border-white/10"
             >
               닫기

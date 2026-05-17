@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useAnnouncementStore } from '@/stores/announcementStore';
 import { supabase } from '@/lib/supabase';
 import { AlertModal, ConfirmModal } from '@/components/modals';
 import {
@@ -21,7 +20,7 @@ export default function SettingsPage() {
   const members = squad?.members || [];
   const { clearAllDivisions } = useDivisionStore();
   const { user, updateLinkedMember } = useAuthStore();
-  const { announcements, loadAnnouncements, addAnnouncement, deleteAnnouncement, togglePin } = useAnnouncementStore();
+
 
   // 내 선수 프로필 연결
   const [linkedMemberId, setLinkedMemberId] = useState<string | null>(
@@ -104,40 +103,6 @@ export default function SettingsPage() {
   }, [user, squad?.id]);
 
   const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
-
-  // 공지사항
-  const [newNotice, setNewNotice] = useState('');
-  const [noticeLoading, setNoticeLoading] = useState(false);
-
-  useEffect(() => {
-    if (!squad?.id) return;
-    loadAnnouncements(squad.id);
-  }, [squad?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleAddNotice = async () => {
-    if (!newNotice.trim() || !squad?.id || !user?.id) return;
-    setNoticeLoading(true);
-    try {
-      await addAnnouncement(squad.id, newNotice.trim(), user.id);
-      setNewNotice('');
-    } catch {
-      setAlertModal({ isOpen: true, message: '공지 등록에 실패했습니다.' });
-    } finally {
-      setNoticeLoading(false);
-    }
-  };
-
-  const handleDeleteNotice = (id: string) => {
-    setConfirmModal({
-      isOpen: true,
-      title: '공지 삭제',
-      message: '이 공지를 삭제하시겠습니까?',
-      onConfirm: async () => {
-        await deleteAnnouncement(id);
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-      },
-    });
-  };
 
   // 푸시 알림 설정
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
@@ -765,78 +730,6 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
-
-      {/* 공지사항 관리 (운영자 전용) */}
-      {isOwnerOrAdmin && (
-        <div className="px-6 mb-4">
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">공지사항 관리</p>
-
-            {/* 작성 영역 */}
-            <div className="flex gap-2 mb-3">
-              <textarea
-                value={newNotice}
-                onChange={(e) => setNewNotice(e.target.value)}
-                placeholder="공지 내용을 입력하세요"
-                rows={2}
-                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none resize-none transition-all"
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(13,242,62,0.5)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
-              />
-              <button
-                onClick={handleAddNotice}
-                disabled={noticeLoading || !newNotice.trim()}
-                className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30 flex-shrink-0 self-stretch"
-                style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
-              >
-                {noticeLoading ? '...' : '등록'}
-              </button>
-            </div>
-
-            {/* 공지 목록 */}
-            {announcements.length === 0 ? (
-              <p className="text-white/20 text-xs py-1">등록된 공지가 없습니다</p>
-            ) : (
-              <div className="space-y-2">
-                {announcements.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex items-start gap-2 p-3 rounded-xl border"
-                    style={{
-                      background: a.pinned ? 'rgba(13,242,62,0.05)' : 'rgba(255,255,255,0.03)',
-                      borderColor: a.pinned ? 'rgba(13,242,62,0.2)' : 'rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <p className="flex-1 text-xs text-white/70 leading-relaxed min-w-0">{a.content}</p>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {/* 핀 토글 */}
-                      <button
-                        onClick={() => togglePin(a.id, !a.pinned)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                        style={a.pinned
-                          ? { backgroundColor: 'rgba(13,242,62,0.15)', color: '#0DF23E' }
-                          : { backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.25)' }
-                        }
-                        title={a.pinned ? '고정 해제' : '상단 고정'}
-                      >
-                        <span className="material-icons text-sm">push_pin</span>
-                      </button>
-                      {/* 삭제 */}
-                      <button
-                        onClick={() => handleDeleteNotice(a.id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                        style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.5)' }}
-                      >
-                        <span className="material-icons text-sm">delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* 알림 설정 */}
       {isPushSupported() && (
