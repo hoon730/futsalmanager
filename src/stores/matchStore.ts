@@ -29,53 +29,87 @@ interface IMatchStore {
   updateComment: (commentId: string, matchId: string, content: string) => Promise<void>;
   deleteComment: (commentId: string, matchId: string) => Promise<void>;
   setMatches: (matches: IMatch[]) => void;
-  addMatchMercenary: (matchId: string, name: string) => void;
-  removeMatchMercenary: (matchId: string, mercenaryId: string) => void;
+  loadMercenaries: (matchId: string) => Promise<void>;
+  addMatchMercenary: (matchId: string, name: string) => Promise<void>;
+  removeMatchMercenary: (matchId: string, mercenaryId: string) => Promise<void>;
   updateMatch: (matchId: string, data: Partial<Omit<IMatch, "id" | "createdAt" | "squadId">>) => Promise<void>;
 }
-
-const loadMatchMercenaries = (): Record<string, IMember[]> => {
-  try {
-    const saved = localStorage.getItem("match_mercenaries");
-    return saved ? JSON.parse(saved) : {};
-  } catch { return {}; }
-};
-
-const saveMatchMercenaries = (data: Record<string, IMember[]>) => {
-  try { localStorage.setItem("match_mercenaries", JSON.stringify(data)); } catch { /* ignore */ }
-};
 
 export const useMatchStore = create<IMatchStore>()((set, get) => ({
   matches: [],
   attendees: {},
   comments: {},
-  matchMercenaries: loadMatchMercenaries(),
+  matchMercenaries: {},
   isLoading: false,
 
   setMatches: (matches) => set({ matches }),
 
-  addMatchMercenary: (matchId, name) => {
+  loadMercenaries: async (matchId) => {
+    const { data, error } = await supabase
+      .from("match_mercenaries")
+      .select("*")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: true });
+
+    if (error || !data) return;
+
+    const mercenaries: IMember[] = data.map((m) => ({
+      id: m.id,
+      name: m.name,
+      isMercenary: true,
+      active: true,
+      createdAt: m.created_at,
+    }));
+
+    set((state) => ({
+      matchMercenaries: { ...state.matchMercenaries, [matchId]: mercenaries },
+    }));
+  },
+
+  addMatchMercenary: async (matchId, name) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     const current = get().matchMercenaries[matchId] || [];
     if (current.some((m) => m.name === trimmed)) return;
+
+    const { data, error } = await supabase
+      .from("match_mercenaries")
+      .insert({ match_id: matchId, name: trimmed })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     const newMerc: IMember = {
-      id: `mercenary-${Date.now()}`,
-      name: trimmed,
+      id: data.id,
+      name: data.name,
       isMercenary: true,
       active: true,
-      createdAt: new Date().toISOString(),
+      createdAt: data.created_at,
     };
-    const updated = { ...get().matchMercenaries, [matchId]: [...current, newMerc] };
-    saveMatchMercenaries(updated);
-    set({ matchMercenaries: updated });
+
+    set((state) => ({
+      matchMercenaries: {
+        ...state.matchMercenaries,
+        [matchId]: [...(state.matchMercenaries[matchId] || []), newMerc],
+      },
+    }));
   },
 
-  removeMatchMercenary: (matchId, mercenaryId) => {
-    const current = get().matchMercenaries[matchId] || [];
-    const updated = { ...get().matchMercenaries, [matchId]: current.filter((m) => m.id !== mercenaryId) };
-    saveMatchMercenaries(updated);
-    set({ matchMercenaries: updated });
+  removeMatchMercenary: async (matchId, mercenaryId) => {
+    const { error } = await supabase
+      .from("match_mercenaries")
+      .delete()
+      .eq("id", mercenaryId);
+
+    if (error) throw error;
+
+    set((state) => ({
+      matchMercenaries: {
+        ...state.matchMercenaries,
+        [matchId]: (state.matchMercenaries[matchId] || []).filter((m) => m.id !== mercenaryId),
+      },
+    }));
   },
 
   updateMatch: async (matchId, data) => {

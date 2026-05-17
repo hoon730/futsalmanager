@@ -33,7 +33,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   const { user, profile } = useAuthStore();
   const {
     matches, attendees, comments, isLoading, matchMercenaries,
-    loadMatches, loadAttendees, loadComments,
+    loadMatches, loadAttendees, loadComments, loadMercenaries,
     createMatch, deleteMatch, setAttendance,
     addComment, updateComment, deleteComment,
     addMatchMercenary, removeMatchMercenary,
@@ -81,6 +81,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
     setSelectedMatch(match);
     loadAttendees(match.id);
     loadComments(match.id);
+    loadMercenaries(match.id);
   };
 
   const handleCloseDetail = () => setSelectedMatch(null);
@@ -470,8 +471,8 @@ interface MatchDetailSheetProps {
   onUpdateComment: (commentId: string, content: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
   onDeleteMatch: () => void;
-  onAddMercenary: (name: string) => void;
-  onRemoveMercenary: (id: string) => void;
+  onAddMercenary: (name: string) => Promise<void>;
+  onRemoveMercenary: (id: string) => Promise<void>;
   onGoToDivision: () => void;
   onEditMatch: (data: Partial<Omit<IMatch, "id" | "createdAt" | "squadId">>) => Promise<void>;
 }
