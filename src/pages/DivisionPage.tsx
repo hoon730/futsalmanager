@@ -309,8 +309,20 @@ const DivisionPage = () => {
             <div className="h-1 w-8 mt-3 rounded-full shadow-[0_0_10px_#0df23e]" style={{ backgroundColor: '#0DF23E' }}></div>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Match #{divisionHistory.length + 1}</p>
-            <p className="text-[10px] font-black uppercase mt-1" style={{ color: '#0DF23E' }}>오늘 {currentTime}</p>
+            {todayMatch ? (
+              <>
+                <p className="text-[10px] font-black text-white/80 tracking-tight leading-tight max-w-[140px] truncate">{todayMatch.title}</p>
+                <p className="text-[10px] font-black mt-0.5" style={{ color: '#0DF23E' }}>
+                  {new Date(todayMatch.matchDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                  {todayMatch.location ? ` · ${todayMatch.location}` : ''}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Match #{divisionHistory.length + 1}</p>
+                <p className="text-[10px] font-black uppercase mt-1" style={{ color: '#0DF23E' }}>오늘 {currentTime}</p>
+              </>
+            )}
           </div>
         </div>
       </header>
