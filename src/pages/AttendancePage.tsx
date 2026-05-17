@@ -71,7 +71,7 @@ export default function AttendancePage() {
   const getParsedDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return {
-      month: d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+      month: d.toLocaleDateString('ko-KR', { month: 'short' }),
       day: d.getDate(),
     };
   };

@@ -269,18 +269,6 @@ function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps)
               {date.toLocaleDateString("ko-KR", { month: "short" })}
             </span>
             <span className="text-xl font-black text-white leading-tight">{date.getDate()}</span>
-            {dday ? (
-              <span
-                className={`text-[9px] font-black leading-tight ${isDDay ? "animate-pulse" : ""}`}
-                style={{ color: "#0DF23E", textShadow: isDDay ? "0 0 8px #0df23e" : "none" }}
-              >
-                {dday}
-              </span>
-            ) : (
-              <span className={`text-[10px] font-black ${myStatus === "attending" && !isPast ? "text-primary/70" : "text-white/20"}`}>
-                {date.toLocaleDateString("ko-KR", { weekday: "short" })}
-              </span>
-            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
@@ -298,6 +286,18 @@ function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps)
               {match.location && (
                 <span className="flex items-center gap-1 text-white/30 text-xs">
                   <span className="material-icons text-[10px]">location_on</span>{match.location}
+                </span>
+              )}
+              {dday && (
+                <span
+                  className={`ml-auto text-[10px] font-black px-2 py-0.5 rounded-full ${isDDay ? "animate-pulse" : ""}`}
+                  style={{
+                    backgroundColor: isDDay ? "rgba(13,242,62,0.15)" : "rgba(255,255,255,0.06)",
+                    color: "#0DF23E",
+                    boxShadow: isDDay ? "0 0 8px rgba(13,242,62,0.3)" : "none",
+                  }}
+                >
+                  {dday}
                 </span>
               )}
             </div>
