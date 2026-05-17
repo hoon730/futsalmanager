@@ -17,7 +17,7 @@ export default function AttendancePage() {
   const { divisionHistory, deleteDivision } = useDivisionStore();
   const { matches, attendees, loadMatches, loadAttendees } = useMatchStore();
 
-  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
   const [selectedSession, setSelectedSession] = useState<HistoryDetail | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({
@@ -66,7 +66,10 @@ export default function AttendancePage() {
     return { totalMatches, memberStats, overallRate };
   }, [matches, attendees, members]);
 
-  const displayedHistory = showAllHistory ? [...divisionHistory].reverse() : [...divisionHistory].reverse().slice(0, 3);
+  const HISTORY_PAGE_SIZE = 5;
+  const reversedHistory = [...divisionHistory].reverse();
+  const historyTotalPages = Math.ceil(reversedHistory.length / HISTORY_PAGE_SIZE);
+  const pagedHistory = reversedHistory.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
 
   const getParsedDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -234,9 +237,10 @@ export default function AttendancePage() {
           ) : (
             <>
               <div className="space-y-3">
-                {displayedHistory.map((session, idx) => {
+                {pagedHistory.map((session, idx) => {
                   const { month, day } = getParsedDate(session.divisionDate);
                   const count = session.teams.flat().filter((p: { isMercenary?: boolean }) => !p.isMercenary).length;
+                  const globalIdx = (historyPage - 1) * HISTORY_PAGE_SIZE + idx;
                   return (
                     <div key={session.id} className="glass-card p-4 rounded-3xl flex items-center gap-4 border border-white/5">
                       <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center flex-shrink-0">
@@ -245,7 +249,7 @@ export default function AttendancePage() {
                       </div>
                       <div className="flex-grow min-w-0">
                         <h4 className="text-sm font-bold text-white truncate">
-                          {session.notes || `Match #${divisionHistory.length - idx}`}
+                          {session.notes || `Match #${divisionHistory.length - globalIdx}`}
                         </h4>
                         <div className="flex items-center gap-1 text-[11px] text-white/40 mt-1">
                           <span className="material-icons text-[14px]">person</span>
@@ -273,14 +277,23 @@ export default function AttendancePage() {
                   );
                 })}
               </div>
-              {divisionHistory.length > 3 && (
-                <button
-                  onClick={() => setShowAllHistory((v) => !v)}
-                  className="w-full mt-4 py-3 text-xs font-black uppercase tracking-widest text-white/30 hover:text-white/50 flex items-center justify-center gap-1 transition-colors"
-                >
-                  <span className="material-icons text-sm">{showAllHistory ? "expand_less" : "expand_more"}</span>
-                  {showAllHistory ? "접기" : `전체 ${divisionHistory.length}건 보기`}
-                </button>
+              {historyTotalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-5">
+                  {Array.from({ length: historyTotalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setHistoryPage(page)}
+                      className="w-8 h-8 rounded-full text-xs font-black transition-all"
+                      style={
+                        page === historyPage
+                          ? { backgroundColor: '#0DF23E', color: '#0a150d' }
+                          : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }
+                      }
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
               )}
             </>
           )}

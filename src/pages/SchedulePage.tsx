@@ -45,11 +45,16 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   const [userRole, setUserRole] = useState<string>("member");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPast, setShowPast] = useState(false);
+  const [pastPage, setPastPage] = useState(1);
   const [selectedMatch, setSelectedMatch] = useState<IMatch | null>(null);
+
+  const PAST_PAGE_SIZE = 5;
 
   const now = new Date();
   const upcoming = matches.filter((m) => new Date(m.matchDate) >= now);
   const past = matches.filter((m) => new Date(m.matchDate) < now).reverse();
+  const pastTotalPages = Math.ceil(past.length / PAST_PAGE_SIZE);
+  const pagedPast = past.slice((pastPage - 1) * PAST_PAGE_SIZE, pastPage * PAST_PAGE_SIZE);
   const isAdmin = userRole === "owner" || userRole === "admin";
 
   useEffect(() => {
@@ -170,7 +175,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
         {past.length > 0 && (
           <div>
             <button
-              onClick={() => setShowPast((v) => !v)}
+              onClick={() => { setShowPast((v) => !v); setPastPage(1); }}
               className="flex items-center gap-2 text-white/30 text-xs font-black uppercase tracking-widest py-2"
             >
               <span className="material-icons text-sm">{showPast ? "expand_less" : "expand_more"}</span>
@@ -178,7 +183,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
             </button>
             {showPast && (
               <div className="space-y-3 mt-2">
-                {past.map((match) => (
+                {pagedPast.map((match) => (
                   <MatchCard
                     key={match.id}
                     match={match}
@@ -188,6 +193,23 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                     onOpen={() => handleOpenDetail(match)}
                   />
                 ))}
+                {pastTotalPages > 1 && (
+                  <div className="flex items-center justify-center gap-1.5 pt-2">
+                    {Array.from({ length: pastTotalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPastPage(p)}
+                        className="w-7 h-7 rounded-lg text-[11px] font-black transition-all"
+                        style={p === pastPage
+                          ? { backgroundColor: "#0DF23E", color: "#0a150d" }
+                          : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }
+                        }
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
