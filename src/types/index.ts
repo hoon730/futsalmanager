@@ -56,7 +56,6 @@ export interface IMatch {
   notes?: string;
   createdBy?: string;
   createdAt: string;
-  result?: string;
 }
 
 export interface IMatchAttendee {

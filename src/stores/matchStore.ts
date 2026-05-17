@@ -32,7 +32,6 @@ interface IMatchStore {
   addMatchMercenary: (matchId: string, name: string) => void;
   removeMatchMercenary: (matchId: string, mercenaryId: string) => void;
   updateMatch: (matchId: string, data: Partial<Omit<IMatch, "id" | "createdAt" | "squadId">>) => Promise<void>;
-  updateMatchResult: (matchId: string, result: string) => Promise<void>;
 }
 
 const loadMatchMercenaries = (): Record<string, IMember[]> => {
@@ -98,17 +97,6 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
     }));
   },
 
-  updateMatchResult: async (matchId, result) => {
-    const { error } = await supabase
-      .from("matches")
-      .update({ result: result || null })
-      .eq("id", matchId);
-    if (error) throw error;
-    set((state) => ({
-      matches: state.matches.map((m) => (m.id === matchId ? { ...m, result } : m)),
-    }));
-  },
-
   loadMatches: async (squadId) => {
     set({ isLoading: true });
     try {
@@ -130,7 +118,6 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         notes: m.notes,
         createdBy: m.created_by,
         createdAt: m.created_at,
-        result: m.result ?? undefined,
       }));
 
       set({ matches });
