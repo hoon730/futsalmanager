@@ -307,7 +307,9 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
 
     if (error || !data) return;
 
-    const userIds = [...new Set(data.map((c) => c.user_id))];
+    // username 컬럼이 없는 기존 댓글을 위해 profiles로 fallback
+    const needsFallback = data.filter((c) => !c.username).map((c) => c.user_id);
+    const userIds = [...new Set(needsFallback)];
     let profileMap: Record<string, string> = {};
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
@@ -324,7 +326,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       id: c.id,
       matchId: c.match_id,
       userId: c.user_id,
-      username: profileMap[c.user_id] || "알 수 없음",
+      username: c.username || profileMap[c.user_id] || "알 수 없음",
       content: c.content,
       createdAt: c.created_at,
       updatedAt: c.updated_at ?? undefined,
@@ -351,6 +353,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       .insert({
         match_id: matchId,
         user_id: userId,
+        username,
         content,
         parent_id: parentId ?? null,
       })
