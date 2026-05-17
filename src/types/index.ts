@@ -56,6 +56,7 @@ export interface IMatch {
   notes?: string;
   createdBy?: string;
   createdAt: string;
+  rsvpDeadline?: string; // 참가 신청 마감 시각 (ISO 8601)
 }
 
 export interface IMatchAttendee {

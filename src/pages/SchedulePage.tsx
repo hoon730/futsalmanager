@@ -576,6 +576,8 @@ function MatchDetailSheet({
   const myStatus  = attendees.find((a) => a.userId === userId)?.status ?? null;
   const isOverCapacity = attending.length >= match.maxPlayers;
   const isPast = new Date(match.matchDate) < new Date();
+  const isDeadlinePassed = match.rsvpDeadline ? new Date(match.rsvpDeadline) < new Date() : false;
+  const rsvpLocked = isPast || isDeadlinePassed;
 
   const date = new Date(match.matchDate);
   const dateStr = date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
@@ -657,11 +659,21 @@ function MatchDetailSheet({
           <div className="flex-1 overflow-y-auto hide-scrollbar">
 
             {/* 경기 정보 */}
-            {(match.location || match.notes) && (
+            {(match.location || match.notes || match.rsvpDeadline) && (
               <div className="px-5 py-4 space-y-2 border-b border-white/5">
                 {match.location && (
                   <div className="flex items-center gap-2 text-sm text-white/50">
                     <span className="material-icons text-base text-white/25">location_on</span>{match.location}
+                  </div>
+                )}
+                {match.rsvpDeadline && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="material-icons text-base text-white/25">schedule</span>
+                    <span className={isDeadlinePassed ? "text-red-400/70" : "text-white/50"}>
+                      신청 마감{" "}
+                      {new Date(match.rsvpDeadline).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {isDeadlinePassed && " · 마감됨"}
+                    </span>
                   </div>
                 )}
                 {match.notes && (
@@ -704,7 +716,7 @@ function MatchDetailSheet({
             </div>
 
             {/* 내 응답 (참석/불참 2버튼) */}
-            {!isPast && (
+            {!rsvpLocked ? (
               <div className="px-5 py-4 border-b border-white/5">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-3">내 응답</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -728,7 +740,14 @@ function MatchDetailSheet({
                   })}
                 </div>
               </div>
-            )}
+            ) : isDeadlinePassed && !isPast ? (
+              <div className="px-5 py-4 border-b border-white/5">
+                <div className="flex items-center gap-2 py-2 px-3 rounded-xl bg-red-500/8 border border-red-500/20">
+                  <span className="material-icons text-sm text-red-400/60">lock</span>
+                  <p className="text-xs text-red-400/60 font-bold">참가 신청이 마감되었습니다</p>
+                </div>
+              </div>
+            ) : null}
 
             {/* 참석자 명단 — 컴팩트 2열 그리드 */}
             {(attending.length > 0 || absent.length > 0 || waitlist.length > 0 || pending.length > 0) && (
@@ -1091,6 +1110,7 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
   const [location, setLocation] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(20);
   const [notes, setNotes] = useState("");
+  const [rsvpDeadline, setRsvpDeadline] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -1106,6 +1126,7 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
         maxPlayers,
         notes: notes || undefined,
         createdBy: userId,
+        rsvpDeadline: rsvpDeadline ? new Date(rsvpDeadline).toISOString() : undefined,
       });
       onClose();
     } catch (err) {
@@ -1139,6 +1160,10 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
               <input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))} min={2} max={50} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold" />
             </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">신청 마감 (선택)</label>
+            <input type="datetime-local" value={rsvpDeadline} onChange={(e) => setRsvpDeadline(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">메모 (선택)</label>
@@ -1178,6 +1203,7 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
   const [location, setLocation] = useState(match.location ?? "");
   const [maxPlayers, setMaxPlayers] = useState(match.maxPlayers);
   const [notes, setNotes] = useState(match.notes ?? "");
+  const [rsvpDeadline, setRsvpDeadline] = useState(match.rsvpDeadline ? toLocalDatetime(match.rsvpDeadline) : "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -1192,6 +1218,7 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
         location: location || undefined,
         maxPlayers,
         notes: notes || undefined,
+        rsvpDeadline: rsvpDeadline ? new Date(rsvpDeadline).toISOString() : "",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "수정 실패");
@@ -1224,6 +1251,10 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
               <input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))} min={2} max={50} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold" />
             </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">신청 마감 (선택)</label>
+            <input type="datetime-local" value={rsvpDeadline} onChange={(e) => setRsvpDeadline(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">메모 (선택)</label>
