@@ -142,8 +142,8 @@ export default function AttendancePage() {
 
         {/* TOP 3 출석률 */}
         <section>
-          <h2 className="text-lg font-black mb-6 flex items-center gap-2 italic uppercase">
-            <span className="material-icons text-primary">emoji_events</span>TOP 출석률
+          <h2 className="text-base font-black uppercase tracking-widest mb-6 flex items-center gap-2 text-white/80">
+            <span className="material-icons text-sm text-primary">emoji_events</span>TOP 출석률
           </h2>
           {top3.length === 0 || matchStats.totalMatches === 0 ? (
             <div className="py-12 text-center">
@@ -192,8 +192,8 @@ export default function AttendancePage() {
         {/* 전체 멤버 출석률 */}
         {matchStats.memberStats.length > 0 && matchStats.totalMatches > 0 && (
           <section>
-            <h2 className="text-lg font-black mb-4 flex items-center gap-2 italic uppercase">
-              <span className="material-icons text-primary">bar_chart</span>전체 현황
+            <h2 className="text-base font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-white/80">
+              <span className="material-icons text-sm text-primary">bar_chart</span>전체 현황
             </h2>
             <div className="space-y-2">
               {pagedStats.map((s, i) => {
@@ -238,8 +238,8 @@ export default function AttendancePage() {
         {/* 팀 배정 이력 */}
         <section className="pb-8">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-black italic uppercase flex items-center gap-2">
-              <span className="material-icons text-primary">history</span>팀 배정 이력
+            <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+              <span className="material-icons text-sm text-primary">history</span>팀 배정 이력
             </h2>
             {divisionHistory.length > 0 && (
               <button
@@ -268,7 +268,7 @@ export default function AttendancePage() {
                   const count = session.teams.flat().filter((p: { isMercenary?: boolean }) => !p.isMercenary).length;
                   const globalIdx = (historyPage - 1) * HISTORY_PAGE_SIZE + idx;
                   return (
-                    <div key={session.id} className="glass-card p-4 rounded-3xl flex items-center gap-4 border border-white/5">
+                    <div key={session.id} className="glass-card p-4 rounded-2xl flex items-center gap-4 border border-white/5">
                       <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center flex-shrink-0">
                         <span className="text-[10px] font-black text-white/40">{month}</span>
                         <span className="text-xl font-black text-primary">{day}</span>
@@ -285,15 +285,15 @@ export default function AttendancePage() {
                       <div className="flex flex-col gap-2 flex-shrink-0">
                         <button
                           onClick={() => showHistoryDetail(session)}
-                          className="px-4 py-2 rounded-full bg-primary text-background-dark text-[10px] font-black"
+                          className="px-4 py-2 rounded-xl text-[10px] font-black transition-all active:scale-95"
+                          style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
                         >
                           상세보기
                         </button>
                         {isEditMode && (
                           <button
                             onClick={() => confirmDeleteHistory(session.id)}
-                            className="px-4 py-2 rounded-full text-[10px] font-black transition-all"
-                            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}
+                            className="px-4 py-2 rounded-xl text-[10px] font-black transition-all active:scale-95 bg-red-500/10 border border-red-500/20 text-red-400"
                           >
                             삭제
                           </button>
@@ -329,13 +329,13 @@ export default function AttendancePage() {
       {/* 이력 상세 모달 */}
       {selectedSession && createPortal(
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center px-6 animate-fade-in"
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 animate-fade-in"
           style={{ zIndex: 9999 }}
           onClick={() => setSelectedSession(null)}
         >
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative flex flex-col overflow-hidden"
-            style={{ background: 'rgba(22,38,27,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(13,242,62,0.3)', boxShadow: '0 0 60px rgba(13,242,62,0.15)', maxHeight: '85vh' }}
+            style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)', maxHeight: '85vh' }}
             onClick={(e) => e.stopPropagation()}
           >
             <header className="mb-6 flex-shrink-0">
@@ -372,8 +372,7 @@ export default function AttendancePage() {
             <footer className="mt-6 flex-shrink-0">
               <button
                 onClick={() => setSelectedSession(null)}
-                className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
+                className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
               >
                 닫기
               </button>

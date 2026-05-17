@@ -532,7 +532,7 @@ export default function SettingsPage() {
                         {isEditMode && isOwnerOrAdmin ? (
                           <button
                             onClick={() => handleRemoveMember(member.id, member.name)}
-                            className="w-9 h-9 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20 flex-shrink-0"
+                            className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20 flex-shrink-0 transition-all active:scale-95"
                           >
                             <span className="material-icons text-lg">delete</span>
                           </button>
@@ -856,10 +856,9 @@ export default function SettingsPage() {
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden"
             style={{
-              background: 'rgba(22,38,27,0.95)',
+              background: 'rgba(22,28,22,0.98)',
               backdropFilter: 'blur(20px)',
-              border: '2px solid rgba(13,242,62,0.3)',
-              boxShadow: '0 0 60px rgba(13,242,62,0.15)',
+              border: '1px solid rgba(13,242,62,0.15)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -871,36 +870,20 @@ export default function SettingsPage() {
               value={newMemberName}
               onChange={(e) => setNewMemberName(e.target.value)}
               autoFocus
-              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none mb-6 text-white"
-              onFocus={e => e.currentTarget.style.borderColor = 'rgba(13,242,62,0.5)'}
-              onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all mb-6"
             />
             <div className="space-y-3">
               <button
                 onClick={handleAddMemberConfirm}
                 disabled={!newMemberName.trim()}
-                className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95"
-                style={newMemberName.trim()
-                  ? { backgroundColor: '#0DF23E', color: '#0a150d' }
-                  : { backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.2)', cursor: 'not-allowed' }
-                }
+                className="w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40"
+                style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
               >
                 추가
               </button>
               <button
                 onClick={() => { setAddMemberModal(false); setNewMemberName(''); }}
-                className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-                }}
+                className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
               >
                 뒤로가기
               </button>

@@ -7,6 +7,7 @@ import { useDivisionStore } from "@/stores/divisionStore";
 import { useAnnouncementStore } from "@/stores/announcementStore";
 import { supabase } from "@/lib/supabase";
 import type { IMatch, IMatchAttendee, IMatchComment, ISquad, IMember, IDivision } from "@/types";
+import PlaceSearchInput from "@/components/PlaceSearchInput";
 
 // ─── 공통 설정 ────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
 
   return (
     <div className="animate-fade-in flex flex-col min-h-full">
-      <header className="px-6 pt-12 pb-8">
+      <header className="px-6 pt-12 pb-10">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
@@ -425,6 +426,7 @@ function getDDay(matchDate: string): string {
 function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps) {
   const attending = attendees.filter((a) => a.status === "attending");
   const myStatus = attendees.find((a) => a.userId === userId)?.status ?? null;
+  const isFull = !isPast && attending.length >= match.maxPlayers;
   const date = new Date(match.matchDate);
   const statusCfg = myStatus ? STATUS_CONFIG[myStatus] : null;
   const dday = !isPast ? getDDay(match.matchDate) : null;
@@ -446,7 +448,9 @@ function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps)
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <p className="text-white font-black text-base tracking-wide truncate">{match.title}</p>
-              {statusCfg ? (
+              {isFull ? (
+                <span className="flex-shrink-0 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-400/80">마감</span>
+              ) : statusCfg ? (
                 <span className="flex-shrink-0 text-[10px] font-black px-2.5 py-0.5 rounded-full" style={{ backgroundColor: statusCfg.dimBg, color: statusCfg.color }}>
                   {statusCfg.label}
                 </span>
@@ -642,6 +646,7 @@ function MatchDetailSheet({
   const [showDeleteMatchConfirm, setShowDeleteMatchConfirm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [mercenaryName, setMercenaryName] = useState("");
+  const [locationCopied, setLocationCopied] = useState(false);
 
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [editingComment, setEditingComment] = useState<IMatchComment | null>(null);
@@ -724,10 +729,9 @@ function MatchDetailSheet({
   const pending   = attendees.filter((a) => a.status === "pending");
   const waitlist  = attendees.filter((a) => a.status === "waitlist");
   const myStatus  = attendees.find((a) => a.userId === userId)?.status ?? null;
-  const isOverCapacity = attending.length >= match.maxPlayers;
   const isPast = new Date(match.matchDate) < new Date();
-  const isDeadlinePassed = match.rsvpDeadline ? new Date(match.rsvpDeadline) < new Date() : false;
-  const rsvpLocked = isPast || isDeadlinePassed;
+  const isOverCapacity = attending.length >= match.maxPlayers;
+  // 신청 마감: 경기 시간 지남 OR 정원이 다 참
 
   const date = new Date(match.matchDate);
   const dateStr = date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
@@ -743,14 +747,8 @@ function MatchDetailSheet({
 
   const handleRSVP = async (status: "attending" | "absent") => {
     if (myStatus === status) return;
-    // 대기 중인 상태에서 참석 버튼 재클릭 → 이미 대기열에 있으므로 무시
-    if (myStatus === "waitlist" && status === "attending") return;
-    const finalStatus: "attending" | "absent" | "waitlist" =
-      status === "attending" && isOverCapacity && myStatus !== "attending"
-        ? "waitlist"
-        : status;
     setRsvpLoading(true);
-    try { await onRSVP(finalStatus); } finally { setRsvpLoading(false); }
+    try { await onRSVP(status); } finally { setRsvpLoading(false); }
   };
 
   const totalComments = comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0);
@@ -809,21 +807,52 @@ function MatchDetailSheet({
           <div className="flex-1 overflow-y-auto hide-scrollbar">
 
             {/* 경기 정보 */}
-            {(match.location || match.notes || match.rsvpDeadline) && (
-              <div className="px-5 py-4 space-y-2 border-b border-white/5">
+            {(match.location || match.notes) && (
+              <div className="px-5 py-4 space-y-3 border-b border-white/5">
                 {match.location && (
-                  <div className="flex items-center gap-2 text-sm text-white/50">
-                    <span className="material-icons text-base text-white/25">location_on</span>{match.location}
-                  </div>
-                )}
-                {match.rsvpDeadline && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="material-icons text-base text-white/25">schedule</span>
-                    <span className={isDeadlinePassed ? "text-red-400/70" : "text-white/50"}>
-                      신청 마감{" "}
-                      {new Date(match.rsvpDeadline).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      {isDeadlinePassed && " · 마감됨"}
-                    </span>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2 text-sm text-white/70">
+                      <span className="material-icons text-base text-white/40 mt-0.5">location_on</span>
+                      <span className="flex-1 leading-relaxed break-all">{match.location}</span>
+                    </div>
+                    <div className="flex gap-1.5 pl-7 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(match.location!);
+                            setLocationCopied(true);
+                            setTimeout(() => setLocationCopied(false), 1500);
+                          } catch {/* ignore */}
+                        }}
+                        className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/70 transition-all active:scale-95"
+                      >
+                        <span className="material-icons" style={{ fontSize: 12 }}>
+                          {locationCopied ? "check" : "content_copy"}
+                        </span>
+                        {locationCopied ? "복사됨" : "주소 복사"}
+                      </button>
+                      <a
+                        href={`https://map.kakao.com/?q=${encodeURIComponent(match.location)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all active:scale-95"
+                        style={{ background: "rgba(250,204,21,0.10)", borderColor: "rgba(250,204,21,0.25)", color: "rgba(254,240,138,0.95)" }}
+                      >
+                        <span className="material-icons" style={{ fontSize: 12 }}>map</span>
+                        카카오맵
+                      </a>
+                      <a
+                        href={`https://map.naver.com/v5/search/${encodeURIComponent(match.location)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all active:scale-95"
+                        style={{ background: "rgba(34,197,94,0.10)", borderColor: "rgba(34,197,94,0.25)", color: "rgba(134,239,172,0.95)" }}
+                      >
+                        <span className="material-icons" style={{ fontSize: 12 }}>map</span>
+                        네이버지도
+                      </a>
+                    </div>
                   </div>
                 )}
                 {match.notes && (
@@ -858,24 +887,30 @@ function MatchDetailSheet({
                   {attending.length} / {match.maxPlayers}명
                 </span>
               </div>
-              {isOverCapacity && (
-                <p className="mt-2 text-xs text-orange-400/80 flex items-center gap-1">
-                  <span className="material-icons text-sm">warning</span>정원 초과 · 참석 신청 시 대기자로 등록됩니다
+              {isOverCapacity && !isPast && (
+                <p className="mt-2 text-xs text-red-400/70 flex items-center gap-1">
+                  <span className="material-icons text-sm">lock</span>정원 마감
                 </p>
               )}
             </div>
 
-            {/* 내 응답 (참석/불참 2버튼) */}
-            {!rsvpLocked ? (
+            {/* 내 응답 */}
+            {isPast ? null : isOverCapacity && myStatus !== "attending" ? (
+              /* 정원 찼고 내가 참석 중이 아닐 때 — 신청 불가 */
+              <div className="px-5 py-4 border-b border-white/5">
+                <div className="flex items-center gap-2 py-2 px-3 rounded-xl bg-red-500/8 border border-red-500/20">
+                  <span className="material-icons text-sm text-red-400/60">lock</span>
+                  <p className="text-xs text-red-400/60 font-bold">정원이 마감되었습니다 ({match.maxPlayers}/{match.maxPlayers}명)</p>
+                </div>
+              </div>
+            ) : (
+              /* 신청 가능하거나, 내가 이미 참석 중인 경우 (취소 허용) */
               <div className="px-5 py-4 border-b border-white/5">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-3">내 응답</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(["attending", "absent"] as const).map((status) => {
                     const cfg = STATUS_CONFIG[status];
-                    const isSelected = myStatus === status || (myStatus === "waitlist" && status === "attending");
-                    const label = status === "attending" && isOverCapacity && myStatus !== "attending" && myStatus !== "waitlist"
-                      ? "대기 신청"
-                      : cfg.label;
+                    const isSelected = myStatus === status;
                     return (
                       <button
                         key={status}
@@ -884,20 +919,13 @@ function MatchDetailSheet({
                         className="py-3 rounded-xl text-xs font-black tracking-wider transition-all active:scale-95 disabled:opacity-40 border"
                         style={{ backgroundColor: isSelected ? cfg.color : "transparent", color: isSelected ? cfg.textColor : "rgba(255,255,255,0.35)", borderColor: isSelected ? cfg.color : "rgba(255,255,255,0.08)" }}
                       >
-                        {rsvpLoading && isSelected ? <span className="material-icons text-sm animate-spin">refresh</span> : label}
+                        {rsvpLoading && isSelected ? <span className="material-icons text-sm animate-spin">refresh</span> : cfg.label}
                       </button>
                     );
                   })}
                 </div>
               </div>
-            ) : isDeadlinePassed && !isPast ? (
-              <div className="px-5 py-4 border-b border-white/5">
-                <div className="flex items-center gap-2 py-2 px-3 rounded-xl bg-red-500/8 border border-red-500/20">
-                  <span className="material-icons text-sm text-red-400/60">lock</span>
-                  <p className="text-xs text-red-400/60 font-bold">참가 신청이 마감되었습니다</p>
-                </div>
-              </div>
-            ) : null}
+            )}
 
             {/* 참석자 명단 — 컴팩트 2열 그리드 */}
             {(attending.length > 0 || absent.length > 0 || waitlist.length > 0 || pending.length > 0) && (
@@ -1258,25 +1286,31 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
   const [title, setTitle] = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [location, setLocation] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(20);
+  const [maxPlayers, setMaxPlayers] = useState(15);
   const [notes, setNotes] = useState("");
-  const [rsvpDeadline, setRsvpDeadline] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const autoTitle = matchDate
+    ? new Date(matchDate).toLocaleString("ko-KR", {
+        month: "numeric", day: "numeric", weekday: "short",
+        hour: "2-digit", minute: "2-digit",
+      }) + " 경기"
+    : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    const finalTitle = title.trim() || autoTitle;
     try {
       await onCreate(squadId, {
-        title,
+        title: finalTitle,
         matchDate: new Date(matchDate).toISOString(),
         location: location || undefined,
         maxPlayers,
         notes: notes || undefined,
         createdBy: userId,
-        rsvpDeadline: rsvpDeadline ? new Date(rsvpDeadline).toISOString() : undefined,
       });
       onClose();
     } catch (err) {
@@ -1294,26 +1328,20 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">경기 제목</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 5월 3주차 경기" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all" />
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">경기 제목 <span className="normal-case font-normal text-white/25">(선택)</span></label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={autoTitle || "예: 5월 3주차 경기"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all" />
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간</label>
             <input type="datetime-local" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
           </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">장소 (선택)</label>
-              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="풋살장 이름" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all" />
-            </div>
-            <div className="w-24">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
-              <input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))} min={2} max={50} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold" />
-            </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">장소 (선택)</label>
+            <PlaceSearchInput value={location} onChange={setLocation} />
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">신청 마감 (선택)</label>
-            <input type="datetime-local" value={rsvpDeadline} onChange={(e) => setRsvpDeadline(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
+            <input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))} min={2} max={50} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold" />
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">메모 (선택)</label>
@@ -1322,7 +1350,7 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
           {error && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-xs font-medium">{error}</div>}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95">취소</button>
-            <button type="submit" disabled={isLoading || !title || !matchDate} className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40" style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}>
+            <button type="submit" disabled={isLoading || !matchDate} className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40" style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}>
               {isLoading ? "생성 중..." : "경기 추가"}
             </button>
           </div>
@@ -1353,7 +1381,6 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
   const [location, setLocation] = useState(match.location ?? "");
   const [maxPlayers, setMaxPlayers] = useState(match.maxPlayers);
   const [notes, setNotes] = useState(match.notes ?? "");
-  const [rsvpDeadline, setRsvpDeadline] = useState(match.rsvpDeadline ? toLocalDatetime(match.rsvpDeadline) : "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -1368,7 +1395,6 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
         location: location || undefined,
         maxPlayers,
         notes: notes || undefined,
-        rsvpDeadline: rsvpDeadline ? new Date(rsvpDeadline).toISOString() : "",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "수정 실패");
@@ -1392,19 +1418,13 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간</label>
             <input type="datetime-local" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
           </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">장소 (선택)</label>
-              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all" />
-            </div>
-            <div className="w-24">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
-              <input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))} min={2} max={50} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold" />
-            </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">장소 (선택)</label>
+            <PlaceSearchInput value={location} onChange={setLocation} />
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">신청 마감 (선택)</label>
-            <input type="datetime-local" value={rsvpDeadline} onChange={(e) => setRsvpDeadline(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
+            <input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))} min={2} max={50} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold" />
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">메모 (선택)</label>
