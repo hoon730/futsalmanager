@@ -301,7 +301,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
         document.body
       )}
 
-      <main className="flex-1 px-6 pb-8 space-y-3">
+      <main className="flex-1 px-6 pb-8 space-y-4">
         {isLoading && matches.length === 0 && (
           <div className="py-20 text-center">
             <div className="loading-spinner mx-auto mb-3" />
@@ -334,7 +334,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
               지난 경기 {past.length}건
             </button>
             {showPast && (
-              <div className="space-y-3 mt-2">
+              <div className="space-y-4 mt-3">
                 {pagedPast.map((match) => (
                   <MatchCard
                     key={match.id}
@@ -351,7 +351,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                       <button
                         key={p}
                         onClick={() => setPastPage(p)}
-                        className="w-7 h-7 rounded-lg text-[11px] font-black transition-all"
+                        className="w-8 h-8 rounded-full text-[11px] font-black transition-all"
                         style={p === pastPage
                           ? { backgroundColor: "#0DF23E", color: "#0a150d" }
                           : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }
@@ -808,7 +808,7 @@ function MatchDetailSheet({
 
             {/* 경기 정보 */}
             {(match.location || match.notes) && (
-              <div className="px-5 py-4 space-y-3 border-b border-white/5">
+              <div className="px-5 py-5 space-y-3 border-b border-white/5">
                 {match.location && (
                   <div className="space-y-2">
                     <div className="flex items-start gap-2 text-sm text-white/70">
@@ -865,7 +865,7 @@ function MatchDetailSheet({
             )}
 
             {/* 통계 3박스 (참석/불참/대기) + 보류는 있을 때만 */}
-            <div className="px-5 py-4 border-b border-white/5">
+            <div className="px-5 py-5 border-b border-white/5">
               <div className={`grid gap-2 mb-3 ${pending.length > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
                 {[
                   { count: attending.length, label: "참석", color: "text-primary",           bg: "rgba(13,242,62,0.08)" },
@@ -897,7 +897,7 @@ function MatchDetailSheet({
             {/* 내 응답 */}
             {isPast ? null : isOverCapacity && myStatus !== "attending" ? (
               /* 정원 찼고 내가 참석 중이 아닐 때 — 신청 불가 */
-              <div className="px-5 py-4 border-b border-white/5">
+              <div className="px-5 py-5 border-b border-white/5">
                 <div className="flex items-center gap-2 py-2 px-3 rounded-xl bg-red-500/8 border border-red-500/20">
                   <span className="material-icons text-sm text-red-400/60">lock</span>
                   <p className="text-xs text-red-400/60 font-bold">정원이 마감되었습니다 ({match.maxPlayers}/{match.maxPlayers}명)</p>
@@ -905,7 +905,7 @@ function MatchDetailSheet({
               </div>
             ) : (
               /* 신청 가능하거나, 내가 이미 참석 중인 경우 (취소 허용) */
-              <div className="px-5 py-4 border-b border-white/5">
+              <div className="px-5 py-5 border-b border-white/5">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-3">내 응답</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(["attending", "absent"] as const).map((status) => {
@@ -916,7 +916,7 @@ function MatchDetailSheet({
                         key={status}
                         onClick={() => handleRSVP(status)}
                         disabled={rsvpLoading}
-                        className="py-3 rounded-xl text-xs font-black tracking-wider transition-all active:scale-95 disabled:opacity-40 border"
+                        className="py-3.5 rounded-xl text-xs font-black tracking-widest transition-all active:scale-95 disabled:opacity-40 border"
                         style={{ backgroundColor: isSelected ? cfg.color : "transparent", color: isSelected ? cfg.textColor : "rgba(255,255,255,0.35)", borderColor: isSelected ? cfg.color : "rgba(255,255,255,0.08)" }}
                       >
                         {rsvpLoading && isSelected ? <span className="material-icons text-sm animate-spin">refresh</span> : cfg.label}
@@ -929,7 +929,7 @@ function MatchDetailSheet({
 
             {/* 참석자 명단 — 컴팩트 2열 그리드 */}
             {(attending.length > 0 || absent.length > 0 || waitlist.length > 0 || pending.length > 0) && (
-              <div className="px-5 py-4 border-b border-white/5 space-y-3">
+              <div className="px-5 py-5 border-b border-white/5 space-y-4">
                 {attending.length > 0 && (
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60 mb-2">참석 ({attending.length})</p>
@@ -984,7 +984,7 @@ function MatchDetailSheet({
             )}
 
             {/* 용병 추가 */}
-            <div className="px-5 py-4 border-b border-white/5">
+            <div className="px-5 py-5 border-b border-white/5">
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-3 flex items-center gap-2">
                 <span className="material-icons text-sm" style={{ color: "#0DF23E" }}>person_add</span>
                 용병 추가
@@ -994,19 +994,16 @@ function MatchDetailSheet({
               </p>
               <div className="flex gap-2 mb-3">
                 <input
-                  className="flex-1 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 outline-none transition-all"
-                  style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all"
                   placeholder="용병 이름 입력"
                   value={mercenaryName}
                   onChange={(e) => setMercenaryName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddMercenarySubmit(); } }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(13,242,62,0.5)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
                 />
                 <button
                   onClick={handleAddMercenarySubmit}
                   disabled={!mercenaryName.trim()}
-                  className="px-4 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-all disabled:opacity-30"
+                  className="px-4 py-3 rounded-xl font-black text-sm active:scale-95 transition-all disabled:opacity-30"
                   style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
                 >
                   추가
@@ -1027,7 +1024,7 @@ function MatchDetailSheet({
                       </div>
                       <button
                         onClick={() => onRemoveMercenary(m.id)}
-                        className="text-xs font-bold px-3 py-1 rounded-full border text-red-400 bg-red-500/10 border-red-500/20 active:scale-95 transition-all"
+                        className="text-xs font-black px-3 py-1.5 rounded-xl border border-red-500/20 text-red-400 bg-red-500/10 active:scale-95 transition-all"
                       >
                         삭제
                       </button>
@@ -1039,7 +1036,7 @@ function MatchDetailSheet({
 
             {/* 팀 나누기 버튼 */}
             {!isPast && (
-              <div className="px-5 py-4 border-b border-white/5">
+              <div className="px-5 py-5 border-b border-white/5">
                 <button
                   onClick={onGoToDivision}
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 border border-primary/25"
@@ -1222,8 +1219,8 @@ function MatchDetailSheet({
                 <p className="text-white font-black mb-1">경기를 삭제할까요?</p>
                 <p className="text-white/40 text-sm mb-5 leading-relaxed">{match.title} · 참석 신청 기록과 댓글이 모두 삭제됩니다.</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowDeleteMatchConfirm(false)} className="flex-1 py-3 rounded-xl bg-white/5 text-white/50 text-sm font-black active:scale-95">취소</button>
-                  <button onClick={onDeleteMatch} className="flex-1 py-3 rounded-xl text-white text-sm font-black active:scale-95" style={{ backgroundColor: "rgba(239,68,68,0.7)" }}>삭제</button>
+                  <button onClick={() => setShowDeleteMatchConfirm(false)} className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white/40 text-xs font-black uppercase tracking-widest active:scale-95 transition-all">취소</button>
+                  <button onClick={onDeleteMatch} className="flex-1 py-3.5 rounded-xl text-white text-xs font-black uppercase tracking-widest active:scale-95 transition-all" style={{ backgroundColor: "rgba(239,68,68,0.7)" }}>삭제</button>
                 </div>
               </div>
             </div>
@@ -1326,7 +1323,7 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
         <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
         <h2 className="text-xl font-black italic uppercase tracking-tighter text-white mb-1">경기 추가</h2>
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">경기 제목 <span className="normal-case font-normal text-white/25">(선택)</span></label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={autoTitle || "예: 5월 3주차 경기"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all" />
@@ -1409,7 +1406,7 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
         <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
         <h2 className="text-xl font-black italic uppercase tracking-tighter text-white mb-1">경기 수정</h2>
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">경기 제목</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all" />
