@@ -144,7 +144,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
             </h1>
             <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]" />
           </div>
-          {isAdmin && (
+          {user && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
@@ -790,7 +790,7 @@ function MatchDetailSheet({
               <h2 className="text-base font-black text-white truncate">{match.title}</h2>
               <p className="text-xs text-white/40 mt-0.5">{dateStr} · {timeStr}</p>
             </div>
-            {isAdmin && (
+            {(isAdmin || match.createdBy === userId) && (
               <>
                 <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-xl bg-white/8 flex items-center justify-center text-white/40 hover:text-white transition-colors flex-shrink-0">
                   <span className="material-icons text-sm">edit</span>
