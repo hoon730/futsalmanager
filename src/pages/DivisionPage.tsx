@@ -317,10 +317,10 @@ const DivisionPage = () => {
       </header>
 
 
-      <section className="space-y-6">
+      <section className="space-y-8">
         {/* ── 참석 현황 ── */}
         <div>
-          <div className="flex justify-between items-center mb-4 px-6">
+          <div className="flex justify-between items-center mb-5 px-6">
             <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
               <span className="material-icons text-sm text-primary">groups</span>
               참석 현황
@@ -377,7 +377,7 @@ const DivisionPage = () => {
                               <div className="min-w-0">
                                 <p className="text-sm font-bold text-white truncate">{member.name}</p>
                                 {member.positionKey && (
-                                  <p className="text-[10px] opacity-60 text-slate-300 font-medium uppercase">{member.positionKey}</p>
+                                  <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">{member.positionKey}</p>
                                 )}
                               </div>
                             </div>
@@ -414,10 +414,10 @@ const DivisionPage = () => {
           )}
         </div>
 
-        <div className="px-6 space-y-6">
+        <div className="px-6 space-y-8">
           {/* ── 용병 추가 ── */}
           <div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-5">
               <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
                 <span className="material-icons text-sm text-primary">person_add</span>
                 용병 추가
@@ -430,7 +430,7 @@ const DivisionPage = () => {
                 고정팀 설정
               </button>
             </div>
-            <div className="glass-card rounded-2xl p-4 space-y-4">
+            <div className="glass-card rounded-2xl p-5 space-y-5">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -491,7 +491,7 @@ const DivisionPage = () => {
           {/* ── 고정 팀 현황 ── */}
           {fixedTeams.length > 0 && (
             <div>
-              <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 mb-4 text-white/80">
+              <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 mb-5 text-white/80">
                 <span className="material-icons text-sm text-primary">lock</span>
                 고정팀 현황
               </h2>
@@ -578,7 +578,7 @@ const DivisionPage = () => {
                 <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>grid_view</span>
               </div>
               <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">팀 개수 설정</h2>
-              <p className="text-xs text-white/40 mt-3 font-medium">경기를 진행할 최적의 팀 개수를 선택하세요</p>
+              <p className="text-xs text-white/40 mt-3 font-bold">경기를 진행할 최적의 팀 개수를 선택하세요</p>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-10">
               {[2, 3, 4, 5].map(num => (
@@ -632,7 +632,7 @@ const DivisionPage = () => {
             </div>
             <button
               onClick={() => setShowSavePeriodModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
               style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
             >
               <span className="material-icons text-sm">save</span>
@@ -702,7 +702,7 @@ const DivisionPage = () => {
                             >
                               {member.name.slice(1)}
                             </div>
-                            <span className="font-semibold text-sm text-white/90 flex-1 truncate">{member.name}</span>
+                            <span className="font-bold text-sm text-white flex-1 truncate">{member.name}</span>
                             {member.isMercenary && (
                               <span className="text-[9px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 bg-orange-500/20 text-orange-400">용병</span>
                             )}
@@ -768,13 +768,13 @@ const DivisionPage = () => {
                 <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>save</span>
               </div>
               <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">팀 결과 저장</h2>
-              <p className="text-xs text-white/40 mt-3 font-medium">어느 시간대로 저장하시겠습니까?</p>
+              <p className="text-xs text-white/40 mt-3 font-bold">어느 시간대로 저장하시겠습니까?</p>
             </div>
             <div className="flex gap-5 mb-10">
               {/* 전반전 버튼 - 파랑 호버 */}
               <button
                 onClick={() => handleSave('전반전')}
-                className="flex-1 py-3 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
+                className="flex-1 py-3.5 rounded-xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)' }}
                 onMouseEnter={e => {
                   const el = e.currentTarget;
@@ -799,7 +799,7 @@ const DivisionPage = () => {
               {/* 후반전 버튼 - 빨강 호버 */}
               <button
                 onClick={() => handleSave('후반전')}
-                className="flex-1 py-3 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
+                className="flex-1 py-3.5 rounded-xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)' }}
                 onMouseEnter={e => {
                   const el = e.currentTarget;

@@ -114,7 +114,7 @@ export default function AttendancePage() {
         </div>
       </header>
 
-      <div className="px-6 space-y-10">
+      <div className="px-6 space-y-12">
 
         {/* 경기 참석률 원형 차트 */}
         <section className="flex flex-col items-center">
@@ -142,7 +142,7 @@ export default function AttendancePage() {
 
         {/* TOP 3 출석률 */}
         <section>
-          <h2 className="text-base font-black uppercase tracking-widest mb-6 flex items-center gap-2 text-white/80">
+          <h2 className="text-base font-black uppercase tracking-widest mb-5 flex items-center gap-2 text-white/80">
             <span className="material-icons text-sm text-primary">emoji_events</span>TOP 출석률
           </h2>
           {top3.length === 0 || matchStats.totalMatches === 0 ? (
@@ -192,7 +192,7 @@ export default function AttendancePage() {
         {/* 전체 멤버 출석률 */}
         {matchStats.memberStats.length > 0 && matchStats.totalMatches > 0 && (
           <section>
-            <h2 className="text-base font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-white/80">
+            <h2 className="text-base font-black uppercase tracking-widest mb-5 flex items-center gap-2 text-white/80">
               <span className="material-icons text-sm text-primary">bar_chart</span>전체 현황
             </h2>
             <div className="space-y-2">
@@ -220,7 +220,7 @@ export default function AttendancePage() {
                   <button
                     key={page}
                     onClick={() => setStatsPage(page)}
-                    className="w-8 h-8 rounded-full text-xs font-black transition-all"
+                    className="w-8 h-8 rounded-full text-[11px] font-black transition-all"
                     style={
                       page === statsPage
                         ? { backgroundColor: '#0DF23E', color: '#0a150d' }
@@ -268,7 +268,7 @@ export default function AttendancePage() {
                   const count = session.teams.flat().filter((p: { isMercenary?: boolean }) => !p.isMercenary).length;
                   const globalIdx = (historyPage - 1) * HISTORY_PAGE_SIZE + idx;
                   return (
-                    <div key={session.id} className="glass-card p-4 rounded-2xl flex items-center gap-4 border border-white/5">
+                    <div key={session.id} className="glass-card p-5 rounded-2xl flex items-center gap-4 border border-white/5">
                       <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center flex-shrink-0">
                         <span className="text-[10px] font-black text-white/40">{month}</span>
                         <span className="text-xl font-black text-primary">{day}</span>
@@ -309,7 +309,7 @@ export default function AttendancePage() {
                     <button
                       key={page}
                       onClick={() => setHistoryPage(page)}
-                      className="w-8 h-8 rounded-full text-xs font-black transition-all"
+                      className="w-8 h-8 rounded-full text-[11px] font-black transition-all"
                       style={
                         page === historyPage
                           ? { backgroundColor: '#0DF23E', color: '#0a150d' }

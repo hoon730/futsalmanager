@@ -415,7 +415,7 @@ export default function SettingsPage() {
       <main className="flex-1 px-6">
         {/* 내 선수 프로필 연결 (로그인 유저만) */}
         {user && (
-          <div className="mb-6 bg-white/5 border border-white/5 rounded-2xl p-4">
+          <div className="mb-6 bg-white/5 border border-white/5 rounded-2xl p-5">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">내 선수 프로필</p>
             {linkedMemberId ? (
               <div className="flex items-center justify-between">
@@ -456,7 +456,7 @@ export default function SettingsPage() {
         )}
 
         {/* 멤버 수 및 편집 모드 토글 */}
-        <div className="flex items-center justify-between mb-6 bg-white/5 p-4 rounded-2xl border border-white/5">
+        <div className="flex items-center justify-between mb-6 bg-white/5 p-5 rounded-2xl border border-white/5">
           <div className="text-primary font-black text-md italic">
             현재 {membersOnly.length}명
           </div>
@@ -497,7 +497,7 @@ export default function SettingsPage() {
                   .map((member) => (
                     <div
                       key={member.id}
-                      className="rounded-2xl p-4 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group"
+                      className="rounded-2xl p-5 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group"
                     >
                       {/* 상단 행: 아바타 + 이름 + 삭제 */}
                       <div className="flex items-center gap-4">
@@ -612,8 +612,8 @@ export default function SettingsPage() {
       </main>
 
       {/* 동호회 회원 (인증 유저) 섹션 */}
-      <div className="px-6 mb-4 mt-6">
-        <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+      <div className="px-6 mb-6 mt-8">
+        <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
               동호회 회원 {squadUsers.length > 0 ? `· ${squadUsers.length}명` : ""}
@@ -698,8 +698,8 @@ export default function SettingsPage() {
       </div>
 
       {/* 초대 코드 섹션 */}
-      <div className="px-6 mb-4 mt-0">
-        <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+      <div className="px-6 mb-6">
+        <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">동호회 초대 코드</p>
           {inviteCode ? (
             <div className="space-y-3">
@@ -733,8 +733,8 @@ export default function SettingsPage() {
 
       {/* 알림 설정 */}
       {isPushSupported() && (
-        <div className="px-6 mb-4">
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+        <div className="px-6 mb-6">
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">경기 알림</p>
 
             {notifPermission === 'denied' ? (
@@ -863,7 +863,7 @@ export default function SettingsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-black italic uppercase text-white mb-3">멤버 추가</h3>
-            <p className="text-sm text-white/60 font-medium leading-relaxed mb-6">추가할 멤버 이름을 입력하세요</p>
+            <p className="text-xs text-white/50 font-bold leading-relaxed mb-5">추가할 멤버 이름을 입력하세요</p>
             <input
               type="text"
               placeholder="멤버 이름"
