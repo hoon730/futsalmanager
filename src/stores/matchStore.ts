@@ -121,6 +121,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         ...(data.location !== undefined && { location: data.location || null }),
         ...(data.maxPlayers !== undefined && { max_players: data.maxPlayers }),
         ...(data.notes !== undefined && { notes: data.notes || null }),
+        ...(data.rsvpDeadline !== undefined && { rsvp_deadline: data.rsvpDeadline || null }),
       })
       .eq("id", matchId);
     if (error) throw error;
@@ -152,6 +153,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         notes: m.notes,
         createdBy: m.created_by,
         createdAt: m.created_at,
+        rsvpDeadline: m.rsvp_deadline ?? undefined,
       }));
 
       set({ matches });
@@ -173,6 +175,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         max_players: data.maxPlayers,
         notes: data.notes,
         created_by: data.createdBy,
+        rsvp_deadline: data.rsvpDeadline ?? null,
       })
       .select()
       .single();
@@ -189,6 +192,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       notes: created.notes,
       createdBy: created.created_by,
       createdAt: created.created_at,
+      rsvpDeadline: created.rsvp_deadline ?? undefined,
     };
 
     set((state) => ({
