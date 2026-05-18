@@ -41,6 +41,8 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+  // 현재 동호회의 전체 멤버 수 (owner 탈퇴 시 위임 vs 삭제 분기 판단용)
+  const [squadMemberCount, setSquadMemberCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -62,6 +64,16 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
         setClubs(list);
       });
   }, [isOpen, user]);
+
+  // 현재 동호회 멤버 수 조회 (탈퇴 시 위임 vs 삭제 판단)
+  useEffect(() => {
+    if (!isOpen || !squad?.id) { setSquadMemberCount(null); return; }
+    supabase
+      .from("squad_members")
+      .select("user_id", { count: "exact", head: true })
+      .eq("squad_id", squad.id)
+      .then(({ count }) => setSquadMemberCount(count ?? 0));
+  }, [isOpen, squad?.id]);
 
   const handleCopyCode = () => {
     const current = clubs.find((c) => c.id === squad?.id);
@@ -142,11 +154,21 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
 
   const handleLeaveClub = async () => {
     if (!user || !squad?.id) return;
-    await supabase
-      .from("squad_members")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("squad_id", squad.id);
+    try {
+      const { data, error } = await supabase.rpc("leave_squad", { p_squad_id: squad.id });
+      if (error) throw error;
+      const result = data as { action: "left" | "transferred" | "deleted"; new_owner_username?: string };
+      if (result.action === "transferred") {
+        toast(`${result.new_owner_username}님이 새 운영자가 되었습니다`);
+      } else if (result.action === "deleted") {
+        toast("마지막 멤버라 동호회가 삭제되었습니다");
+      } else {
+        toast("동호회에서 탈퇴했습니다");
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "탈퇴에 실패했습니다", "error");
+      return;
+    }
     setLeaveConfirm(false);
     clearSquad();
     onClose();
@@ -301,13 +323,19 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                 </div>
 
                 {/* 위험 액션 — 카드 하단 작은 텍스트 링크 */}
+                {(() => {
+                  // owner가 혼자인 경우만 "동호회 삭제" — 데이터 영구 삭제
+                  // owner여도 다른 멤버 있으면 "탈퇴" (자동 위임)
+                  // 일반 멤버는 그냥 "탈퇴"
+                  const showHardDelete = isOwner && squadMemberCount === 1;
+                  return (
                 <div className="mt-4 pt-4 border-t border-white/5">
-                  {isOwner ? (
+                  {showHardDelete ? (
                     deleteConfirm === "input" || deleteConfirm === "deleting" ? (
                       <div className="space-y-2">
                         <p className="text-xs text-red-400/80 font-bold leading-relaxed">
                           정말 <span className="font-black">{currentClub.name}</span>을 삭제하시겠어요?<br />
-                          <span className="text-[10px] text-red-400/60 font-bold">멤버, 경기, 댓글, 공지 등 모든 데이터가 영구 삭제됩니다.</span>
+                          <span className="text-[10px] text-red-400/60 font-bold">혼자 남은 운영자라 멤버, 경기, 댓글, 공지 등 모든 데이터가 영구 삭제됩니다.</span>
                         </p>
                         <input
                           autoFocus
@@ -350,8 +378,14 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                   ) : (
                     leaveConfirm ? (
                       <div className="space-y-2">
-                        <p className="text-xs text-red-400/80 font-bold text-center">
+                        <p className="text-xs text-red-400/80 font-bold text-center leading-relaxed">
                           정말 <span className="font-black">{currentClub.name}</span>에서 탈퇴할까요?
+                          {isOwner && (
+                            <>
+                              <br />
+                              <span className="text-[10px] text-red-400/60 font-bold">운영자 권한은 다음 멤버에게 자동 위임됩니다.</span>
+                            </>
+                          )}
                         </p>
                         <div className="flex gap-2">
                           <button
@@ -382,6 +416,8 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                     )
                   )}
                 </div>
+                  );
+                })()}
               </div>
             </>
           )}
