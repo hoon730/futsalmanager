@@ -36,6 +36,7 @@ const Layout = () => {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     if (tab === "schedule") {
+      // eslint-disable-next-line react-hooks/purity
       const now = Date.now();
       localStorage.setItem(LAST_SCHEDULE_VISIT_KEY, String(now));
     }

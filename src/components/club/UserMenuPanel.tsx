@@ -41,7 +41,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
       .eq("user_id", user.id)
       .then(({ data }) => {
         if (!data) return;
-        const list = data.map((row: any) => ({
+        const list = data.map((row: { squads: { id: string; name: string; invite_code: string }; role: string }) => ({
           id: row.squads.id,
           name: row.squads.name,
           invite_code: row.squads.invite_code,

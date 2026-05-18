@@ -336,7 +336,7 @@ export default function SettingsPage() {
     const trimmedName = newMemberName.trim();
     if (!trimmedName) return;
 
-    if (members.some((m: any) => m.name === trimmedName)) {
+    if (members.some((m) => m.name === trimmedName)) {
       setAddMemberModal(false);
       setNewMemberName('');
       setAlertModal({ isOpen: true, message: '이미 등록된 멤버입니다' });
