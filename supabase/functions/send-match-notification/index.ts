@@ -21,6 +21,17 @@ function buildCorsHeaders(origin: string | null) {
   };
 }
 
+function jsonResponse(
+  body: unknown,
+  status: number,
+  corsHeaders: Record<string, string>
+) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = buildCorsHeaders(origin);
@@ -29,50 +40,84 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 허용되지 않은 origin 차단 (서버-서버 호출은 Origin 헤더 없을 수 있으므로 통과)
+  // 허용되지 않은 origin 차단
   if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-    return new Response(
-      JSON.stringify({ error: 'Origin not allowed' }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ error: 'Origin not allowed' }, 403, corsHeaders);
   }
+
+  // -------- 1. JWT 검증 --------
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return jsonResponse({ error: 'Unauthorized: missing token' }, 401, corsHeaders);
+  }
+  const token = authHeader.slice('Bearer '.length).trim();
+  if (!token) {
+    return jsonResponse({ error: 'Unauthorized: empty token' }, 401, corsHeaders);
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !anonKey || !serviceKey) {
+    return jsonResponse({ error: 'Server misconfiguration' }, 500, corsHeaders);
+  }
+
+  // anon 클라이언트로 토큰 검증
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+  if (userErr || !userData?.user) {
+    return jsonResponse({ error: 'Unauthorized: invalid token' }, 401, corsHeaders);
+  }
+  const callerId = userData.user.id;
 
   try {
     const { matchId, squadId, title, matchDate, location } = await req.json();
 
+    if (!matchId || !squadId) {
+      return jsonResponse({ error: 'matchId, squadId 필수' }, 400, corsHeaders);
+    }
+
+    // -------- 2. 호출자가 해당 squad의 운영자(owner/admin)인지 확인 --------
+    const { data: membership, error: memErr } = await userClient
+      .from('squad_members')
+      .select('role')
+      .eq('squad_id', squadId)
+      .eq('user_id', callerId)
+      .maybeSingle();
+
+    if (memErr) {
+      return jsonResponse({ error: '권한 확인 실패' }, 500, corsHeaders);
+    }
+    if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+      return jsonResponse({ error: '운영자만 알림을 보낼 수 있습니다' }, 403, corsHeaders);
+    }
+
+    // -------- 3. VAPID 설정 --------
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@example.com';
 
     if (!vapidPublicKey || !vapidPrivateKey) {
-      return new Response(
-        JSON.stringify({ error: 'VAPID keys not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'VAPID keys not configured' }, 500, corsHeaders);
     }
 
     webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    // -------- 4. 푸시 전송 (구독 조회는 service-role로) --------
+    const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // 해당 동호회의 모든 구독자 조회
-    const { data: subs, error } = await supabase
+    const { data: subs, error } = await adminClient
       .from('push_subscriptions')
       .select('subscription')
       .eq('squad_id', squadId);
 
     if (error) throw error;
     if (!subs || subs.length === 0) {
-      return new Response(
-        JSON.stringify({ sent: 0, failed: 0, message: '구독자 없음' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ sent: 0, failed: 0, message: '구독자 없음' }, 200, corsHeaders);
     }
 
-    // 알림 페이로드 구성
     const dateStr = new Date(matchDate).toLocaleString('ko-KR', {
       month: 'long',
       day: 'numeric',
@@ -83,12 +128,11 @@ serve(async (req) => {
 
     const payload = JSON.stringify({
       title: '⚽ 새 경기가 등록됐어요!',
-      body: `${title} · ${dateStr}${location ? ` · ${location}` : ''}`,
+      body: `${title ?? '경기'} · ${dateStr}${location ? ` · ${location}` : ''}`,
       url: '/?tab=schedule',
       matchId,
     });
 
-    // 모든 구독자에게 전송
     const results = await Promise.allSettled(
       subs.map((row) =>
         webPush.sendNotification(
@@ -101,14 +145,8 @@ serve(async (req) => {
     const sent = results.filter((r) => r.status === 'fulfilled').length;
     const failed = results.filter((r) => r.status === 'rejected').length;
 
-    return new Response(
-      JSON.stringify({ sent, failed }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ sent, failed }, 200, corsHeaders);
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ error: String(err) }, 500, corsHeaders);
   }
 });
