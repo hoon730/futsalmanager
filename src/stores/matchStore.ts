@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/stores/toastStore";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 import type { IMatch, IMatchAttendee, IMatchComment, IMember } from "@/types";
 
 interface IMatchStore {
@@ -202,6 +204,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       }
     } catch (e) {
       console.error("경기 로드 실패:", e);
+      toast(toFriendlyMessage(e, "경기 일정을 불러오지 못했습니다"), "error");
     } finally {
       set({ isLoading: false });
     }

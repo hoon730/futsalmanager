@@ -292,20 +292,18 @@ export default function SettingsPage() {
   const [addMemberModal, setAddMemberModal] = useState(false);
   const [newMemberName, setNewMemberName] = useState('');
 
-  // Enter 키로 멤버 추가 확인
+  // ESC 키로 모달 닫기 (Enter는 AddMemberModal 내부 input에서 처리)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && addMemberModal) {
-        e.preventDefault();
-        handleAddMemberConfirm();
-      } else if (e.key === 'Escape' && addMemberModal) {
+    if (!addMemberModal) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
         setAddMemberModal(false);
         setNewMemberName('');
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [addMemberModal, newMemberName]);
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [addMemberModal]);
 
   // 모달 상태
   const [confirmModal, setConfirmModal] = useState<{
