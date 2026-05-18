@@ -58,37 +58,6 @@ export default function SettingsPage() {
     }
   };
 
-  // 초대 코드
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [inviteCopied, setInviteCopied] = useState(false);
-  const [inviteRegenerating, setInviteRegenerating] = useState(false);
-
-  useEffect(() => {
-    if (!squad?.id) return;
-    supabase.from("squads").select("invite_code").eq("id", squad.id).single()
-      .then(({ data }) => { if (data) setInviteCode(data.invite_code); });
-  }, [squad?.id]);
-
-  const handleCopyInviteCode = () => {
-    if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode).then(() => {
-      setInviteCopied(true);
-      setTimeout(() => setInviteCopied(false), 2000);
-    });
-  };
-
-  const handleRegenerateCode = async () => {
-    if (!squad?.id) return;
-    setInviteRegenerating(true);
-    try {
-      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await supabase.from("squads").update({ invite_code: newCode }).eq("id", squad.id);
-      setInviteCode(newCode);
-    } finally {
-      setInviteRegenerating(false);
-    }
-  };
-
   // v2: role 기반 관리자 여부 확인
   const [userRole, setUserRole] = useState<string | null>(null);
   useEffect(() => {
@@ -693,40 +662,6 @@ export default function SettingsPage() {
                 );
               })}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* 초대 코드 섹션 */}
-      <div className="px-6 mb-6">
-        <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">동호회 초대 코드</p>
-          {inviteCode ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 justify-between">
-                <span className="text-2xl font-black tracking-[0.4em] font-mono text-primary">{inviteCode}</span>
-                <button
-                  onClick={handleCopyInviteCode}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-wider transition-all active:scale-95"
-                >
-                  <span className="material-icons text-sm">{inviteCopied ? "check" : "content_copy"}</span>
-                  {inviteCopied ? "복사됨" : "복사"}
-                </button>
-              </div>
-              <p className="text-white/20 text-[10px]">멤버에게 이 코드를 공유하면 동호회에 참가할 수 있습니다</p>
-              {isOwnerOrAdmin && (
-                <button
-                  onClick={handleRegenerateCode}
-                  disabled={inviteRegenerating}
-                  className="text-white/25 hover:text-white/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors disabled:opacity-40"
-                >
-                  <span className="material-icons text-xs">refresh</span>
-                  {inviteRegenerating ? "재생성 중..." : "코드 재생성"}
-                </button>
-              )}
-            </div>
-          ) : (
-            <p className="text-white/20 text-xs">로딩 중...</p>
           )}
         </div>
       </div>

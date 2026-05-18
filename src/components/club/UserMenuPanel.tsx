@@ -32,6 +32,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [copiedCode, setCopiedCode] = useState(false);
   const [leaveConfirm, setLeaveConfirm] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -60,6 +61,18 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
     navigator.clipboard.writeText(current.invite_code);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleRegenerateCode = async () => {
+    if (!squad?.id) return;
+    setRegenerating(true);
+    try {
+      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      await supabase.from("squads").update({ invite_code: newCode }).eq("id", squad.id);
+      setClubs((prev) => prev.map((c) => c.id === squad.id ? { ...c, invite_code: newCode } : c));
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   const handleSwitchClub = async (club: Club) => {
@@ -133,22 +146,34 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
               <p className="text-white font-black text-base uppercase tracking-wide">
                 {currentClub.name}
               </p>
-              {isOwner && (
-                <button
-                  onClick={handleCopyCode}
-                  className="mt-3 flex items-center gap-2 w-full bg-primary/5 border border-primary/20 rounded-xl px-3 py-2.5 transition-all hover:bg-primary/10 active:scale-[0.98]"
-                >
-                  <span className="font-mono text-primary font-black tracking-[0.3em] text-sm flex-1 text-left">
+
+              {/* 초대 코드 (모든 멤버에게 표시) */}
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">동호회 초대 코드</p>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-2xl font-black tracking-[0.4em] font-mono text-primary">
                     {currentClub.invite_code}
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">
-                    {copiedCode ? "복사됨!" : "초대코드"}
-                  </span>
-                  <span className="material-icons text-primary/40 text-sm">
-                    {copiedCode ? "check" : "content_copy"}
-                  </span>
-                </button>
-              )}
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-wider transition-all active:scale-95"
+                  >
+                    <span className="material-icons text-sm">{copiedCode ? "check" : "content_copy"}</span>
+                    {copiedCode ? "복사됨" : "복사"}
+                  </button>
+                </div>
+                <p className="text-white/20 text-[10px] mt-2.5">멤버에게 이 코드를 공유하면 동호회에 참가할 수 있습니다</p>
+                {isOwner && (
+                  <button
+                    onClick={handleRegenerateCode}
+                    disabled={regenerating}
+                    className="mt-3 text-white/25 hover:text-white/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors disabled:opacity-40"
+                  >
+                    <span className="material-icons text-xs">refresh</span>
+                    {regenerating ? "재생성 중..." : "코드 재생성"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
