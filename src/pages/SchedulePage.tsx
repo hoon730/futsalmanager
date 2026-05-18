@@ -902,9 +902,10 @@ function MatchDetailSheet({
                     maxPlayers: match.maxPlayers,
                   })}
                   title="카카오톡으로 공유"
-                  className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
+                  className="w-9 h-9 flex items-center justify-center transition-colors active:scale-90"
+                  style={{ color: "#fee500" }}
                 >
-                  <span className="material-icons text-lg">share</span>
+                  <span className="material-icons text-lg">chat</span>
                 </button>
               )}
               {(isAdmin || match.createdBy === userId) ? (
