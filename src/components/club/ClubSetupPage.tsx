@@ -198,11 +198,11 @@ const JoinClub = ({ onBack }: { onBack: () => void }) => {
     setError("");
 
     try {
-      const { data: squad, error: squadErr } = await supabase
-        .from("squads")
-        .select("*")
-        .eq("invite_code", code.toUpperCase().trim())
-        .single();
+      // RLS 우회용 함수 호출 (가입 전이라도 invite_code로 squad 조회 가능)
+      const { data: squadList, error: squadErr } = await supabase
+        .rpc("find_squad_by_invite_code", { p_code: code.toUpperCase().trim() });
+
+      const squad = Array.isArray(squadList) ? squadList[0] : null;
 
       if (squadErr || !squad) {
         setError("유효하지 않은 초대 코드입니다.");
