@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useSquadStore } from '@/stores/squadStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
-import { AlertModal, ConfirmModal } from '@/components/modals';
+import { ConfirmModal } from '@/components/modals';
+import { toast } from '@/stores/toastStore';
 import {
   isPushSupported,
   getPermission,
@@ -40,17 +41,11 @@ export default function SettingsPage() {
       // 성공 시에만 로컬 state 업데이트 (authStore의 user도 함께 갱신됨)
       setLinkedMemberId(member?.id ?? null);
       setShowLinkPicker(false);
-      setAlertModal({
-        isOpen: true,
-        message: member ? `✅ "${member.name}"으로 연결되었습니다` : '선수 프로필 연결이 해제되었습니다',
-      });
+      toast(member ? `"${member.name}"으로 연결되었습니다` : '선수 프로필 연결이 해제되었습니다');
     } catch {
       // 실패 시 로컬 state 변경하지 않음 (user_metadata와 desync 방지)
       setShowLinkPicker(false);
-      setAlertModal({
-        isOpen: true,
-        message: '연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
-      });
+      toast('연결에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
     } finally {
       setLinkLoading(false);
     }
@@ -91,10 +86,10 @@ export default function SettingsPage() {
       if (perm === 'granted') {
         await subscribeToPush(squad.id, user.id);
         setIsSubscribed(true);
-        setAlertModal({ isOpen: true, message: '✅ 경기 알림이 켜졌습니다' });
+        toast('경기 알림이 켜졌습니다');
       }
     } catch {
-      setAlertModal({ isOpen: true, message: '알림 설정에 실패했습니다.' });
+      toast('알림 설정에 실패했습니다', 'error');
     } finally {
       setNotifLoading(false);
     }
@@ -106,9 +101,9 @@ export default function SettingsPage() {
     try {
       await unsubscribeFromPush(squad.id, user.id);
       setIsSubscribed(false);
-      setAlertModal({ isOpen: true, message: '알림이 해제되었습니다.' });
+      toast('알림이 해제되었습니다');
     } catch {
-      setAlertModal({ isOpen: true, message: '알림 해제에 실패했습니다.' });
+      toast('알림 해제에 실패했습니다', 'error');
     } finally {
       setNotifLoading(false);
     }
@@ -164,7 +159,7 @@ export default function SettingsPage() {
       .eq("squad_id", squad.id)
       .eq("user_id", userId);
     if (error) {
-      setAlertModal({ isOpen: true, message: "역할 변경에 실패했습니다." });
+      toast("역할 변경에 실패했습니다", "error");
       return;
     }
     setSquadUsers((prev) =>
@@ -187,10 +182,11 @@ export default function SettingsPage() {
           .eq("user_id", userId);
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
         if (error) {
-          setAlertModal({ isOpen: true, message: "내보내기에 실패했습니다." });
+          toast("내보내기에 실패했습니다", "error");
           return;
         }
         setSquadUsers((prev) => prev.filter((u) => u.userId !== userId));
+        toast(`${username} 멤버를 내보냈습니다`);
       },
     });
   };
@@ -220,10 +216,6 @@ export default function SettingsPage() {
   }, [addMemberModal, newMemberName]);
 
   // 모달 상태
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string }>({
-    isOpen: false,
-    message: '',
-  });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -306,7 +298,7 @@ export default function SettingsPage() {
     if (members.some((m) => m.name === trimmedName)) {
       setAddMemberModal(false);
       setNewMemberName('');
-      setAlertModal({ isOpen: true, message: '이미 등록된 멤버입니다' });
+      toast('이미 등록된 멤버입니다', 'error');
       return;
     }
 
@@ -319,7 +311,7 @@ export default function SettingsPage() {
 
     setAddMemberModal(false);
     setNewMemberName('');
-    setAlertModal({ isOpen: true, message: `${trimmedName} 멤버가 추가되었습니다` });
+    toast(`${trimmedName} 멤버가 추가되었습니다`);
   };
 
   // 멤버 삭제
@@ -331,7 +323,7 @@ export default function SettingsPage() {
       onConfirm: () => {
         removeMember(id);
         setConfirmModal({ ...confirmModal, isOpen: false });
-        setAlertModal({ isOpen: true, message: `${name} 멤버가 삭제되었습니다` });
+        toast(`${name} 멤버가 삭제되었습니다`);
       },
     });
   };
@@ -791,13 +783,6 @@ export default function SettingsPage() {
         </div>,
         document.body
       )}
-
-      {/* AlertModal */}
-      <AlertModal
-        isOpen={alertModal.isOpen}
-        message={alertModal.message}
-        onClose={() => setAlertModal({ isOpen: false, message: '' })}
-      />
 
       {/* ConfirmModal */}
       <ConfirmModal
