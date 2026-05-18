@@ -7,7 +7,8 @@ import { useDivisionStore } from "@/stores/divisionStore";
 import { useMatchStore } from "@/stores/matchStore";
 import { divideTeamsWithConstraints, updateTeammateHistory as updateHistory } from "@/lib/teamAlgorithm";
 import { saveDivisionToSupabase, syncTeammateHistoryToSupabase } from "@/lib/supabaseSync";
-import { AlertModal, ConfirmModal, FixedTeamModal } from "@/components/modals";
+import { ConfirmModal, FixedTeamModal } from "@/components/modals";
+import { toast } from "@/stores/toastStore";
 import type { IMember, IFixedTeam } from "@/types";
 
 const TEAM_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
@@ -57,8 +58,6 @@ const DivisionPage = () => {
   const [showTeamCountModal, setShowTeamCountModal] = useState(false);
   const [showSavePeriodModal, setShowSavePeriodModal] = useState(false);
   const [showFixedTeamModal, setShowFixedTeamModal] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [showAlert, setShowAlert] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   useEffect(() => {
@@ -240,9 +239,9 @@ const DivisionPage = () => {
   // ── 용병 ──
   const handleAddMercenary = () => {
     const name = mercenaryName.trim();
-    if (!name) { setAlertMessage('용병 이름을 입력해주세요'); setShowAlert(true); return; }
-    if (mercenaries.some(m => m.name === name)) { setAlertMessage('이미 추가된 용병입니다'); setShowAlert(true); return; }
-    if (members.some(m => m.name === name)) { setAlertMessage('정규 멤버와 동일한 이름입니다'); setShowAlert(true); return; }
+    if (!name) { toast('용병 이름을 입력해주세요', 'error'); return; }
+    if (mercenaries.some(m => m.name === name)) { toast('이미 추가된 용병입니다', 'error'); return; }
+    if (members.some(m => m.name === name)) { toast('정규 멤버와 동일한 이름입니다', 'error'); return; }
     const newMercenary: IMember = { id: `mercenary-${Date.now()}`, name, isMercenary: true, active: true, createdAt: new Date().toISOString() };
     setMercenaries([...mercenaries, newMercenary]);
     setSelectedMercenaries([...selectedMercenaries, newMercenary.id]);
@@ -270,9 +269,9 @@ const DivisionPage = () => {
     const selectedMembers = members.filter(m => selectedParticipants.includes(m.id));
     const selectedMercs = mercenaries.filter(m => selectedMercenaries.includes(m.id));
     const allParticipants = [...selectedMembers, ...selectedMercs];
-    if (allParticipants.length < teamCount) { setAlertMessage(`최소 ${teamCount}명이 필요합니다`); setShowAlert(true); return; }
+    if (allParticipants.length < teamCount) { toast(`최소 ${teamCount}명이 필요합니다`, 'error'); return; }
     const result = await divideTeamsWithConstraints(allParticipants, teamCount, fixedTeams, teammateHistory);
-    if (!result || !result.teams) { setAlertMessage('팀 배정에 실패했습니다. 다시 시도해주세요.'); setShowAlert(true); return; }
+    if (!result || !result.teams) { toast('팀 배정에 실패했습니다. 다시 시도해주세요.', 'error'); return; }
     setCurrentTeams(result.teams);
     setActiveTeamPage(0);
     setShowResultModal(true);
@@ -290,8 +289,7 @@ const DivisionPage = () => {
     updateStoreHistory(updatedHistory);
     await syncTeammateHistoryToSupabase(squad.id, updatedHistory);
     setShowSavePeriodModal(false);
-    setAlertMessage(`${period} 결과가 저장되었습니다`);
-    setShowAlert(true);
+    toast(`${period} 결과가 저장되었습니다`);
   };
 
   // ── 고정팀 ──
@@ -877,8 +875,7 @@ const DivisionPage = () => {
         );
       })()}
 
-      {/* Alert / Confirm / FixedTeam 모달 */}
-      <AlertModal isOpen={showAlert} message={alertMessage} onClose={() => setShowAlert(false)} />
+      {/* Confirm / FixedTeam 모달 */}
       <ConfirmModal
         isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message}
         onConfirm={confirmModal.onConfirm} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
