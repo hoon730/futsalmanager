@@ -585,9 +585,12 @@ function MatchCard({ match, attendees, mercenaries, userId, isPast, onOpen }: Ma
                 <span className="truncate">{match.location}</span>
               </p>
             )}
-            {/* 제목이 자동 생성 형식(YYYY-MM-DD ...)이 아니면 작게 표시 */}
-            {match.title && !/^\d{4}-\d{2}-\d{2}/.test(match.title) && (
-              <p className="text-white/30 text-[11px] mt-1 truncate">{match.title}</p>
+            {/* 메모 1줄 미리보기 (있을 때만) */}
+            {match.notes && (
+              <p className="flex items-center gap-1 text-white/30 text-xs truncate mt-1">
+                <span className="material-icons" style={{ fontSize: 12 }}>sticky_note_2</span>
+                <span className="truncate">{match.notes}</span>
+              </p>
             )}
           </div>
         </div>
@@ -940,7 +943,8 @@ function MatchDetailSheet({
                     label: "카카오톡으로 보내기",
                     icon: <KakaoIcon size={20} />,
                     onClick: () => shareMatch({
-                      title: match.title,
+                      // 제목이 비어있으면 날짜를 제목으로 사용
+                      title: match.title?.trim() || `${dateStr} 경기`,
                       matchDate: match.matchDate,
                       location: match.location,
                       attendingCount: totalAttending,
@@ -994,10 +998,10 @@ function MatchDetailSheet({
             </div>
           </div>
 
-          {/* 제목 영역 — 별도 섹션으로 격상 */}
+          {/* 헤더 — 날짜를 메인으로 (제목 필드 없어짐) */}
           <div className="flex-shrink-0 px-5 pb-5 border-b border-white/5">
-            <h2 className="text-2xl font-black text-white tracking-tight leading-tight">{match.title}</h2>
-            <p className="text-xs text-white/40 mt-1.5 font-bold">{dateStr} · {timeStr}</p>
+            <h2 className="text-2xl font-black text-white tracking-tight leading-tight">{dateStr}</h2>
+            <p className="text-xs text-white/40 mt-1.5 font-bold">{timeStr}</p>
           </div>
 
           {/* 스크롤 본문 */}
@@ -1311,7 +1315,7 @@ function MatchDetailSheet({
             <div className="absolute inset-0 flex items-center justify-center z-10" style={{ background: "rgba(0,0,0,0.75)" }}>
               <div className="mx-5 w-full max-w-xs rounded-2xl p-6" style={{ background: "#16261b", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-white font-black mb-1">경기를 삭제할까요?</p>
-                <p className="text-white/40 text-sm mb-5 leading-relaxed">{match.title} · 참석 신청 기록과 댓글이 모두 삭제됩니다.</p>
+                <p className="text-white/40 text-sm mb-5 leading-relaxed">{dateStr} 경기의 참석 신청 기록과 댓글이 모두 삭제됩니다.</p>
                 <div className="flex gap-2">
                   <button onClick={() => setShowDeleteMatchConfirm(false)} className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white/40 text-xs font-black uppercase tracking-widest active:scale-95 transition-all">취소</button>
                   <button onClick={onDeleteMatch} className="flex-1 py-3.5 rounded-xl text-white text-xs font-black uppercase tracking-widest active:scale-95 transition-all" style={{ backgroundColor: "rgba(239,68,68,0.7)" }}>삭제</button>
@@ -1510,7 +1514,6 @@ interface CreateMatchModalProps {
 }
 
 function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchModalProps) {
-  const [title, setTitle] = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [location, setLocation] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(15);
@@ -1518,21 +1521,15 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const autoTitle = matchDate
-    ? new Date(matchDate).toLocaleString("ko-KR", {
-        month: "numeric", day: "numeric", weekday: "short",
-        hour: "2-digit", minute: "2-digit",
-      }) + " 경기"
-    : "";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
-    const finalTitle = title.trim() || autoTitle;
     try {
       await onCreate(squadId, {
-        title: finalTitle,
+        // title은 더 이상 사용자 입력으로 받지 않음. 식별은 날짜/시간으로.
+        // DB 스키마 NOT NULL 제약 호환을 위해 빈 문자열 저장.
+        title: "",
         matchDate: new Date(matchDate).toISOString(),
         location: location || undefined,
         maxPlayers,
@@ -1553,10 +1550,6 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
         <h2 className="text-xl font-black italic uppercase tracking-tighter text-white mb-1">경기 추가</h2>
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">경기 제목 <span className="normal-case font-normal text-white/25">(선택)</span></label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={autoTitle || "예: 5월 3주차 경기"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all" />
-          </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간</label>
             <input type="datetime-local" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
@@ -1602,7 +1595,6 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
-  const [title, setTitle] = useState(match.title);
   const [matchDate, setMatchDate] = useState(toLocalDatetime(match.matchDate));
   const [location, setLocation] = useState(match.location ?? "");
   const [maxPlayers, setMaxPlayers] = useState(match.maxPlayers);
@@ -1616,7 +1608,8 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
     setError("");
     try {
       await onSave({
-        title,
+        // 제목은 더 이상 사용자 편집 대상이 아님. 기존 값 유지.
+        title: match.title,
         matchDate: new Date(matchDate).toISOString(),
         location: location || undefined,
         maxPlayers,
@@ -1636,10 +1629,6 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">경기 제목</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all" />
-          </div>
-          <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간</label>
             <input type="datetime-local" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]" />
           </div>
@@ -1658,7 +1647,7 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
           {error && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-xs">{error}</div>}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95">취소</button>
-            <button type="submit" disabled={isLoading || !title || !matchDate} className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40" style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}>
+            <button type="submit" disabled={isLoading || !matchDate} className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40" style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}>
               {isLoading ? "저장 중..." : "수정 완료"}
             </button>
           </div>
