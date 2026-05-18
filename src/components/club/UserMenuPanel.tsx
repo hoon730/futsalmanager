@@ -41,12 +41,15 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
       .eq("user_id", user.id)
       .then(({ data }) => {
         if (!data) return;
-        const list = data.map((row: { squads: { id: string; name: string; invite_code: string }; role: string }) => ({
-          id: row.squads.id,
-          name: row.squads.name,
-          invite_code: row.squads.invite_code,
-          role: row.role,
-        }));
+        const list = data.map((row) => {
+          const squad = Array.isArray(row.squads) ? row.squads[0] : row.squads;
+          return {
+            id: squad.id as string,
+            name: squad.name as string,
+            invite_code: squad.invite_code as string,
+            role: row.role as string,
+          };
+        });
         setClubs(list);
       });
   }, [isOpen, user]);
