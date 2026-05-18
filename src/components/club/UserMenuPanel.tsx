@@ -29,7 +29,7 @@ interface Props {
 }
 
 export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
-  const { user, profile, signOut } = useAuthStore();
+  const { user, profile, signOut, updateUsername } = useAuthStore();
   const { squad, clearSquad, setSquad } = useSquadStore();
   const { setFixedTeams } = useFixedTeamStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
@@ -38,6 +38,9 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const [regenerating, setRegenerating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<"idle" | "input" | "deleting">("idle");
   const [deleteInput, setDeleteInput] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -65,6 +68,33 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
     if (!current) return;
     navigator.clipboard.writeText(current.invite_code);
     toast("초대 코드가 복사되었습니다");
+  };
+
+  const handleStartEditName = () => {
+    setNameInput(profile?.username ?? "");
+    setEditingName(true);
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) {
+      toast("닉네임을 입력해주세요", "error");
+      return;
+    }
+    if (trimmed === profile?.username) {
+      setEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await updateUsername(trimmed);
+      setEditingName(false);
+      toast("닉네임이 변경되었습니다");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "닉네임 변경에 실패했습니다", "error");
+    } finally {
+      setSavingName(false);
+    }
   };
 
   const handleRegenerateCode = async () => {
@@ -145,13 +175,68 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
 
           {/* 계정 헤더 */}
           <div className="flex items-center gap-3 mb-6 px-1">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-black text-primary">{avatarLetter}</span>
+            {/* 아바타 — 이미지 있으면 보여주고 없으면 글자 fallback */}
+            <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+              style={{ background: "rgba(13,242,62,0.10)", border: "1px solid rgba(13,242,62,0.20)" }}>
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.username || "프로필"}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              ) : (
+                <span className="text-lg font-black text-primary">{avatarLetter}</span>
+              )}
             </div>
+            {/* 이름 / 이메일 */}
             <div className="flex-1 min-w-0">
-              <p className="text-white font-black text-base uppercase tracking-wide truncate">
-                {profile?.username || "사용자"}
-              </p>
+              {editingName ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveName();
+                      if (e.key === "Escape") setEditingName(false);
+                    }}
+                    disabled={savingName}
+                    maxLength={30}
+                    className="flex-1 min-w-0 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1 text-sm font-black text-white outline-none focus:border-primary/50"
+                    placeholder="닉네임"
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    disabled={savingName}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary/15 text-primary active:scale-90 disabled:opacity-40"
+                  >
+                    <span className="material-icons" style={{ fontSize: 16 }}>
+                      {savingName ? "refresh" : "check"}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setEditingName(false)}
+                    disabled={savingName}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 text-white/50 active:scale-90 disabled:opacity-40"
+                  >
+                    <span className="material-icons" style={{ fontSize: 16 }}>close</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <p className="text-white font-black text-base uppercase tracking-wide truncate">
+                    {profile?.username || "사용자"}
+                  </p>
+                  <button
+                    onClick={handleStartEditName}
+                    className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/60 transition-colors active:scale-90"
+                  >
+                    <span className="material-icons" style={{ fontSize: 14 }}>edit</span>
+                  </button>
+                </div>
+              )}
               <p className="text-white/30 text-xs truncate mt-0.5">{user?.email}</p>
             </div>
           </div>

@@ -22,6 +22,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   clearError: () => void;
   updateLinkedMember: (memberId: string | null) => Promise<void>;
+  updateUsername: (username: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -144,5 +145,20 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (data.user) {
       set((state) => ({ user: data.user, session: state.session }));
     }
+  },
+
+  updateUsername: async (username) => {
+    const trimmed = username.trim();
+    if (!trimmed) throw new Error("닉네임을 입력해주세요");
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) throw new Error("로그인이 필요합니다");
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ username: trimmed })
+      .eq("id", currentUser.id)
+      .select()
+      .single();
+    if (error) throw error;
+    set((state) => ({ profile: state.profile ? { ...state.profile, username: data.username } : data }));
   },
 }));
