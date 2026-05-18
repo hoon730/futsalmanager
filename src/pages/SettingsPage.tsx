@@ -706,7 +706,7 @@ export default function SettingsPage() {
                               className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors border-t border-white/5 disabled:opacity-40"
                             >
                               <span className="material-icons text-white/50" style={{ fontSize: "14px" }}>swap_horiz</span>
-                              매칭 변경
+                              선수 변경
                             </button>
                             <button
                               onClick={() => { handleLinkMember(null); setShowMyProfileMenu(false); }}
