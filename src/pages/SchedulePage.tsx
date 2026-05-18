@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSquadStore } from "@/stores/squadStore";
 import { useMatchStore } from "@/stores/matchStore";
@@ -42,11 +42,24 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
 
   const PAST_PAGE_SIZE = 5;
 
-  const now = new Date();
-  const upcoming = matches.filter((m) => new Date(m.matchDate) >= now);
-  const past = matches.filter((m) => new Date(m.matchDate) < now).reverse();
+  // matches가 바뀔 때만 재계산 (매 렌더마다 filter 2회 + Date 호출 피함)
+  const { upcoming, past } = useMemo(() => {
+    const nowTs = Date.now();
+    const up: IMatch[] = [];
+    const pst: IMatch[] = [];
+    for (const m of matches) {
+      if (new Date(m.matchDate).getTime() >= nowTs) up.push(m);
+      else pst.push(m);
+    }
+    pst.reverse();
+    return { upcoming: up, past: pst };
+  }, [matches]);
+
   const pastTotalPages = Math.ceil(past.length / PAST_PAGE_SIZE);
-  const pagedPast = past.slice((pastPage - 1) * PAST_PAGE_SIZE, pastPage * PAST_PAGE_SIZE);
+  const pagedPast = useMemo(
+    () => past.slice((pastPage - 1) * PAST_PAGE_SIZE, pastPage * PAST_PAGE_SIZE),
+    [past, pastPage],
+  );
   const isAdmin = userRole === "owner" || userRole === "admin";
 
   useEffect(() => {
