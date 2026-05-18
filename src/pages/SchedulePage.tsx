@@ -531,62 +531,89 @@ function MatchCard({ match, attendees, mercenaries, userId, isPast, onOpen }: Ma
   const dday = !isPast ? getDDay(match.matchDate) : null;
   const isDDay = dday === "D-Day";
 
+  const isMine = myStatus === "attending" && !isPast;
+  const weekday = date.toLocaleDateString("ko-KR", { weekday: "short" });
+  const timeStr = date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  const percent = Math.min((totalAttending / match.maxPlayers) * 100, 100);
+
   return (
     <button
       onClick={onOpen}
-      className={`w-full text-left rounded-2xl border transition-all active:scale-[0.98] ${isPast ? "opacity-50" : ""} ${myStatus === "attending" && !isPast ? "border-primary/20 bg-primary/5" : "border-white/5 bg-white/5"}`}
+      className={`w-full text-left rounded-2xl border transition-all active:scale-[0.98] ${isPast ? "opacity-50" : ""} ${isMine ? "border-primary/20 bg-primary/5" : "border-white/5 bg-white/5"}`}
     >
+      {/* 상단 본문 */}
       <div className="p-4">
-        <div className="flex items-start gap-3">
-          <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex flex-col items-center justify-center border ${myStatus === "attending" && !isPast ? "bg-primary/10 border-primary/30" : "bg-white/5 border-white/5"}`}>
-            <span className={`text-[10px] font-black ${myStatus === "attending" && !isPast ? "text-primary" : "text-white/40"}`}>
+        <div className="flex items-start gap-4">
+          {/* 날짜 박스 — 월/일/요일 */}
+          <div className={`flex-shrink-0 w-14 h-16 rounded-xl flex flex-col items-center justify-center border ${isMine ? "bg-primary/10 border-primary/30" : "bg-white/5 border-white/5"}`}>
+            <span className={`text-[10px] font-black ${isMine ? "text-primary" : "text-white/40"}`}>
               {date.toLocaleDateString("ko-KR", { month: "short" })}
             </span>
             <span className="text-xl font-black text-white leading-tight">{date.getDate()}</span>
+            <span className="text-[9px] font-bold text-white/40 leading-none mt-0.5">{weekday}</span>
           </div>
+
+          {/* 메인 정보 — 시간(크게) + 장소 */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-white font-black text-base tracking-wide truncate">{match.title}</p>
-              {isFull ? (
-                <span className="flex-shrink-0 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-400/80">마감</span>
-              ) : statusCfg ? (
-                <span className="flex-shrink-0 text-[10px] font-black px-2.5 py-0.5 rounded-full" style={{ backgroundColor: statusCfg.dimBg, color: statusCfg.color }}>
-                  {statusCfg.label}
-                </span>
-              ) : !isPast ? (
-                <span className="flex-shrink-0 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/5 text-white/25">미응답</span>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-white/40 text-xs">{date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
-              {match.location && (
-                <span className="flex items-center gap-1 text-white/30 text-xs">
-                  <span className="material-icons text-[10px]">location_on</span>{match.location}
-                </span>
-              )}
-              {dday && (
-                <span
-                  className={`ml-auto text-[10px] font-black px-2 py-0.5 rounded-full ${isDDay ? "animate-pulse" : ""}`}
-                  style={{
-                    backgroundColor: isDDay ? "rgba(13,242,62,0.15)" : "rgba(255,255,255,0.06)",
-                    color: "#0DF23E",
-                    boxShadow: isDDay ? "0 0 8px rgba(13,242,62,0.3)" : "none",
-                  }}
-                >
-                  {dday}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className={`text-xs font-black ${myStatus === "attending" && !isPast ? "text-primary" : "text-white/40"}`}>
-                {totalAttending} / {match.maxPlayers}명
-              </span>
-              <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((totalAttending / match.maxPlayers) * 100, 100)}%`, backgroundColor: myStatus === "attending" && !isPast ? "#0DF23E" : "rgba(255,255,255,0.15)" }} />
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <p className="text-white font-black text-lg leading-tight">{timeStr}</p>
+              {/* 우상단 뱃지 */}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {isFull && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-500/15 text-red-400/80">마감</span>
+                )}
+                {dday && !isFull && (
+                  <span
+                    className={`text-[9px] font-black px-2 py-0.5 rounded-full ${isDDay ? "animate-pulse" : ""}`}
+                    style={{
+                      backgroundColor: isDDay ? "rgba(13,242,62,0.18)" : "rgba(255,255,255,0.06)",
+                      color: "#0DF23E",
+                      boxShadow: isDDay ? "0 0 8px rgba(13,242,62,0.3)" : "none",
+                    }}
+                  >
+                    {dday}
+                  </span>
+                )}
               </div>
-              <span className="material-icons text-white/15 text-sm">chevron_right</span>
             </div>
+            {match.location && (
+              <p className="flex items-center gap-1 text-white/40 text-xs truncate">
+                <span className="material-icons" style={{ fontSize: 12 }}>location_on</span>
+                <span className="truncate">{match.location}</span>
+              </p>
+            )}
+            {/* 제목이 자동 생성 형식(YYYY-MM-DD ...)이 아니면 작게 표시 */}
+            {match.title && !/^\d{4}-\d{2}-\d{2}/.test(match.title) && (
+              <p className="text-white/30 text-[11px] mt-1 truncate">{match.title}</p>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* 하단 푸터 — 진행도 + 내 상태 */}
+      <div className="px-4 pb-3 pt-1 border-t border-white/[0.04]">
+        <div className="flex items-center gap-2.5 mt-2">
+          <span className={`text-xs font-black flex-shrink-0 ${isMine ? "text-primary" : "text-white/50"}`}>
+            {totalAttending}
+            <span className="text-white/30 font-bold"> / {match.maxPlayers}</span>
+          </span>
+          <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${percent}%`,
+                backgroundColor: isFull ? "#f97316" : isMine ? "#0DF23E" : "rgba(255,255,255,0.25)",
+              }}
+            />
+          </div>
+          {/* 내 상태 */}
+          {statusCfg ? (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: statusCfg.dimBg, color: statusCfg.color }}>
+              {statusCfg.label}
+            </span>
+          ) : !isPast ? (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/5 text-white/30 flex-shrink-0">미응답</span>
+          ) : null}
         </div>
       </div>
     </button>
