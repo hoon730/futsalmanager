@@ -28,6 +28,12 @@ export default function SettingsPage() {
   const [linkLoading, setLinkLoading] = useState(false);
   const [showLinkPicker, setShowLinkPicker] = useState(false);
 
+  // 매칭된 본인 선수 정보 수정용
+  const [showEditMyMember, setShowEditMyMember] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPosition, setEditPosition] = useState<"GK" | "DF" | "MF" | "FW" | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
   // user 스토어가 업데이트되면 linkedMemberId도 동기화
   useEffect(() => {
     const memberId = (user?.user_metadata?.member_id as string) ?? null;
@@ -48,6 +54,35 @@ export default function SettingsPage() {
       toast('연결에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
     } finally {
       setLinkLoading(false);
+    }
+  };
+
+  // 매칭된 선수 정보 수정 시작 (모달 열기 + 현재값 채우기)
+  const handleStartEditMyMember = () => {
+    if (!linkedMemberId) return;
+    const m = membersOnly.find((x) => x.id === linkedMemberId);
+    setEditName(m?.name ?? "");
+    setEditPosition((m?.positionKey as "GK" | "DF" | "MF" | "FW" | undefined) ?? null);
+    setShowEditMyMember(true);
+  };
+
+  const handleSaveMyMember = async () => {
+    const trimmed = editName.trim();
+    if (!trimmed) { toast("이름을 입력해주세요", "error"); return; }
+    setEditSaving(true);
+    try {
+      const { error } = await supabase.rpc("update_my_linked_member", {
+        p_name: trimmed,
+        p_position_key: editPosition,
+      });
+      if (error) throw error;
+      // members 명단 새로고침은 다음 동기화에 맡기고 일단 토스트만
+      setShowEditMyMember(false);
+      toast("내 선수 정보가 저장되었습니다");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "저장에 실패했습니다", "error");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -618,28 +653,47 @@ export default function SettingsPage() {
           <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">내 선수 프로필</p>
             {linkedMemberId ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-                    <span className="text-primary text-xs font-bold">
-                      {membersOnly.find(m => m.id === linkedMemberId)?.name?.slice(0, 1) ?? '?'}
-                    </span>
+              (() => {
+                const me = membersOnly.find((m) => m.id === linkedMemberId);
+                return (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary text-xs font-bold">
+                          {me?.name?.slice(0, 1) ?? '?'}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-white font-bold text-sm truncate">
+                          {me?.name ?? '알 수 없음'}
+                          {me?.positionKey && (
+                            <span className="ml-2 text-[9px] font-black uppercase tracking-widest text-primary/70 px-1.5 py-0.5 rounded-md bg-primary/10">
+                              {me.positionKey}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-primary text-[10px] font-black uppercase tracking-widest">연결됨</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={handleStartEditMyMember}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                        title="내 선수 정보 수정"
+                      >
+                        <span className="material-icons text-base">edit</span>
+                      </button>
+                      <button
+                        onClick={() => setShowLinkPicker(true)}
+                        disabled={linkLoading}
+                        className="text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-colors px-2"
+                      >
+                        변경
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-bold text-sm">
-                      {membersOnly.find(m => m.id === linkedMemberId)?.name ?? '알 수 없음'}
-                    </p>
-                    <p className="text-primary text-[10px] font-black uppercase tracking-widest">연결됨</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowLinkPicker(true)}
-                  disabled={linkLoading}
-                  className="text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-colors"
-                >
-                  변경
-                </button>
-              </div>
+                );
+              })()
             ) : (
               <button
                 onClick={() => setShowLinkPicker(true)}
@@ -702,6 +756,89 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* 내 선수 정보 수정 모달 */}
+      {showEditMyMember && createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
+          onClick={() => !editSaving && setShowEditMyMember(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6"
+            style={{ background: 'rgba(22,28,22,0.98)', border: '1px solid rgba(13,242,62,0.15)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 정보</h3>
+            <p className="text-white/40 text-xs mb-5">동호회에 표시될 이름과 포지션을 수정합니다</p>
+
+            {/* 이름 */}
+            <div className="mb-4">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">이름</label>
+              <input
+                autoFocus
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                maxLength={20}
+                disabled={editSaving}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50"
+                placeholder="동호회 이름"
+              />
+            </div>
+
+            {/* 포지션 */}
+            <div className="mb-4">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">포지션</label>
+              <div className="flex gap-2">
+                {(['GK','DF','MF','FW'] as const).map((pos) => (
+                  <button
+                    key={pos}
+                    onClick={() => setEditPosition(editPosition === pos ? null : pos)}
+                    disabled={editSaving}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all active:scale-95 border"
+                    style={editPosition === pos
+                      ? { backgroundColor: '#0DF23E', color: '#0a150d', borderColor: '#0DF23E' }
+                      : { backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', borderColor: 'rgba(255,255,255,0.08)' }
+                    }
+                  >
+                    {pos}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-white/25 mt-2">선택을 다시 누르면 해제됩니다</p>
+            </div>
+
+            {/* 안내 */}
+            <div className="mb-5 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5">
+              <p className="text-[10px] text-white/40 leading-relaxed">
+                <span className="material-icons align-middle text-xs text-white/30 mr-1">info</span>
+                스킬은 공정한 팀 배정을 위해 운영자만 변경할 수 있습니다
+              </p>
+            </div>
+
+            {/* 액션 */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowEditMyMember(false)}
+                disabled={editSaving}
+                className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-white/40 disabled:opacity-40"
+                style={{ background: 'rgba(255,255,255,0.05)' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveMyMember}
+                disabled={editSaving || !editName.trim()}
+                className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest disabled:opacity-40"
+                style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
+              >
+                {editSaving ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* 선수 프로필 선택 모달 */}
