@@ -517,7 +517,8 @@ export default function SettingsPage() {
         )}
       </main>
 
-      {/* 동호회 회원 (인증 유저) 섹션 */}
+      {/* 동호회 회원 (인증 유저) 섹션 — 운영자/관리자만 표시 */}
+      {isOwnerOrAdmin && (
       <div className="px-6 mb-6 mt-14">
         <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
@@ -602,6 +603,7 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* 내 설정 */}
       <div className="px-6 mt-2 mb-5">
