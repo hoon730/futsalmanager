@@ -21,6 +21,7 @@ export const useRealtimeSync = (squadId: string | null) => {
 
   useEffect(() => {
     if (!squadId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsConnected(false);
       return;
     }
