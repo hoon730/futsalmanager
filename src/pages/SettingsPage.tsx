@@ -35,6 +35,8 @@ export default function SettingsPage() {
   const [editSaving, setEditSaving] = useState(false);
   // 내 선수 프로필 카드 케밥 메뉴
   const [showMyProfileMenu, setShowMyProfileMenu] = useState(false);
+  // 동호회 회원 상세 모달
+  const [selectedSquadUser, setSelectedSquadUser] = useState<{ userId: string; role: "owner" | "admin" | "member"; username: string } | null>(null);
 
   // user 스토어가 업데이트되면 linkedMemberId도 동기화
   useEffect(() => {
@@ -585,8 +587,15 @@ export default function SettingsPage() {
                   member: { label: "MEMBER", color: "rgba(255,255,255,0.3)" },
                 };
                 const badge = roleBadge[u.role];
+                // 운영자가 다른 멤버를 클릭하면 상세 모달
+                const clickable = userRole === "owner" && !isMe;
                 return (
-                  <div key={u.userId} className="flex items-center gap-3 py-1.5">
+                  <button
+                    key={u.userId}
+                    onClick={() => clickable && setSelectedSquadUser(u)}
+                    disabled={!clickable}
+                    className={`w-full flex items-center gap-3 py-2 px-1 -mx-1 rounded-lg transition-colors text-left ${clickable ? "hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer" : "cursor-default"}`}
+                  >
                     {/* 아바타 */}
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
@@ -603,37 +612,10 @@ export default function SettingsPage() {
                     <span className="text-[9px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: badge.color }}>
                       {badge.label}
                     </span>
-                    {/* owner 전용: 역할 변경 + 내보내기 */}
-                    {userRole === "owner" && !isMe && (
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {u.role === "member" && (
-                          <button
-                            onClick={() => handleChangeRole(u.userId, "admin")}
-                            className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all"
-                            style={{ backgroundColor: "rgba(13,242,62,0.08)", color: "#0DF23E", border: "1px solid rgba(13,242,62,0.2)" }}
-                          >
-                            관리자↑
-                          </button>
-                        )}
-                        {u.role === "admin" && (
-                          <button
-                            onClick={() => handleChangeRole(u.userId, "member")}
-                            className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all"
-                            style={{ backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}
-                          >
-                            일반↓
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleRemoveSquadMember(u.userId, u.username)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                          style={{ backgroundColor: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.5)", border: "1px solid rgba(239,68,68,0.15)" }}
-                        >
-                          <span className="material-icons text-sm">person_remove</span>
-                        </button>
-                      </div>
+                    {clickable && (
+                      <span className="material-icons text-white/20 text-sm flex-shrink-0">chevron_right</span>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -785,6 +767,90 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* 동호회 회원 상세 모달 (운영자 액션) */}
+      {selectedSquadUser && createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
+          onClick={() => setSelectedSquadUser(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl overflow-hidden"
+            style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 — 멤버 정보 */}
+            <div className="px-5 pt-5 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-base font-bold"
+                  style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
+                >
+                  {selectedSquadUser.username[0]?.toUpperCase() ?? "?"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-black text-base truncate">{selectedSquadUser.username}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest mt-0.5"
+                    style={{
+                      color: selectedSquadUser.role === "owner" ? "#FFD700"
+                           : selectedSquadUser.role === "admin" ? "#0DF23E"
+                           : "rgba(255,255,255,0.4)"
+                    }}>
+                    {selectedSquadUser.role.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 액션 */}
+            <div className="py-1">
+              {selectedSquadUser.role === "member" && (
+                <button
+                  onClick={() => {
+                    handleChangeRole(selectedSquadUser.userId, "admin");
+                    setSelectedSquadUser(null);
+                  }}
+                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition-colors text-left"
+                >
+                  <span className="material-icons text-primary" style={{ fontSize: 18 }}>arrow_upward</span>
+                  <span className="text-sm font-bold text-white/85">관리자로 승급</span>
+                </button>
+              )}
+              {selectedSquadUser.role === "admin" && (
+                <button
+                  onClick={() => {
+                    handleChangeRole(selectedSquadUser.userId, "member");
+                    setSelectedSquadUser(null);
+                  }}
+                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition-colors text-left"
+                >
+                  <span className="material-icons text-white/50" style={{ fontSize: 18 }}>arrow_downward</span>
+                  <span className="text-sm font-bold text-white/85">일반 멤버로 강등</span>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  handleRemoveSquadMember(selectedSquadUser.userId, selectedSquadUser.username);
+                  setSelectedSquadUser(null);
+                }}
+                className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-red-500/10 transition-colors text-left border-t border-white/5"
+              >
+                <span className="material-icons text-red-400" style={{ fontSize: 18 }}>person_remove</span>
+                <span className="text-sm font-bold text-red-400">동호회에서 내보내기</span>
+              </button>
+            </div>
+
+            {/* 닫기 */}
+            <button
+              onClick={() => setSelectedSquadUser(null)}
+              className="w-full py-3 text-xs font-black uppercase tracking-widest text-white/40 border-t border-white/5 hover:bg-white/[0.02] transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* 내 선수 정보 수정 모달 */}
