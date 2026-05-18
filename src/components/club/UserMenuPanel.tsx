@@ -7,6 +7,7 @@ import { useDivisionStore } from "@/stores/divisionStore";
 import { supabase } from "@/lib/supabase";
 import { shareSquadInvite, isKakaoReady } from "@/lib/kakaoShare";
 import { KakaoIcon } from "@/components/icons/KakaoIcon";
+import { ShareMenu } from "@/components/ShareMenu";
 import {
   loadSquadFromSupabase,
   loadFixedTeamsFromSupabase,
@@ -177,25 +178,30 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                     <span className="text-2xl font-black tracking-[0.4em] font-mono text-primary">
                       {currentClub.invite_code}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={handleCopyCode}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-wider transition-all active:scale-95"
-                      >
-                        <span className="material-icons text-sm">{copiedCode ? "check" : "content_copy"}</span>
-                        {copiedCode ? "복사됨" : "복사"}
-                      </button>
-                      {isKakaoReady() && (
+                    <ShareMenu
+                      title="초대 코드 공유"
+                      items={[
+                        {
+                          label: copiedCode ? "복사됨" : "코드 복사",
+                          icon: <span className="material-icons text-base text-white/60">{copiedCode ? "check" : "content_copy"}</span>,
+                          onClick: handleCopyCode,
+                        },
+                        ...(isKakaoReady() ? [{
+                          label: "카카오톡으로 보내기",
+                          icon: <KakaoIcon size={20} />,
+                          onClick: () => shareSquadInvite(currentClub.name, currentClub.invite_code),
+                        }] : []),
+                      ]}
+                      trigger={(open) => (
                         <button
-                          onClick={() => shareSquadInvite(currentClub.name, currentClub.invite_code)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95"
-                          style={{ background: "#fee500", color: "#3c1e1e" }}
+                          onClick={open}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/85 text-xs font-black uppercase tracking-wider transition-all active:scale-95 hover:bg-white/12"
                         >
-                          <KakaoIcon size={14} />
+                          <span className="material-icons text-sm">ios_share</span>
                           공유
                         </button>
                       )}
-                    </div>
+                    />
                   </div>
                   <p className="text-white/25 text-[10px] mt-2.5 leading-relaxed">멤버에게 이 코드를 공유하면 동호회에 참가할 수 있습니다</p>
                   {isOwner && (

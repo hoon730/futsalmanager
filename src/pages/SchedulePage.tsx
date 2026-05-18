@@ -10,6 +10,7 @@ import type { IMatch, IMatchAttendee, IMatchComment, ISquad, IMember, IDivision 
 import PlaceSearchInput from "@/components/PlaceSearchInput";
 import { shareMatch, isKakaoReady } from "@/lib/kakaoShare";
 import { KakaoIcon } from "@/components/icons/KakaoIcon";
+import { ShareMenu } from "@/components/ShareMenu";
 
 // ─── 공통 설정 ────────────────────────────────────────────────────────────────
 
@@ -893,22 +894,35 @@ function MatchDetailSheet({
             </button>
 
             <div className="flex items-center gap-1">
-              {isKakaoReady() && (
-                <button
-                  onClick={() => shareMatch({
-                    title: match.title,
-                    matchDate: match.matchDate,
-                    location: match.location,
-                    attendingCount: totalAttending,
-                    maxPlayers: match.maxPlayers,
-                  })}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black tracking-wider transition-all active:scale-95"
-                  style={{ background: "#fee500", color: "#3c1e1e" }}
-                >
-                  <KakaoIcon size={14} />
-                  공유
-                </button>
-              )}
+              <ShareMenu
+                title="경기 공유"
+                items={[
+                  {
+                    label: "링크 복사",
+                    icon: <span className="material-icons text-base text-white/60">link</span>,
+                    onClick: () => navigator.clipboard.writeText(window.location.href),
+                  },
+                  ...(isKakaoReady() ? [{
+                    label: "카카오톡으로 보내기",
+                    icon: <KakaoIcon size={20} />,
+                    onClick: () => shareMatch({
+                      title: match.title,
+                      matchDate: match.matchDate,
+                      location: match.location,
+                      attendingCount: totalAttending,
+                      maxPlayers: match.maxPlayers,
+                    }),
+                  }] : []),
+                ]}
+                trigger={(open) => (
+                  <button
+                    onClick={open}
+                    className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
+                  >
+                    <span className="material-icons text-lg">ios_share</span>
+                  </button>
+                )}
+              />
               {(isAdmin || match.createdBy === userId) ? (
               <div className="relative">
                 <button
@@ -942,9 +956,7 @@ function MatchDetailSheet({
                   </>
                 )}
               </div>
-              ) : (
-                !isKakaoReady() && <div className="w-9 h-9" />
-              )}
+              ) : null}
             </div>
           </div>
 
