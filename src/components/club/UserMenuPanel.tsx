@@ -6,6 +6,7 @@ import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { supabase } from "@/lib/supabase";
 import { shareSquadInvite, isKakaoReady } from "@/lib/kakaoShare";
+import { KakaoIcon } from "@/components/icons/KakaoIcon";
 import {
   loadSquadFromSupabase,
   loadFixedTeamsFromSupabase,
@@ -187,11 +188,11 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                       {isKakaoReady() && (
                         <button
                           onClick={() => shareSquadInvite(currentClub.name, currentClub.invite_code)}
-                          title="카카오톡으로 공유"
-                          className="flex items-center justify-center w-9 h-9 rounded-xl text-xs font-black transition-all active:scale-95"
-                          style={{ background: "rgba(254,229,0,0.12)", border: "1px solid rgba(254,229,0,0.25)", color: "#fee500" }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95"
+                          style={{ background: "#fee500", color: "#3c1e1e" }}
                         >
-                          <span className="material-icons text-sm">chat</span>
+                          <KakaoIcon size={14} />
+                          공유
                         </button>
                       )}
                     </div>
