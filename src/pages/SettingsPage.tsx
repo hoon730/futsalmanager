@@ -33,6 +33,8 @@ export default function SettingsPage() {
   const [editName, setEditName] = useState("");
   const [editPosition, setEditPosition] = useState<"GK" | "DF" | "MF" | "FW" | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  // 내 선수 프로필 카드 케밥 메뉴
+  const [showMyProfileMenu, setShowMyProfileMenu] = useState(false);
 
   // user 스토어가 업데이트되면 linkedMemberId도 동기화
   useEffect(() => {
@@ -675,21 +677,48 @@ export default function SettingsPage() {
                         <p className="text-primary text-[10px] font-black uppercase tracking-widest">연결됨</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* 케밥 메뉴 */}
+                    <div className="relative flex-shrink-0">
                       <button
-                        onClick={handleStartEditMyMember}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
-                        title="내 선수 정보 수정"
+                        onClick={() => setShowMyProfileMenu((v) => !v)}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors active:scale-90"
+                        title="더보기"
                       >
-                        <span className="material-icons text-base">edit</span>
+                        <span className="material-icons text-lg">more_vert</span>
                       </button>
-                      <button
-                        onClick={() => setShowLinkPicker(true)}
-                        disabled={linkLoading}
-                        className="text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-colors px-2"
-                      >
-                        변경
-                      </button>
+                      {showMyProfileMenu && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setShowMyProfileMenu(false)} />
+                          <div
+                            className="absolute right-0 top-10 z-20 rounded-xl overflow-hidden whitespace-nowrap shadow-lg min-w-[140px]"
+                            style={{ background: "rgba(28,34,28,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
+                          >
+                            <button
+                              onClick={() => { handleStartEditMyMember(); setShowMyProfileMenu(false); }}
+                              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors"
+                            >
+                              <span className="material-icons text-white/50" style={{ fontSize: "14px" }}>edit</span>
+                              정보 수정
+                            </button>
+                            <button
+                              onClick={() => { setShowLinkPicker(true); setShowMyProfileMenu(false); }}
+                              disabled={linkLoading}
+                              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors border-t border-white/5 disabled:opacity-40"
+                            >
+                              <span className="material-icons text-white/50" style={{ fontSize: "14px" }}>swap_horiz</span>
+                              매칭 변경
+                            </button>
+                            <button
+                              onClick={() => { handleLinkMember(null); setShowMyProfileMenu(false); }}
+                              disabled={linkLoading}
+                              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/10 transition-colors border-t border-white/5 disabled:opacity-40"
+                            >
+                              <span className="material-icons text-red-400/70" style={{ fontSize: "14px" }}>link_off</span>
+                              연결 해제
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
