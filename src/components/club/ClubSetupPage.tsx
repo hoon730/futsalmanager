@@ -102,21 +102,24 @@ const CreateClub = ({ onBack }: { onBack: () => void }) => {
 
     try {
       const squadId = `squad_${Date.now()}`;
+      // RPC: squad + owner squad_member를 단일 트랜잭션으로 생성 (고아 squad 방지)
       const { data: squad, error: squadErr } = await supabase
-        .from("squads")
-        .insert({ id: squadId, name, description, owner_id: user.id })
-        .select()
+        .rpc("create_squad_with_owner", {
+          p_squad_id: squadId,
+          p_name: name,
+          p_description: description || null,
+        })
         .single();
 
       if (squadErr) throw squadErr;
+      if (!squad) throw new Error("동호회 생성 실패");
 
-      await supabase.from("squad_members").insert({
-        squad_id: squad.id,
-        user_id: user.id,
-        role: "owner",
+      setSquad({
+        id: (squad as { id: string }).id,
+        name: (squad as { name: string }).name,
+        members: [],
+        createdAt: (squad as { created_at: string }).created_at,
       });
-
-      setSquad({ id: squad.id, name: squad.name, members: [], createdAt: squad.created_at });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "동호회 생성 실패");
     } finally {
@@ -215,7 +218,8 @@ const JoinClub = ({ onBack }: { onBack: () => void }) => {
         role: "member",
       });
 
-      if (memberErr && !memberErr.message.includes("duplicate")) throw memberErr;
+      // 23505 = unique_violation (이미 가입된 squad). 그 외 에러는 throw.
+      if (memberErr && memberErr.code !== "23505") throw memberErr;
 
       // 전체 데이터 로드 (멤버, 고정팀, 이력 포함)
       const [fullSquad, fixedTeams, divisions, history] = await Promise.all([
