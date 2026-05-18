@@ -15,6 +15,16 @@ import {
 } from '@/lib/pushNotification';
 import type { IMember } from '@/types';
 
+interface ISquadUserRow {
+  userId: string;
+  role: "owner" | "admin" | "member";
+  username: string;
+  joinedAt: string;
+  attendedMatches: number;
+  totalMatches: number;
+  attendanceRate: number;
+}
+
 export default function SettingsPage() {
   const { squad, addMember, removeMember, updateMember } = useSquadStore();
   const members = squad?.members || [];
@@ -36,7 +46,7 @@ export default function SettingsPage() {
   // 내 선수 프로필 카드 케밥 메뉴
   const [showMyProfileMenu, setShowMyProfileMenu] = useState(false);
   // 동호회 회원 상세 모달
-  const [selectedSquadUser, setSelectedSquadUser] = useState<{ userId: string; role: "owner" | "admin" | "member"; username: string } | null>(null);
+  const [selectedSquadUser, setSelectedSquadUser] = useState<ISquadUserRow | null>(null);
 
   // user 스토어가 업데이트되면 linkedMemberId도 동기화
   useEffect(() => {
@@ -149,7 +159,6 @@ export default function SettingsPage() {
   };
 
   // 동호회 회원 (인증 유저) 목록
-  interface ISquadUserRow { userId: string; role: "owner" | "admin" | "member"; username: string; }
   const [squadUsers, setSquadUsers] = useState<ISquadUserRow[]>([]);
   const [squadUsersLoading, setSquadUsersLoading] = useState(false);
 
@@ -157,13 +166,16 @@ export default function SettingsPage() {
     if (!squad?.id) return;
     setSquadUsersLoading(true);
     try {
+      // 1) squad_members
       const { data: memberRows, error } = await supabase
         .from("squad_members")
-        .select("user_id, role")
+        .select("user_id, role, joined_at")
         .eq("squad_id", squad.id);
       if (error || !memberRows) return;
 
       const userIds = memberRows.map((m) => m.user_id);
+
+      // 2) profiles
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, username")
@@ -172,11 +184,51 @@ export default function SettingsPage() {
         (profiles || []).map((p) => [p.id, p.username ?? "알 수 없음"])
       );
 
-      const rows: ISquadUserRow[] = memberRows.map((m) => ({
-        userId: m.user_id,
-        role: m.role as ISquadUserRow["role"],
-        username: profileMap[m.user_id] ?? "알 수 없음",
-      }));
+      // 3) 지난 경기 목록 (출석률 계산용)
+      const nowIso = new Date().toISOString();
+      const { data: matchesData } = await supabase
+        .from("matches")
+        .select("id, match_date")
+        .eq("squad_id", squad.id)
+        .lt("match_date", nowIso);
+      const pastMatches = matchesData || [];
+
+      // 4) 멤버들의 출석 응답
+      const matchIds = pastMatches.map((m) => m.id);
+      let attendances: { user_id: string; match_id: string; status: string }[] = [];
+      if (matchIds.length > 0 && userIds.length > 0) {
+        const { data: att } = await supabase
+          .from("match_attendees")
+          .select("user_id, match_id, status")
+          .in("match_id", matchIds)
+          .in("user_id", userIds);
+        attendances = att || [];
+      }
+
+      // 5) 멤버별 출석률 계산 (가입일 이후 경기만 분모로)
+      const rows: ISquadUserRow[] = memberRows.map((m) => {
+        const eligible = pastMatches.filter(
+          (pm) => new Date(pm.match_date) >= new Date(m.joined_at)
+        );
+        const eligibleIds = new Set(eligible.map((e) => e.id));
+        const userAtts = attendances.filter(
+          (a) => a.user_id === m.user_id && eligibleIds.has(a.match_id)
+        );
+        const attended = userAtts.filter((a) => a.status === "attending").length;
+        const total = eligible.length;
+        const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+        return {
+          userId: m.user_id,
+          role: m.role as ISquadUserRow["role"],
+          username: profileMap[m.user_id] ?? "알 수 없음",
+          joinedAt: m.joined_at,
+          attendedMatches: attended,
+          totalMatches: total,
+          attendanceRate: rate,
+        };
+      });
+
       // owner 먼저, 그 다음 admin, 그 다음 member
       rows.sort((a, b) => {
         const order = { owner: 0, admin: 1, member: 2 };
@@ -800,6 +852,36 @@ export default function SettingsPage() {
                     {selectedSquadUser.role.toUpperCase()}
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* 통계 — 가입일 / 출석률 */}
+            <div className="px-5 py-4 border-b border-white/5 grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1.5">가입일</p>
+                <p className="text-sm font-bold text-white">
+                  {new Date(selectedSquadUser.joinedAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1.5">출석률</p>
+                {selectedSquadUser.totalMatches > 0 ? (
+                  <div className="flex items-baseline gap-1.5">
+                    <p className="text-sm font-black"
+                      style={{
+                        color: selectedSquadUser.attendanceRate >= 80 ? "#0DF23E"
+                             : selectedSquadUser.attendanceRate >= 50 ? "#f59e0b"
+                             : "#ef4444"
+                      }}>
+                      {selectedSquadUser.attendanceRate}%
+                    </p>
+                    <p className="text-[10px] font-bold text-white/40">
+                      ({selectedSquadUser.attendedMatches}/{selectedSquadUser.totalMatches})
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm font-bold text-white/30">기록 없음</p>
+                )}
               </div>
             </div>
 
