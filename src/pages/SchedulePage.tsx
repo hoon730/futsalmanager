@@ -823,7 +823,6 @@ function MatchDetailSheet({
   // 참석 현황
   const attending = attendees.filter((a) => a.status === "attending");
   const absent    = attendees.filter((a) => a.status === "absent");
-  const pending   = attendees.filter((a) => a.status === "pending");
   const waitlist  = attendees.filter((a) => a.status === "waitlist");
   const myStatus  = attendees.find((a) => a.userId === userId)?.status ?? null;
   const isPast = new Date(match.matchDate) < new Date();
