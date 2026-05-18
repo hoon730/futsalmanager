@@ -342,9 +342,11 @@ export default function SettingsPage() {
 
       {/* 메인 */}
       <main className="flex-1 px-6">
-        {/* ━━━━━━━━━━━━━━ 동호회 운영 ━━━━━━━━━━━━━━ */}
-        <div className="flex items-center justify-between mb-3 mt-1">
-          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/50">동호회 운영</h2>
+        {/* 멤버 관리 */}
+        <div className="flex items-center justify-between mb-5 mt-1">
+          <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+            <span className="material-icons text-sm text-primary">groups</span>멤버 관리
+          </h2>
           <button
             onClick={handleAddMember}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
@@ -597,9 +599,11 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ━━━━━━━━━━━━━━ 내 설정 ━━━━━━━━━━━━━━ */}
-      <div className="px-6 mt-2 mb-3">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/50">내 설정</h2>
+      {/* 내 설정 */}
+      <div className="px-6 mt-2 mb-5">
+        <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+          <span className="material-icons text-sm text-primary">tune</span>내 설정
+        </h2>
       </div>
 
       {/* 내 선수 프로필 연결 (로그인 유저만) */}
