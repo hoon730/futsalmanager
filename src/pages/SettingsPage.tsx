@@ -104,13 +104,19 @@ export default function SettingsPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   useEffect(() => {
     if (!user || !squad?.id) return;
+    // squad 전환 시 이전 동호회의 role이 잠깐 노출되지 않도록 즉시 초기화
+    setUserRole(null);
+    let cancelled = false;
     supabase
       .from("squad_members")
       .select("role")
       .eq("user_id", user.id)
       .eq("squad_id", squad.id)
-      .single()
-      .then(({ data }) => setUserRole(data?.role ?? null));
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setUserRole(data?.role ?? null);
+      });
+    return () => { cancelled = true; };
   }, [user, squad?.id]);
 
   const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";

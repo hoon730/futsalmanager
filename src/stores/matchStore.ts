@@ -262,65 +262,73 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
     const current = get().attendees[matchId] || [];
     const existing = current.find((a) => a.userId === userId);
 
-    if (existing) {
-      if (existing.status === status) return;
+    if (existing && existing.status === status && memberId === undefined) return;
 
-      set((state) => ({
-        attendees: {
-          ...state.attendees,
-          [matchId]: current.map((a) =>
-            a.userId === userId
-              ? { ...a, status, ...(memberId !== undefined ? { memberId } : {}) }
-              : a
-          ),
-        },
-      }));
+    // 낙관적 업데이트: 동일 사용자 클릭이 빠르게 연속되더라도 unique 제약 + upsert로 안전
+    set((state) => ({
+      attendees: {
+        ...state.attendees,
+        [matchId]: existing
+          ? current.map((a) =>
+              a.userId === userId
+                ? { ...a, status, ...(memberId !== undefined ? { memberId } : {}) }
+                : a,
+            )
+          : [
+              ...current,
+              {
+                id: `temp-${userId}`,
+                matchId,
+                userId,
+                memberId,
+                status,
+                registeredAt: new Date().toISOString(),
+              },
+            ],
+      },
+    }));
 
-      const { error } = await supabase
-        .from("match_attendees")
-        .update({
-          status,
-          ...(memberId !== undefined ? { member_id: memberId } : {}),
-        })
-        .eq("match_id", matchId)
-        .eq("user_id", userId);
-
-      if (error) {
-        set((state) => ({
-          attendees: { ...state.attendees, [matchId]: current },
-        }));
-        throw error;
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("match_attendees")
-        .insert({
+    const { data, error } = await supabase
+      .from("match_attendees")
+      .upsert(
+        {
           match_id: matchId,
           user_id: userId,
           member_id: memberId ?? null,
           status,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newAttendee: IMatchAttendee = {
-        id: data.id,
-        matchId: data.match_id,
-        userId: data.user_id,
-        memberId: data.member_id,
-        status: data.status,
-        registeredAt: data.registered_at,
-      };
-
-      set((state) => ({
-        attendees: {
-          ...state.attendees,
-          [matchId]: [...(state.attendees[matchId] || []), newAttendee],
         },
+        { onConflict: "match_id,user_id" },
+      )
+      .select()
+      .single();
+
+    if (error) {
+      // 롤백
+      set((state) => ({
+        attendees: { ...state.attendees, [matchId]: current },
       }));
+      throw error;
     }
+
+    // 서버 응답으로 실제 id/registered_at 동기화 (temp-* 행 교체)
+    set((state) => ({
+      attendees: {
+        ...state.attendees,
+        [matchId]: (state.attendees[matchId] || []).map((a) =>
+          a.userId === userId
+            ? {
+                id: data.id,
+                matchId: data.match_id,
+                userId: data.user_id,
+                memberId: data.member_id,
+                status: data.status,
+                registeredAt: data.registered_at,
+                username: a.username,
+              }
+            : a,
+        ),
+      },
+    }));
   },
 
   loadComments: async (matchId) => {

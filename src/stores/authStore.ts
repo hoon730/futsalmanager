@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle();
         set({ user: session.user, session, profile, isLoading: false });
       } else {
         set({ isLoading: false });
@@ -50,33 +50,44 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     // 세션 변경 감지
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
+    // INITIAL_SESSION은 initialize()가 이미 처리했으므로 스킵.
+    // TOKEN_REFRESHED/USER_UPDATED는 user/session만 갱신하고 profile은 재조회 안 함.
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "INITIAL_SESSION") return;
+
+      if (event === "SIGNED_OUT" || !session?.user) {
+        set({ user: null, session: null, profile: null });
+        return;
+      }
+
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        set({ user: session.user, session });
+        return;
+      }
+
+      // SIGNED_IN: 프로필 조회 + (없으면) OAuth 신규 유저용 자동 생성
+      if (event === "SIGNED_IN") {
         let { data: profile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle();
 
-        // 카카오 등 OAuth 신규 유저 → 프로필 자동 생성
         if (!profile) {
           const defaultUsername =
             (session.user.user_metadata?.name as string) ||
             (session.user.user_metadata?.full_name as string) ||
             session.user.email?.split("@")[0] ||
             "사용자";
-          await supabase.from("profiles").upsert({ id: session.user.id, username: defaultUsername });
-          const { data: created } = await supabase
+          const { data: upserted } = await supabase
             .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
+            .upsert({ id: session.user.id, username: defaultUsername })
+            .select()
             .single();
-          profile = created;
+          profile = upserted;
         }
 
         set({ user: session.user, session, profile });
-      } else {
-        set({ user: null, session: null, profile: null });
       }
     });
   },
