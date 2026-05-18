@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 import { useAuthStore } from "@/stores/authStore";
 import { useSquadStore } from "@/stores/squadStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
@@ -121,7 +122,7 @@ const CreateClub = ({ onBack }: { onBack: () => void }) => {
         createdAt: (squad as { created_at: string }).created_at,
       });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "동호회 생성 실패");
+      setError(toFriendlyMessage(err, "동호회 생성에 실패했습니다"));
     } finally {
       setIsLoading(false);
     }
@@ -236,7 +237,7 @@ const JoinClub = ({ onBack }: { onBack: () => void }) => {
         updateTeammateHistory(history);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "참가 실패");
+      setError(toFriendlyMessage(err, "참가에 실패했습니다"));
     } finally {
       setIsLoading(false);
     }

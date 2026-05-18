@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 
 interface Profile {
   id: string;
@@ -108,7 +109,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "회원가입 실패";
+      const message = toFriendlyMessage(err, "회원가입에 실패했습니다");
       set({ error: message });
       throw err;
     } finally {
@@ -122,7 +123,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "로그인 실패";
+      const message = toFriendlyMessage(err, "로그인에 실패했습니다");
       set({ error: message });
       throw err;
     } finally {

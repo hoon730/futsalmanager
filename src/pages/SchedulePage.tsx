@@ -12,6 +12,7 @@ import { shareMatch, isKakaoReady } from "@/lib/kakaoShare";
 import { KakaoIcon } from "@/components/icons/KakaoIcon";
 import { ShareMenu } from "@/components/ShareMenu";
 import { toast } from "@/stores/toastStore";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 
 // ─── 공통 설정 ────────────────────────────────────────────────────────────────
 
@@ -76,8 +77,8 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
     loadAnnouncements(squad.id);
   }, [squad?.id]);
 
-  // matches가 추가/삭제/업데이트될 때마다 누락된 attendees 로드
-  // (length만 보면 같은 길이의 add+delete 케이스에서 누락됨)
+  // loadMatches가 한 번에 attendees까지 로드하므로 별도 N+1 effect 불필요.
+  // createMatch 직후 새 match만 attendees 비어있을 수 있으니 보강.
   const matchIdsKey = matches.map((m) => m.id).join(",");
   useEffect(() => {
     matches.forEach((m) => { if (!attendees[m.id]) loadAttendees(m.id); });
@@ -861,11 +862,15 @@ function MatchDetailSheet({
     }
   };
 
-  const handleAddMercenarySubmit = () => {
+  const handleAddMercenarySubmit = async () => {
     const name = mercenaryName.trim();
     if (!name) return;
-    onAddMercenary(name);
-    setMercenaryName("");
+    try {
+      await onAddMercenary(name);
+      setMercenaryName("");
+    } catch (e) {
+      toast(toFriendlyMessage(e, "용병 추가에 실패했습니다"), "error");
+    }
   };
 
   // 참석 현황
@@ -1548,7 +1553,7 @@ function CreateMatchModal({ squadId, userId, onClose, onCreate }: CreateMatchMod
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "경기 생성 실패");
+      setError(toFriendlyMessage(err, "경기 생성에 실패했습니다"));
     } finally {
       setIsLoading(false);
     }
@@ -1626,7 +1631,7 @@ function EditMatchModal({ match, onClose, onSave }: EditMatchModalProps) {
         notes: notes || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "수정 실패");
+      setError(toFriendlyMessage(err, "수정에 실패했습니다"));
     } finally {
       setIsLoading(false);
     }
