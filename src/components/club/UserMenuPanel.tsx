@@ -5,6 +5,7 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { supabase } from "@/lib/supabase";
+import { shareSquadInvite, isKakaoReady } from "@/lib/kakaoShare";
 import {
   loadSquadFromSupabase,
   loadFixedTeamsFromSupabase,
@@ -175,13 +176,25 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                     <span className="text-2xl font-black tracking-[0.4em] font-mono text-primary">
                       {currentClub.invite_code}
                     </span>
-                    <button
-                      onClick={handleCopyCode}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-wider transition-all active:scale-95"
-                    >
-                      <span className="material-icons text-sm">{copiedCode ? "check" : "content_copy"}</span>
-                      {copiedCode ? "복사됨" : "복사"}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={handleCopyCode}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-wider transition-all active:scale-95"
+                      >
+                        <span className="material-icons text-sm">{copiedCode ? "check" : "content_copy"}</span>
+                        {copiedCode ? "복사됨" : "복사"}
+                      </button>
+                      {isKakaoReady() && (
+                        <button
+                          onClick={() => shareSquadInvite(currentClub.name, currentClub.invite_code)}
+                          title="카카오톡으로 공유"
+                          className="flex items-center justify-center w-9 h-9 rounded-xl text-xs font-black transition-all active:scale-95"
+                          style={{ background: "rgba(254,229,0,0.12)", border: "1px solid rgba(254,229,0,0.25)", color: "#fee500" }}
+                        >
+                          <span className="material-icons text-sm">chat</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-white/25 text-[10px] mt-2.5 leading-relaxed">멤버에게 이 코드를 공유하면 동호회에 참가할 수 있습니다</p>
                   {isOwner && (

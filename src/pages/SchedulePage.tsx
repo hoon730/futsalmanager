@@ -8,6 +8,7 @@ import { useAnnouncementStore } from "@/stores/announcementStore";
 import { supabase } from "@/lib/supabase";
 import type { IMatch, IMatchAttendee, IMatchComment, ISquad, IMember, IDivision } from "@/types";
 import PlaceSearchInput from "@/components/PlaceSearchInput";
+import { shareMatch, isKakaoReady } from "@/lib/kakaoShare";
 
 // ─── 공통 설정 ────────────────────────────────────────────────────────────────
 
@@ -890,7 +891,23 @@ function MatchDetailSheet({
               <span className="material-icons text-lg">close</span>
             </button>
 
-            {(isAdmin || match.createdBy === userId) ? (
+            <div className="flex items-center gap-1">
+              {isKakaoReady() && (
+                <button
+                  onClick={() => shareMatch({
+                    title: match.title,
+                    matchDate: match.matchDate,
+                    location: match.location,
+                    attendingCount: totalAttending,
+                    maxPlayers: match.maxPlayers,
+                  })}
+                  title="카카오톡으로 공유"
+                  className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
+                >
+                  <span className="material-icons text-lg">share</span>
+                </button>
+              )}
+              {(isAdmin || match.createdBy === userId) ? (
               <div className="relative">
                 <button
                   onClick={() => setMatchMenuOpen(v => !v)}
@@ -923,9 +940,10 @@ function MatchDetailSheet({
                   </>
                 )}
               </div>
-            ) : (
-              <div className="w-9 h-9" />
-            )}
+              ) : (
+                !isKakaoReady() && <div className="w-9 h-9" />
+              )}
+            </div>
           </div>
 
           {/* 제목 영역 — 별도 섹션으로 격상 */}
