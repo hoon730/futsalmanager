@@ -746,6 +746,7 @@ function MatchDetailSheet({
   const toggleSection = (key: keyof typeof expanded) =>
     setExpanded((p) => ({ ...p, [key]: !p[key] }));
   const [attendeesFilter, setAttendeesFilter] = useState<"attending" | "absent" | "waitlist" | null>(null);
+  const [activeTab, setActiveTab] = useState<"attendance" | "comments" | "more">("attendance");
 
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [editingComment, setEditingComment] = useState<IMatchComment | null>(null);
@@ -984,33 +985,31 @@ function MatchDetailSheet({
               </div>
             )}
 
-            {/* 메모 — 접기/펼치기 */}
-            {match.notes && (
-              <div className="border-b border-white/5">
+            {/* 탭 네비게이션 */}
+            <div className="border-b border-white/5 flex">
+              {([
+                { key: "attendance", label: "참석 현황" },
+                { key: "comments",   label: "댓글", badge: totalComments },
+                { key: "more",       label: "더보기" },
+              ] as const).map((t) => (
                 <button
-                  onClick={() => toggleSection("notes")}
-                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  className="flex-1 py-3.5 text-xs font-black tracking-wide transition-colors relative"
+                  style={{ color: activeTab === t.key ? "#0DF23E" : "rgba(255,255,255,0.35)" }}
                 >
-                  <span className="flex items-center gap-3 text-sm font-bold text-white/80">
-                    <span className="material-icons text-base text-white/50">notes</span>
-                    메모
-                  </span>
-                  <span
-                    className="material-icons text-base text-white/30 transition-transform"
-                    style={{ transform: expanded.notes ? "rotate(90deg)" : "rotate(0deg)" }}
-                  >
-                    chevron_right
-                  </span>
+                  {t.label}
+                  {"badge" in t && t.badge ? <span className="ml-1 text-[10px] font-bold">{t.badge}</span> : null}
+                  {activeTab === t.key && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full" style={{ background: "#0DF23E" }} />
+                  )}
                 </button>
-                {expanded.notes && (
-                  <div className="px-5 pb-5">
-                    <p className="text-sm text-white/60 leading-relaxed pl-7">{match.notes}</p>
-                  </div>
-                )}
-              </div>
-            )}
+              ))}
+            </div>
 
             {/* 참석 현황 */}
+            {activeTab === "attendance" && (
+            <>
             <div className="px-5 py-6 border-b border-white/5">
               {/* 큰 숫자 + 정원 */}
               <div className="flex items-baseline justify-between mb-4">
@@ -1087,7 +1086,37 @@ function MatchDetailSheet({
                 </div>
               </div>
             )}
+            </>
+            )}
 
+            {/* "더보기" 탭 — 메모 / 용병 / 팀 나누기 / 팀 배정 결과 */}
+            {activeTab === "more" && (
+            <>
+              {/* 메모 — 접기/펼치기 */}
+            {match.notes && (
+              <div className="border-b border-white/5">
+                <button
+                  onClick={() => toggleSection("notes")}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                >
+                  <span className="flex items-center gap-3 text-sm font-bold text-white/80">
+                    <span className="material-icons text-base text-white/50">notes</span>
+                    메모
+                  </span>
+                  <span
+                    className="material-icons text-base text-white/30 transition-transform"
+                    style={{ transform: expanded.notes ? "rotate(90deg)" : "rotate(0deg)" }}
+                  >
+                    chevron_right
+                  </span>
+                </button>
+                {expanded.notes && (
+                  <div className="px-5 pb-5">
+                    <p className="text-sm text-white/60 leading-relaxed pl-7">{match.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 용병 추가 — 접기/펼치기 */}
             <div className="border-b border-white/5">
@@ -1233,9 +1262,11 @@ function MatchDetailSheet({
                 )}
               </div>
             )}
+            </>
+            )}
 
-
-            {/* 댓글 섹션 */}
+            {/* "댓글" 탭 */}
+            {activeTab === "comments" && (
             <div>
               <div className="flex items-center gap-3 px-5 pt-5 pb-3">
                 <span className="material-icons text-base text-primary">forum</span>
@@ -1273,9 +1304,11 @@ function MatchDetailSheet({
                 <div className="h-2" />
               </div>
             </div>
+            )}
           </div>
 
-          {/* 댓글 입력바 */}
+          {/* 댓글 입력바 — 댓글 탭일 때만 */}
+          {activeTab === "comments" && (
           <div className="flex-shrink-0 border-t border-white/5" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
             {(replyTo || editingComment) && (
               <div className="flex items-center justify-between px-4 py-2 border-b border-white/5" style={{ background: "rgba(13,242,62,0.04)" }}>
@@ -1311,6 +1344,7 @@ function MatchDetailSheet({
               </button>
             </div>
           </div>
+          )}
 
           {/* 모바일 액션 시트 */}
           {actionSheet && (
