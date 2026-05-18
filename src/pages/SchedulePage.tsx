@@ -544,19 +544,22 @@ function MatchCard({ match, attendees, mercenaries, userId, isPast, onOpen }: Ma
       {/* 상단 본문 */}
       <div className="p-4">
         <div className="flex items-start gap-4">
-          {/* 날짜 박스 — 월/일/요일 */}
-          <div className={`flex-shrink-0 w-14 h-16 rounded-xl flex flex-col items-center justify-center border ${isMine ? "bg-primary/10 border-primary/30" : "bg-white/5 border-white/5"}`}>
-            <span className={`text-[10px] font-black ${isMine ? "text-primary" : "text-white/40"}`}>
+          {/* 날짜 박스 — 기록 페이지와 통일 (월 + 일, 정사각) */}
+          <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex flex-col items-center justify-center border ${
+            isMine ? "bg-primary/10 border-primary/40" : "bg-primary/5 border-primary/20"
+          }`}>
+            <span className="text-[10px] font-black text-white/40">
               {date.toLocaleDateString("ko-KR", { month: "short" })}
             </span>
-            <span className="text-xl font-black text-white leading-tight">{date.getDate()}</span>
-            <span className="text-[9px] font-bold text-white/40 leading-none mt-0.5">{weekday}</span>
+            <span className="text-xl font-black text-primary leading-tight">{date.getDate()}</span>
           </div>
 
-          {/* 메인 정보 — 시간(크게) + 장소 */}
+          {/* 메인 정보 — 시간(크게, 요일 함께) + 장소 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1">
-              <p className="text-white font-black text-lg leading-tight">{timeStr}</p>
+              <p className="text-white font-black text-lg leading-tight">
+                {weekday} <span className="text-white/70">·</span> {timeStr}
+              </p>
               {/* 우상단 뱃지 */}
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {isFull && (
