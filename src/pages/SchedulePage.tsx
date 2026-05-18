@@ -844,7 +844,7 @@ function MatchDetailSheet({
     return a.username ?? "알 수 없음";
   };
 
-  const handleRSVP = async (status: "attending" | "absent") => {
+  const handleRSVP = async (status: "attending" | "absent" | "waitlist") => {
     if (myStatus === status) return;
     setRsvpLoading(true);
     try { await onRSVP(status); } finally { setRsvpLoading(false); }
