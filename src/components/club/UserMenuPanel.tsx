@@ -113,9 +113,15 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
     if (!squad?.id) return;
     setRegenerating(true);
     try {
-      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await supabase.from("squads").update({ invite_code: newCode }).eq("id", squad.id);
+      const { data, error } = await supabase.rpc("regenerate_invite_code", {
+        p_squad_id: squad.id,
+      });
+      if (error) throw error;
+      const newCode = data as string;
       setClubs((prev) => prev.map((c) => c.id === squad.id ? { ...c, invite_code: newCode } : c));
+      toast("초대 코드가 재생성되었습니다");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "코드 재생성에 실패했습니다", "error");
     } finally {
       setRegenerating(false);
     }
