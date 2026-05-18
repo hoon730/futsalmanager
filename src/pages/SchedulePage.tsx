@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { IMatch, IMatchAttendee, IMatchComment, ISquad, IMember, IDivision } from "@/types";
 import PlaceSearchInput from "@/components/PlaceSearchInput";
 import { shareMatch, isKakaoReady } from "@/lib/kakaoShare";
+import { KakaoIcon } from "@/components/icons/KakaoIcon";
 
 // ─── 공통 설정 ────────────────────────────────────────────────────────────────
 
@@ -901,11 +902,11 @@ function MatchDetailSheet({
                     attendingCount: totalAttending,
                     maxPlayers: match.maxPlayers,
                   })}
-                  title="카카오톡으로 공유"
-                  className="w-9 h-9 flex items-center justify-center transition-colors active:scale-90"
-                  style={{ color: "#fee500" }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black tracking-wider transition-all active:scale-95"
+                  style={{ background: "#fee500", color: "#3c1e1e" }}
                 >
-                  <span className="material-icons text-lg">chat</span>
+                  <KakaoIcon size={14} />
+                  공유
                 </button>
               )}
               {(isAdmin || match.createdBy === userId) ? (
