@@ -347,32 +347,36 @@ export default function SettingsPage() {
           <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
             <span className="material-icons text-sm text-primary">groups</span>멤버 관리
           </h2>
-          <button
-            onClick={handleAddMember}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
-            style={{ backgroundColor: 'rgba(13,242,62,0.10)', color: '#0DF23E', border: '1px solid rgba(13,242,62,0.25)' }}
-          >
-            <span className="material-icons text-sm">person_add</span>
-            선수 추가
-          </button>
+          {isOwnerOrAdmin && (
+            <button
+              onClick={handleAddMember}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+              style={{ backgroundColor: 'rgba(13,242,62,0.10)', color: '#0DF23E', border: '1px solid rgba(13,242,62,0.25)' }}
+            >
+              <span className="material-icons text-sm">person_add</span>
+              선수 추가
+            </button>
+          )}
         </div>
 
-        {/* 멤버 수 및 편집 모드 토글 */}
+        {/* 멤버 수 및 편집 모드 토글 (편집은 운영자/관리자만) */}
         <div className="flex items-center justify-between mb-6 bg-white/5 p-5 rounded-2xl border border-white/5">
           <div className="text-primary font-black text-md italic">
             현재 {membersOnly.length}명
           </div>
-          <button
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
-              isEditMode
-                ? 'bg-primary text-background-dark border-primary'
-                : 'bg-white/5 text-white/40 border-white/10'
-            }`}
-          >
-            <span className="material-icons text-sm">{isEditMode ? 'check' : 'edit'}</span>
-            {isEditMode ? '완료' : '멤버 편집'}
-          </button>
+          {isOwnerOrAdmin && (
+            <button
+              onClick={() => setIsEditMode(!isEditMode)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
+                isEditMode
+                  ? 'bg-primary text-background-dark border-primary'
+                  : 'bg-white/5 text-white/40 border-white/10'
+              }`}
+            >
+              <span className="material-icons text-sm">{isEditMode ? 'check' : 'edit'}</span>
+              {isEditMode ? '완료' : '멤버 편집'}
+            </button>
+          )}
         </div>
 
         {/* 멤버 리스트 (페이지네이션) */}
