@@ -745,8 +745,6 @@ function MatchDetailSheet({
   });
   const toggleSection = (key: keyof typeof expanded) =>
     setExpanded((p) => ({ ...p, [key]: !p[key] }));
-  const [attendeesSheetOpen, setAttendeesSheetOpen] = useState(false);
-
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [editingComment, setEditingComment] = useState<IMatchComment | null>(null);
   const [actionSheet, setActionSheet] = useState<IMatchComment | null>(null);
@@ -1011,7 +1009,7 @@ function MatchDetailSheet({
               </div>
             )}
 
-            {/* 참석 현황 카드 — 카카오톡 투표 스타일 */}
+            {/* 참석 현황 */}
             <div className="px-5 py-6 border-b border-white/5">
               {/* 큰 숫자 + 정원 */}
               <div className="flex items-baseline justify-between mb-4">
@@ -1025,7 +1023,7 @@ function MatchDetailSheet({
               </div>
 
               {/* 프로그레스바 */}
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-4">
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-5">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
@@ -1035,59 +1033,64 @@ function MatchDetailSheet({
                 />
               </div>
 
-              {/* 아바타 스택 + 전체 보기 */}
-              {attending.length > 0 || absent.length > 0 || waitlist.length > 0 || pending.length > 0 ? (
-                <button
-                  onClick={() => setAttendeesSheetOpen(true)}
-                  className="w-full flex items-center gap-3 -mx-1 px-1 py-1 rounded-xl hover:bg-white/[0.03] transition-colors"
-                >
-                  <div className="flex -space-x-2">
-                    {attending.slice(0, 5).map((a) => (
-                      <div
-                        key={a.id}
-                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-[11px] font-black"
-                        style={{ background: "rgba(13,242,62,0.25)", color: "#0DF23E", borderColor: "#0a150d" }}
-                      >
-                        {getMemberName(a).slice(0, 1)}
+              {/* 참석 */}
+              {attending.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60 mb-2">참석 ({attending.length})</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {attending.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
+                        style={{ background: "rgba(13,242,62,0.07)", borderColor: "rgba(13,242,62,0.25)" }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
+                          style={{ background: "rgba(13,242,62,0.25)", color: "#0DF23E" }}>
+                          {getMemberName(a).slice(0, 1)}
+                        </div>
+                        <span className="text-xs font-bold text-white truncate">{getMemberName(a)}</span>
                       </div>
                     ))}
-                    {attending.length > 5 && (
-                      <div
-                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-[10px] font-black bg-white/10 text-white/60"
-                        style={{ borderColor: "#0a150d" }}
-                      >
-                        +{attending.length - 5}
-                      </div>
-                    )}
-                    {attending.length === 0 && (
-                      <div
-                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-white/20"
-                        style={{ background: "rgba(255,255,255,0.03)", borderColor: "#0a150d" }}
-                      >
-                        <span className="material-icons text-sm">person</span>
-                      </div>
-                    )}
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-xs font-bold text-white/70">
-                      {attending.length > 0 ? "참석자 보기" : "아직 참석자가 없습니다"}
-                    </p>
-                    {(waitlist.length > 0 || absent.length > 0) && (
-                      <p className="text-[10px] text-white/40 mt-0.5">
-                        {waitlist.length > 0 && <span className="text-orange-400/70">대기 {waitlist.length}</span>}
-                        {waitlist.length > 0 && absent.length > 0 && <span className="mx-1">·</span>}
-                        {absent.length > 0 && <span>불참 {absent.length}</span>}
-                      </p>
-                    )}
-                  </div>
-                  <span className="material-icons text-white/30 text-base">chevron_right</span>
-                </button>
-              ) : null}
+                </div>
+              )}
 
-              {isOverCapacity && !isPast && (
-                <p className="mt-3 text-xs text-red-400/70 flex items-center gap-1">
-                  <span className="material-icons text-sm">lock</span>정원 마감
-                </p>
+              {/* 대기 */}
+              {waitlist.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-orange-400/60 mb-2">대기 ({waitlist.length})</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {waitlist.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
+                        style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.2)" }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
+                          style={{ background: "rgba(249,115,22,0.2)", color: "#fb923c" }}>
+                          {getMemberName(a).slice(0, 1)}
+                        </div>
+                        <span className="text-xs font-bold text-white/60 truncate">{getMemberName(a)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 불참 */}
+              {absent.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/20 mb-2">불참 ({absent.length})</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {absent.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border opacity-40"
+                        style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.06)" }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black bg-white/10 text-white/40">
+                          {getMemberName(a).slice(0, 1)}
+                        </div>
+                        <span className="text-xs font-bold text-white/40 truncate">{getMemberName(a)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {attending.length === 0 && waitlist.length === 0 && absent.length === 0 && (
+                <p className="text-xs text-white/20 text-center py-4">아직 응답이 없습니다</p>
               )}
             </div>
 
@@ -1409,82 +1412,6 @@ function MatchDetailSheet({
         />
       )}
 
-      {/* 참석자 전체 명단 시트 */}
-      {attendeesSheetOpen && createPortal(
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[100000] animate-fade-in"
-          onClick={() => setAttendeesSheetOpen(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
-              <h3 className="text-base font-black text-white">참석 명단</h3>
-              <button onClick={() => setAttendeesSheetOpen(false)} className="w-9 h-9 flex items-center justify-center text-white/40 hover:text-white transition-colors active:scale-90">
-                <span className="material-icons text-lg">close</span>
-              </button>
-            </div>
-            <div className="overflow-y-auto hide-scrollbar p-5 space-y-5">
-              {attending.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60 mb-3">참석 ({attending.length})</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {attending.map((a) => (
-                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
-                        style={{ background: "rgba(13,242,62,0.07)", borderColor: "rgba(13,242,62,0.25)" }}>
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
-                          style={{ background: "rgba(13,242,62,0.25)", color: "#0DF23E" }}>
-                          {getMemberName(a).slice(0, 1)}
-                        </div>
-                        <span className="text-xs font-bold text-white truncate">{getMemberName(a)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {waitlist.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-orange-400/60 mb-3">대기 ({waitlist.length})</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {waitlist.map((a) => (
-                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border"
-                        style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.2)" }}>
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black"
-                          style={{ background: "rgba(249,115,22,0.2)", color: "#fb923c" }}>
-                          {getMemberName(a).slice(0, 1)}
-                        </div>
-                        <span className="text-xs font-bold text-white/60 truncate">{getMemberName(a)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {absent.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/20 mb-3">불참 ({absent.length})</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {absent.map((a) => (
-                      <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border opacity-40"
-                        style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.06)" }}>
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-black bg-white/10 text-white/40">
-                          {getMemberName(a).slice(0, 1)}
-                        </div>
-                        <span className="text-xs font-bold text-white/40 truncate">{getMemberName(a)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {attending.length === 0 && waitlist.length === 0 && absent.length === 0 && (
-                <p className="text-center text-white/30 text-sm py-10">아직 응답이 없습니다</p>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* PC 우클릭 컨텍스트 메뉴 */}
       {contextMenu && createPortal(
