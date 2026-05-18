@@ -76,19 +76,29 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
     loadAnnouncements(squad.id);
   }, [squad?.id]);
 
+  // matches가 추가/삭제/업데이트될 때마다 누락된 attendees 로드
+  // (length만 보면 같은 길이의 add+delete 케이스에서 누락됨)
+  const matchIdsKey = matches.map((m) => m.id).join(",");
   useEffect(() => {
     matches.forEach((m) => { if (!attendees[m.id]) loadAttendees(m.id); });
-  }, [matches.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchIdsKey]);
 
   useEffect(() => {
     if (!user || !squad?.id) return;
+    // squad 전환 시 이전 동호회의 role이 잠깐 노출되지 않도록 즉시 초기화
+    setUserRole("member");
+    let cancelled = false;
     supabase
       .from("squad_members")
       .select("role")
       .eq("user_id", user.id)
       .eq("squad_id", squad.id)
-      .single()
-      .then(({ data }) => { if (data) setUserRole(data.role); });
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data) setUserRole(data.role);
+      });
+    return () => { cancelled = true; };
   }, [user?.id, squad?.id]);
 
   const handleOpenDetail = (match: IMatch) => {
