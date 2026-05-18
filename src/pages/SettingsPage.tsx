@@ -332,67 +332,28 @@ export default function SettingsPage() {
     <div className="animate-fade-in flex flex-col min-h-full relative">
       {/* 헤더 */}
       <header className="px-6 pt-12 pb-14">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
-              멤버 관리
-            </h1>
-            <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]"></div>
-          </div>
-          <button
-            onClick={handleAddMember}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
-            style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
-          >
-            <span className="material-icons text-sm">person_add</span>
-            추가
-          </button>
+        <div>
+          <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
+            설정
+          </h1>
+          <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]"></div>
         </div>
       </header>
 
       {/* 메인 */}
       <main className="flex-1 px-6">
-        {/* 내 선수 프로필 연결 (로그인 유저만) */}
-        {user && (
-          <div className="mb-6 bg-white/5 border border-white/5 rounded-2xl p-5">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">내 선수 프로필</p>
-            {linkedMemberId ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-                    <span className="text-primary text-xs font-bold">
-                      {membersOnly.find(m => m.id === linkedMemberId)?.name?.slice(0, 1) ?? '?'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-white font-bold text-sm">
-                      {membersOnly.find(m => m.id === linkedMemberId)?.name ?? '알 수 없음'}
-                    </p>
-                    <p className="text-primary text-[10px] font-black uppercase tracking-widest">연결됨</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowLinkPicker(true)}
-                  disabled={linkLoading}
-                  className="text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-colors"
-                >
-                  변경
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowLinkPicker(true)}
-                disabled={linkLoading}
-                className="w-full flex items-center gap-3 py-2 text-white/30 hover:text-white/60 transition-colors"
-              >
-                <span className="material-icons text-sm">link</span>
-                <span className="text-xs font-black uppercase tracking-widest">
-                  {linkLoading ? '처리 중...' : '내 이름 선택하기'}
-                </span>
-              </button>
-            )}
-          </div>
-        )}
+        {/* ━━━━━━━━━━━━━━ 동호회 운영 ━━━━━━━━━━━━━━ */}
+        <div className="flex items-center justify-between mb-3 mt-1">
+          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/50">동호회 운영</h2>
+          <button
+            onClick={handleAddMember}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+            style={{ backgroundColor: 'rgba(13,242,62,0.10)', color: '#0DF23E', border: '1px solid rgba(13,242,62,0.25)' }}
+          >
+            <span className="material-icons text-sm">person_add</span>
+            선수 추가
+          </button>
+        </div>
 
         {/* 멤버 수 및 편집 모드 토글 */}
         <div className="flex items-center justify-between mb-6 bg-white/5 p-5 rounded-2xl border border-white/5">
@@ -635,6 +596,55 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* ━━━━━━━━━━━━━━ 내 설정 ━━━━━━━━━━━━━━ */}
+      <div className="px-6 mt-2 mb-3">
+        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/50">내 설정</h2>
+      </div>
+
+      {/* 내 선수 프로필 연결 (로그인 유저만) */}
+      {user && (
+        <div className="px-6 mb-6">
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">내 선수 프로필</p>
+            {linkedMemberId ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                    <span className="text-primary text-xs font-bold">
+                      {membersOnly.find(m => m.id === linkedMemberId)?.name?.slice(0, 1) ?? '?'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-sm">
+                      {membersOnly.find(m => m.id === linkedMemberId)?.name ?? '알 수 없음'}
+                    </p>
+                    <p className="text-primary text-[10px] font-black uppercase tracking-widest">연결됨</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowLinkPicker(true)}
+                  disabled={linkLoading}
+                  className="text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-colors"
+                >
+                  변경
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLinkPicker(true)}
+                disabled={linkLoading}
+                className="w-full flex items-center gap-3 py-2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                <span className="material-icons text-sm">link</span>
+                <span className="text-xs font-black uppercase tracking-widest">
+                  {linkLoading ? '처리 중...' : '내 이름 선택하기'}
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 알림 설정 */}
       {isPushSupported() && (
