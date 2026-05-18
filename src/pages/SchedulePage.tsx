@@ -410,6 +410,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
             key={match.id}
             match={match}
             attendees={attendees[match.id] || []}
+            mercenaries={matchMercenaries[match.id] || []}
             userId={user?.id}
             onOpen={() => handleOpenDetail(match)}
           />
@@ -430,6 +431,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                     key={match.id}
                     match={match}
                     attendees={attendees[match.id] || []}
+                    mercenaries={matchMercenaries[match.id] || []}
                     userId={user?.id}
                     isPast
                     onOpen={() => handleOpenDetail(match)}
@@ -498,6 +500,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
 interface MatchCardProps {
   match: IMatch;
   attendees: IMatchAttendee[];
+  mercenaries: IMember[];
   userId?: string;
   isPast?: boolean;
   onOpen: () => void;
@@ -513,10 +516,12 @@ function getDDay(matchDate: string): string {
   return `D-${diff}`;
 }
 
-function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps) {
+function MatchCard({ match, attendees, mercenaries, userId, isPast, onOpen }: MatchCardProps) {
   const attending = attendees.filter((a) => a.status === "attending");
   const myStatus = attendees.find((a) => a.userId === userId)?.status ?? null;
-  const isFull = !isPast && attending.length >= match.maxPlayers;
+  // 참석 인원 = 참석 투표 + 용병 (정원 마감 계산에 반영)
+  const totalAttending = attending.length + mercenaries.length;
+  const isFull = !isPast && totalAttending >= match.maxPlayers;
   const date = new Date(match.matchDate);
   const statusCfg = myStatus ? STATUS_CONFIG[myStatus] : null;
   const dday = !isPast ? getDDay(match.matchDate) : null;
@@ -570,10 +575,10 @@ function MatchCard({ match, attendees, userId, isPast, onOpen }: MatchCardProps)
             </div>
             <div className="flex items-center gap-2 mt-2">
               <span className={`text-xs font-black ${myStatus === "attending" && !isPast ? "text-primary" : "text-white/40"}`}>
-                {attending.length} / {match.maxPlayers}명
+                {totalAttending} / {match.maxPlayers}명
               </span>
               <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((attending.length / match.maxPlayers) * 100, 100)}%`, backgroundColor: myStatus === "attending" && !isPast ? "#0DF23E" : "rgba(255,255,255,0.15)" }} />
+                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((totalAttending / match.maxPlayers) * 100, 100)}%`, backgroundColor: myStatus === "attending" && !isPast ? "#0DF23E" : "rgba(255,255,255,0.15)" }} />
               </div>
               <span className="material-icons text-white/15 text-sm">chevron_right</span>
             </div>
@@ -822,7 +827,9 @@ function MatchDetailSheet({
   const waitlist  = attendees.filter((a) => a.status === "waitlist");
   const myStatus  = attendees.find((a) => a.userId === userId)?.status ?? null;
   const isPast = new Date(match.matchDate) < new Date();
-  const isOverCapacity = attending.length >= match.maxPlayers;
+  // 용병도 참석 인원에 포함 (정원/마감 계산용)
+  const totalAttending = attending.length + mercenaries.length;
+  const isOverCapacity = totalAttending >= match.maxPlayers;
   // 신청 마감: 경기 시간 지남 OR 정원이 다 참
 
   const date = new Date(match.matchDate);
@@ -987,9 +994,10 @@ function MatchDetailSheet({
               <div className="px-5 py-5 space-y-4">
                 {(() => {
                   const showWaitlist = isOverCapacity || waitlist.length > 0;
+                  // 참석 카운트는 용병 인원 합산
                   const opts = [
-                    { key: "attending" as const, label: "참석", count: attending.length, color: "#0DF23E" },
-                    { key: "absent"    as const, label: "불참", count: absent.length,    color: "rgba(160,160,160,0.7)" },
+                    { key: "attending" as const, label: "참석", count: totalAttending, color: "#0DF23E" },
+                    { key: "absent"    as const, label: "불참", count: absent.length,  color: "rgba(160,160,160,0.7)" },
                     ...(showWaitlist ? [{ key: "waitlist" as const, label: "대기", count: waitlist.length, color: "#fb923c" }] : []),
                   ];
                   return opts.map((opt) => {
@@ -1347,7 +1355,7 @@ function MatchDetailSheet({
                 {attendeesFilter === "absent"    && <span className="text-sm font-black text-white/50">불참</span>}
                 {attendeesFilter === "waitlist"  && <span className="text-sm font-black text-orange-400">대기</span>}
                 <span className="text-sm font-black text-white/30">
-                  {attendeesFilter === "attending" ? attending.length : attendeesFilter === "absent" ? absent.length : waitlist.length}명
+                  {attendeesFilter === "attending" ? totalAttending : attendeesFilter === "absent" ? absent.length : waitlist.length}명
                 </span>
               </div>
               <button onClick={() => setAttendeesFilter(null)} className="w-9 h-9 flex items-center justify-center text-white/40 hover:text-white transition-colors active:scale-90">
@@ -1357,9 +1365,16 @@ function MatchDetailSheet({
             {/* 명단 */}
             <div className="overflow-y-auto hide-scrollbar p-4">
               {(() => {
-                const list = attendeesFilter === "attending" ? attending : attendeesFilter === "absent" ? absent : waitlist;
                 const isAbsent = attendeesFilter === "absent";
                 const isWait   = attendeesFilter === "waitlist";
+                const isAttending = attendeesFilter === "attending";
+                // 참석 탭에서는 용병도 합쳐 표시 (용병 뱃지 포함)
+                const list = isAttending
+                  ? [
+                      ...attending.map((a) => ({ id: a.id, name: getMemberName(a), isMerc: false })),
+                      ...mercenaries.map((m) => ({ id: `merc-${m.id}`, name: m.name, isMerc: true })),
+                    ]
+                  : (isAbsent ? absent : waitlist).map((a) => ({ id: a.id, name: getMemberName(a), isMerc: false }));
                 const color    = isWait ? "#fb923c" : isAbsent ? "rgba(255,255,255,0.4)" : "#0DF23E";
                 const bg       = isWait ? "rgba(249,115,22,0.08)" : isAbsent ? "rgba(255,255,255,0.03)" : "rgba(13,242,62,0.07)";
                 const border   = isWait ? "rgba(249,115,22,0.2)"  : isAbsent ? "rgba(255,255,255,0.06)" : "rgba(13,242,62,0.25)";
@@ -1369,10 +1384,13 @@ function MatchDetailSheet({
                       <div key={a.id} className="flex items-center gap-2 px-2.5 py-2 rounded-xl border"
                         style={{ background: bg, borderColor: border, opacity: isAbsent ? 0.5 : 1 }}>
                         <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-black"
-                          style={{ background: isWait ? "rgba(249,115,22,0.2)" : isAbsent ? "rgba(255,255,255,0.08)" : "rgba(13,242,62,0.25)", color }}>
-                          {getMemberName(a).slice(0, 1)}
+                          style={{ background: a.isMerc ? "rgba(249,115,22,0.2)" : isWait ? "rgba(249,115,22,0.2)" : isAbsent ? "rgba(255,255,255,0.08)" : "rgba(13,242,62,0.25)", color: a.isMerc ? "#fb923c" : color }}>
+                          {a.name.slice(0, 1)}
                         </div>
-                        <span className="text-xs font-bold text-white truncate">{getMemberName(a)}</span>
+                        <span className="text-xs font-bold text-white truncate flex-1">{a.name}</span>
+                        {a.isMerc && (
+                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400/80">용병</span>
+                        )}
                       </div>
                     ))}
                   </div>
