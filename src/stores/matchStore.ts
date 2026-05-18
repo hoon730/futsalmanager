@@ -68,9 +68,11 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
 
   addMatchMercenary: async (matchId, name) => {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed) throw new Error("이름을 입력해주세요");
     const current = get().matchMercenaries[matchId] || [];
-    if (current.some((m) => m.name === trimmed)) return;
+    if (current.some((m) => m.name === trimmed)) {
+      throw new Error("이미 등록된 이름입니다");
+    }
 
     const { data, error } = await supabase
       .from("match_mercenaries")
@@ -78,7 +80,11 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // 23505 = unique_violation (다른 세션에서 동시에 같은 이름 추가)
+      if (error.code === "23505") throw new Error("이미 등록된 이름입니다");
+      throw error;
+    }
 
     const newMerc: IMember = {
       id: data.id,
@@ -157,6 +163,43 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       }));
 
       set({ matches });
+
+      // 한 번에 모든 attendees 조회 (이전엔 match 개수만큼 N+1 발생)
+      const matchIds = matches.map((m) => m.id);
+      if (matchIds.length > 0) {
+        const { data: attRows } = await supabase
+          .from("match_attendees")
+          .select("*")
+          .in("match_id", matchIds);
+
+        const userIds = [...new Set((attRows || []).map((a) => a.user_id))];
+        let profileMap: Record<string, string> = {};
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, username")
+            .in("id", userIds);
+          profileMap = Object.fromEntries(
+            (profiles || []).map((p) => [p.id, p.username ?? ""]),
+          );
+        }
+
+        const grouped: Record<string, IMatchAttendee[]> = {};
+        for (const id of matchIds) grouped[id] = [];
+        for (const a of attRows || []) {
+          grouped[a.match_id].push({
+            id: a.id,
+            matchId: a.match_id,
+            userId: a.user_id,
+            memberId: a.member_id,
+            status: a.status,
+            registeredAt: a.registered_at,
+            username: profileMap[a.user_id] || undefined,
+          });
+        }
+
+        set((state) => ({ attendees: { ...state.attendees, ...grouped } }));
+      }
     } catch (e) {
       console.error("경기 로드 실패:", e);
     } finally {
@@ -367,9 +410,20 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       replies: [],
     });
 
-    // 루트 → 대댓글 트리 조립
+    // 루트 → 대댓글 트리 조립 (현재는 1단계 대댓글만 지원)
     const roots = data.filter((c) => !c.parent_id).map(mapRow);
+    const rootIds = new Set(roots.map((r) => r.id));
     const replyRows = data.filter((c) => c.parent_id);
+
+    // 부모가 루트가 아닌 경우(중첩 또는 삭제된 부모) — UI에 안 나타나는 데이터가 생기지 않도록 경고
+    const orphans = replyRows.filter((r) => r.parent_id && !rootIds.has(r.parent_id));
+    if (orphans.length > 0) {
+      console.warn(
+        `[matchStore] 댓글 ${orphans.length}개가 부모를 찾지 못해 표시되지 않습니다 (match ${matchId})`,
+        orphans.map((o) => ({ id: o.id, parent_id: o.parent_id })),
+      );
+    }
+
     const comments: IMatchComment[] = roots.map((root) => ({
       ...root,
       replies: replyRows.filter((r) => r.parent_id === root.id).map(mapRow),

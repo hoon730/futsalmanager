@@ -9,6 +9,7 @@ import { shareSquadInvite, isKakaoReady } from "@/lib/kakaoShare";
 import { KakaoIcon } from "@/components/icons/KakaoIcon";
 import { ShareMenu } from "@/components/ShareMenu";
 import { toast } from "@/stores/toastStore";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 import {
   loadSquadFromSupabase,
   loadFixedTeamsFromSupabase,
@@ -103,7 +104,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
       setEditingName(false);
       toast("닉네임이 변경되었습니다");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "닉네임 변경에 실패했습니다", "error");
+      toast(toFriendlyMessage(e, "닉네임 변경에 실패했습니다"), "error");
     } finally {
       setSavingName(false);
     }
@@ -121,7 +122,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
       setClubs((prev) => prev.map((c) => c.id === squad.id ? { ...c, invite_code: newCode } : c));
       toast("초대 코드가 재생성되었습니다");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "코드 재생성에 실패했습니다", "error");
+      toast(toFriendlyMessage(e, "코드 재생성에 실패했습니다"), "error");
     } finally {
       setRegenerating(false);
     }
@@ -172,7 +173,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
         toast("동호회에서 탈퇴했습니다");
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : "탈퇴에 실패했습니다", "error");
+      toast(toFriendlyMessage(e, "탈퇴에 실패했습니다"), "error");
       return;
     }
     setLeaveConfirm(false);

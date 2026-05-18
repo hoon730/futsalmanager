@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { ConfirmModal } from '@/components/modals';
 import { toast } from '@/stores/toastStore';
+import { toFriendlyMessage } from '@/lib/errorMessage';
 import {
   isPushSupported,
   getPermission,
@@ -94,7 +95,7 @@ export default function SettingsPage() {
       setShowEditMyMember(false);
       toast("내 선수 정보가 저장되었습니다");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "저장에 실패했습니다", "error");
+      toast(toFriendlyMessage(e, "저장에 실패했습니다"), "error");
     } finally {
       setEditSaving(false);
     }
