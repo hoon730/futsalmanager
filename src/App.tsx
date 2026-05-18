@@ -9,6 +9,7 @@ import { useAutoSync } from "@/hooks/useAutoSync";
 import { useSquadStore } from "@/stores/squadStore";
 import { useAuthStore } from "@/stores/authStore";
 import { AlertModal } from "@/components/modals/AlertModal";
+import { ToastContainer } from "@/components/Toast";
 
 const App = () => {
   const { user, isLoading: authLoading, initialize } = useAuthStore();
@@ -76,6 +77,7 @@ const App = () => {
         message="⚠️ 실시간 동기화 연결 실패\n\n인터넷 연결을 확인해주세요."
         onClose={() => setSyncErrorModal(false)}
       />
+      <ToastContainer />
     </>
   );
 };
