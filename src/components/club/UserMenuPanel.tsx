@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { shareSquadInvite, isKakaoReady } from "@/lib/kakaoShare";
 import { KakaoIcon } from "@/components/icons/KakaoIcon";
 import { ShareMenu } from "@/components/ShareMenu";
+import { toast } from "@/stores/toastStore";
 import {
   loadSquadFromSupabase,
   loadFixedTeamsFromSupabase,
@@ -33,7 +34,6 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const { setFixedTeams } = useFixedTeamStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const [clubs, setClubs] = useState<Club[]>([]);
-  const [copiedCode, setCopiedCode] = useState(false);
   const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<"idle" | "input" | "deleting">("idle");
@@ -64,8 +64,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
     const current = clubs.find((c) => c.id === squad?.id);
     if (!current) return;
     navigator.clipboard.writeText(current.invite_code);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+    toast("초대 코드가 복사되었습니다");
   };
 
   const handleRegenerateCode = async () => {
@@ -182,8 +181,8 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                       title="초대 코드 공유"
                       items={[
                         {
-                          label: copiedCode ? "복사됨" : "코드 복사",
-                          icon: <span className="material-icons text-base text-white/60">{copiedCode ? "check" : "content_copy"}</span>,
+                          label: "코드 복사",
+                          icon: <span className="material-icons text-base text-white/60">content_copy</span>,
                           onClick: handleCopyCode,
                         },
                         ...(isKakaoReady() ? [{

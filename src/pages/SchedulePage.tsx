@@ -11,6 +11,7 @@ import PlaceSearchInput from "@/components/PlaceSearchInput";
 import { shareMatch, isKakaoReady } from "@/lib/kakaoShare";
 import { KakaoIcon } from "@/components/icons/KakaoIcon";
 import { ShareMenu } from "@/components/ShareMenu";
+import { toast } from "@/stores/toastStore";
 
 // ─── 공통 설정 ────────────────────────────────────────────────────────────────
 
@@ -900,7 +901,10 @@ function MatchDetailSheet({
                   {
                     label: "링크 복사",
                     icon: <span className="material-icons text-base text-white/60">link</span>,
-                    onClick: () => navigator.clipboard.writeText(window.location.href),
+                    onClick: () => {
+                      navigator.clipboard.writeText(window.location.href);
+                      toast("링크가 복사되었습니다");
+                    },
                   },
                   ...(isKakaoReady() ? [{
                     label: "카카오톡으로 보내기",
