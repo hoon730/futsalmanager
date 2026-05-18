@@ -1,7 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSquadStore } from '@/stores/squadStore';
-import { useDivisionStore } from '@/stores/divisionStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { AlertModal, ConfirmModal } from '@/components/modals';
@@ -16,9 +15,8 @@ import {
 import type { IMember } from '@/types';
 
 export default function SettingsPage() {
-  const { squad, addMember, removeMember, updateMember, clearAllData } = useSquadStore();
+  const { squad, addMember, removeMember, updateMember } = useSquadStore();
   const members = squad?.members || [];
-  const { clearAllDivisions } = useDivisionStore();
   const { user, updateLinkedMember } = useAuthStore();
 
 
@@ -334,26 +332,6 @@ export default function SettingsPage() {
         removeMember(id);
         setConfirmModal({ ...confirmModal, isOpen: false });
         setAlertModal({ isOpen: true, message: `${name} 멤버가 삭제되었습니다` });
-      },
-    });
-  };
-
-  // 전체 데이터 초기화 (운영자 전용)
-  const handleReset = () => {
-    if (!isOwnerOrAdmin) {
-      setAlertModal({ isOpen: true, message: '❌ 운영자 권한이 필요합니다' });
-      return;
-    }
-
-    setConfirmModal({
-      isOpen: true,
-      title: '⚠️ 경고',
-      message: '모든 데이터를 초기화하시겠습니까? 이 작업은 취소할 수 없습니다.',
-      onConfirm: async () => {
-        await clearAllData();
-        await clearAllDivisions();
-        setConfirmModal({ ...confirmModal, isOpen: false });
-        setAlertModal({ isOpen: true, message: '모든 데이터가 초기화되었습니다' });
       },
     });
   };
@@ -713,17 +691,6 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-
-      {/* 푸터 - 전체 초기화 버튼 */}
-      <footer className="px-6 py-8 mt-auto">
-        <button
-          onClick={handleReset}
-          className="w-full flex items-center justify-center gap-3 p-5 rounded-[2rem] bg-red-500/10 border border-red-500/30 text-red-500 font-black uppercase tracking-[0.1em] text-xs"
-        >
-          <span className="material-icons text-base">restart_alt</span>
-          RESET ALL DATA
-        </button>
-      </footer>
 
       {/* 선수 프로필 선택 모달 */}
       {showLinkPicker && createPortal(

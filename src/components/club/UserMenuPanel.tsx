@@ -33,6 +33,8 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<"idle" | "input" | "deleting">("idle");
+  const [deleteInput, setDeleteInput] = useState("");
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -89,6 +91,21 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
       updateTeammateHistory(history);
     }
     onClose();
+  };
+
+  const handleDeleteClub = async () => {
+    if (!squad?.id) return;
+    setDeleteConfirm("deleting");
+    try {
+      const { error } = await supabase.from("squads").delete().eq("id", squad.id);
+      if (error) throw error;
+      setDeleteConfirm("idle");
+      setDeleteInput("");
+      clearSquad();
+      onClose();
+    } catch {
+      setDeleteConfirm("input");
+    }
   };
 
   const handleLeaveClub = async () => {
@@ -203,15 +220,57 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
             </div>
           )}
 
-          {/* 동호회 탈퇴 */}
+          {/* 동호회 탈퇴 / 삭제 */}
           {currentClub && (
             isOwner ? (
-              <div className="w-full flex items-center gap-3 rounded-xl px-4 py-3 mb-2"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                <span className="material-icons text-white/15 text-sm">exit_to_app</span>
-                <span className="text-white/20 text-xs font-black uppercase tracking-widest flex-1">동호회 탈퇴</span>
-                <span className="text-[9px] text-white/20 font-black uppercase tracking-widest">운영자는 탈퇴 불가</span>
-              </div>
+              deleteConfirm === "input" || deleteConfirm === "deleting" ? (
+                <div className="rounded-xl p-3 mb-2 space-y-2"
+                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                  <p className="text-xs text-red-400/80 font-bold leading-relaxed">
+                    정말 <span className="font-black">{currentClub.name}</span>을 삭제하시겠어요?<br />
+                    <span className="text-[10px] text-red-400/60 font-bold">멤버, 경기, 댓글, 공지 등 모든 데이터가 영구 삭제됩니다.</span>
+                  </p>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={deleteInput}
+                    onChange={(e) => setDeleteInput(e.target.value)}
+                    placeholder={`확인을 위해 "${currentClub.name}" 입력`}
+                    className="w-full bg-black/20 border border-red-500/20 rounded-lg px-3 py-2 text-xs font-bold text-white placeholder-white/20 outline-none focus:border-red-500/50"
+                    disabled={deleteConfirm === "deleting"}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setDeleteConfirm("idle"); setDeleteInput(""); }}
+                      disabled={deleteConfirm === "deleting"}
+                      className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white/40 disabled:opacity-40"
+                      style={{ background: "rgba(255,255,255,0.05)" }}
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleDeleteClub}
+                      disabled={deleteInput !== currentClub.name || deleteConfirm === "deleting"}
+                      className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white disabled:opacity-30"
+                      style={{ background: "rgba(239,68,68,0.7)" }}
+                    >
+                      {deleteConfirm === "deleting" ? "삭제 중..." : "삭제"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setDeleteConfirm("input")}
+                  className="w-full flex items-center gap-3 rounded-xl px-4 py-3 mb-2 transition-all text-left active:scale-[0.98]"
+                  style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)" }}
+                >
+                  <span className="material-icons text-sm" style={{ color: "rgba(239,68,68,0.5)" }}>delete_forever</span>
+                  <span className="text-xs font-black uppercase tracking-widest flex-1" style={{ color: "rgba(239,68,68,0.6)" }}>
+                    동호회 삭제
+                  </span>
+                  <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: "rgba(239,68,68,0.4)" }}>운영자</span>
+                </button>
+              )
             ) : leaveConfirm ? (
               <div className="rounded-xl p-3 mb-2 space-y-2"
                 style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
