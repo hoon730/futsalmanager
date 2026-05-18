@@ -1,5 +1,4 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { useSquadStore } from '@/stores/squadStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
@@ -15,16 +14,11 @@ import {
   unsubscribeFromPush,
 } from '@/lib/pushNotification';
 import type { IMember } from '@/types';
-
-interface ISquadUserRow {
-  userId: string;
-  role: "owner" | "admin" | "member";
-  username: string;
-  joinedAt: string;
-  attendedMatches: number;
-  totalMatches: number;
-  attendanceRate: number;
-}
+import type { ISquadUserRow } from '@/components/settings/types';
+import { SquadUserDetailModal } from '@/components/settings/SquadUserDetailModal';
+import { EditMyMemberModal } from '@/components/settings/EditMyMemberModal';
+import { LinkMemberModal } from '@/components/settings/LinkMemberModal';
+import { AddMemberModal } from '@/components/settings/AddMemberModal';
 
 export default function SettingsPage() {
   const { squad, addMember, removeMember, updateMember } = useSquadStore();
@@ -829,300 +823,46 @@ export default function SettingsPage() {
       )}
 
       {/* 동호회 회원 상세 모달 (운영자 액션) */}
-      {selectedSquadUser && createPortal(
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
-          onClick={() => setSelectedSquadUser(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 헤더 — 멤버 정보 */}
-            <div className="px-5 pt-5 pb-4 border-b border-white/5">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-base font-bold"
-                  style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
-                >
-                  {selectedSquadUser.username[0]?.toUpperCase() ?? "?"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-black text-base truncate">{selectedSquadUser.username}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest mt-0.5"
-                    style={{
-                      color: selectedSquadUser.role === "owner" ? "#FFD700"
-                           : selectedSquadUser.role === "admin" ? "#0DF23E"
-                           : "rgba(255,255,255,0.4)"
-                    }}>
-                    {selectedSquadUser.role.toUpperCase()}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* 통계 — 가입일 / 출석률 */}
-            <div className="px-5 py-4 border-b border-white/5 grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1.5">가입일</p>
-                <p className="text-sm font-bold text-white">
-                  {new Date(selectedSquadUser.joinedAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1.5">출석률</p>
-                {selectedSquadUser.totalMatches > 0 ? (
-                  <div className="flex items-baseline gap-1.5">
-                    <p className="text-sm font-black"
-                      style={{
-                        color: selectedSquadUser.attendanceRate >= 80 ? "#0DF23E"
-                             : selectedSquadUser.attendanceRate >= 50 ? "#f59e0b"
-                             : "#ef4444"
-                      }}>
-                      {selectedSquadUser.attendanceRate}%
-                    </p>
-                    <p className="text-[10px] font-bold text-white/40">
-                      ({selectedSquadUser.attendedMatches}/{selectedSquadUser.totalMatches})
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm font-bold text-white/30">기록 없음</p>
-                )}
-              </div>
-            </div>
-
-            {/* 액션 */}
-            <div className="py-1">
-              {selectedSquadUser.role === "member" && (
-                <button
-                  onClick={() => {
-                    handleChangeRole(selectedSquadUser.userId, "admin");
-                    setSelectedSquadUser(null);
-                  }}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition-colors text-left"
-                >
-                  <span className="material-icons text-primary" style={{ fontSize: 18 }}>arrow_upward</span>
-                  <span className="text-sm font-bold text-white/85">관리자로 승급</span>
-                </button>
-              )}
-              {selectedSquadUser.role === "admin" && (
-                <button
-                  onClick={() => {
-                    handleChangeRole(selectedSquadUser.userId, "member");
-                    setSelectedSquadUser(null);
-                  }}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition-colors text-left"
-                >
-                  <span className="material-icons text-white/50" style={{ fontSize: 18 }}>arrow_downward</span>
-                  <span className="text-sm font-bold text-white/85">일반 멤버로 강등</span>
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  handleRemoveSquadMember(selectedSquadUser.userId, selectedSquadUser.username);
-                  setSelectedSquadUser(null);
-                }}
-                className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-red-500/10 transition-colors text-left border-t border-white/5"
-              >
-                <span className="material-icons text-red-400" style={{ fontSize: 18 }}>person_remove</span>
-                <span className="text-sm font-bold text-red-400">동호회에서 내보내기</span>
-              </button>
-            </div>
-
-            {/* 닫기 */}
-            <button
-              onClick={() => setSelectedSquadUser(null)}
-              className="w-full py-3 text-xs font-black uppercase tracking-widest text-white/40 border-t border-white/5 hover:bg-white/[0.02] transition-colors"
-            >
-              닫기
-            </button>
-          </div>
-        </div>,
-        document.body
+      {selectedSquadUser && (
+        <SquadUserDetailModal
+          user={selectedSquadUser}
+          onClose={() => setSelectedSquadUser(null)}
+          onChangeRole={handleChangeRole}
+          onRemove={handleRemoveSquadMember}
+        />
       )}
 
       {/* 내 선수 정보 수정 모달 */}
-      {showEditMyMember && createPortal(
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
-          onClick={() => !editSaving && setShowEditMyMember(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl p-6"
-            style={{ background: 'rgba(22,28,22,0.98)', border: '1px solid rgba(13,242,62,0.15)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 정보</h3>
-            <p className="text-white/40 text-xs mb-5">동호회에 표시될 이름과 포지션을 수정합니다</p>
-
-            {/* 이름 */}
-            <div className="mb-4">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">이름</label>
-              <input
-                autoFocus
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                maxLength={20}
-                disabled={editSaving}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50"
-                placeholder="동호회 이름"
-              />
-            </div>
-
-            {/* 포지션 */}
-            <div className="mb-4">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">포지션</label>
-              <div className="flex gap-2">
-                {(['GK','DF','MF','FW'] as const).map((pos) => (
-                  <button
-                    key={pos}
-                    onClick={() => setEditPosition(editPosition === pos ? null : pos)}
-                    disabled={editSaving}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all active:scale-95 border"
-                    style={editPosition === pos
-                      ? { backgroundColor: '#0DF23E', color: '#0a150d', borderColor: '#0DF23E' }
-                      : { backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', borderColor: 'rgba(255,255,255,0.08)' }
-                    }
-                  >
-                    {pos}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-white/25 mt-2">선택을 다시 누르면 해제됩니다</p>
-            </div>
-
-            {/* 안내 */}
-            <div className="mb-5 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5">
-              <p className="text-[10px] text-white/40 leading-relaxed">
-                <span className="material-icons align-middle text-xs text-white/30 mr-1">info</span>
-                스킬은 공정한 팀 배정을 위해 운영자만 변경할 수 있습니다
-              </p>
-            </div>
-
-            {/* 액션 */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowEditMyMember(false)}
-                disabled={editSaving}
-                className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-white/40 disabled:opacity-40"
-                style={{ background: 'rgba(255,255,255,0.05)' }}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSaveMyMember}
-                disabled={editSaving || !editName.trim()}
-                className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest disabled:opacity-40"
-                style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
-              >
-                {editSaving ? '저장 중...' : '저장'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {showEditMyMember && (
+        <EditMyMemberModal
+          name={editName}
+          position={editPosition}
+          saving={editSaving}
+          onChangeName={setEditName}
+          onChangePosition={setEditPosition}
+          onClose={() => setShowEditMyMember(false)}
+          onSubmit={handleSaveMyMember}
+        />
       )}
 
       {/* 선수 프로필 선택 모달 */}
-      {showLinkPicker && createPortal(
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
-          onClick={() => setShowLinkPicker(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl p-6 overflow-y-auto"
-            style={{ background: 'rgba(22,28,22,0.98)', border: '1px solid rgba(13,242,62,0.15)', maxHeight: '85vh' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 선택</h3>
-            <p className="text-white/40 text-xs mb-5">명단에서 나의 이름을 선택하세요</p>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {membersOnly.map((member) => (
-                <button
-                  key={member.id}
-                  onClick={() => handleLinkMember(member)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                    linkedMemberId === member.id
-                      ? 'bg-primary/10 border-primary/30'
-                      : 'bg-white/5 border-white/5 hover:border-white/20'
-                  }`}
-                >
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                    linkedMemberId === member.id ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white/60'
-                  }`}>
-                    {member.name.slice(0, 1)}
-                  </div>
-                  <span className={`font-bold text-sm ${linkedMemberId === member.id ? 'text-primary' : 'text-white'}`}>
-                    {member.name}
-                  </span>
-                  {linkedMemberId === member.id && (
-                    <span className="material-icons text-primary text-sm ml-auto">check_circle</span>
-                  )}
-                </button>
-              ))}
-              {membersOnly.length === 0 && (
-                <p className="text-center text-white/20 text-xs py-6">등록된 멤버가 없습니다</p>
-              )}
-            </div>
-            {linkedMemberId && (
-              <button
-                onClick={() => handleLinkMember(null)}
-                className="w-full mt-4 py-3 text-red-400/60 hover:text-red-400 text-xs font-black uppercase tracking-widest transition-colors"
-              >
-                연결 해제
-              </button>
-            )}
-          </div>
-        </div>,
-        document.body
+      {showLinkPicker && (
+        <LinkMemberModal
+          members={membersOnly}
+          linkedMemberId={linkedMemberId}
+          onClose={() => setShowLinkPicker(false)}
+          onLink={handleLinkMember}
+        />
       )}
 
       {/* 멤버 추가 모달 */}
-      {addMemberModal && createPortal(
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
-          onClick={() => { setAddMemberModal(false); setNewMemberName(''); }}
-        >
-          <div
-            className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden"
-            style={{
-              background: 'rgba(22,28,22,0.98)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(13,242,62,0.15)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-black italic uppercase text-white mb-3">멤버 추가</h3>
-            <p className="text-xs text-white/50 font-bold leading-relaxed mb-5">추가할 멤버 이름을 입력하세요</p>
-            <input
-              type="text"
-              placeholder="멤버 이름"
-              value={newMemberName}
-              onChange={(e) => setNewMemberName(e.target.value)}
-              autoFocus
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all mb-6"
-            />
-            <div className="space-y-3">
-              <button
-                onClick={handleAddMemberConfirm}
-                disabled={!newMemberName.trim()}
-                className="w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40"
-                style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
-              >
-                추가
-              </button>
-              <button
-                onClick={() => { setAddMemberModal(false); setNewMemberName(''); }}
-                className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
-              >
-                뒤로가기
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {addMemberModal && (
+        <AddMemberModal
+          name={newMemberName}
+          onChangeName={setNewMemberName}
+          onClose={() => { setAddMemberModal(false); setNewMemberName(''); }}
+          onConfirm={handleAddMemberConfirm}
+        />
       )}
 
       {/* ConfirmModal */}
