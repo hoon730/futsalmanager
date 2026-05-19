@@ -11,7 +11,14 @@ const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
   .filter(Boolean);
 
 function buildCorsHeaders(origin: string | null) {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
+  // ALLOWED_ORIGINS 미설정 → 요청 origin을 그대로 반영 (JWT 인증으로 보안 유지)
+  // 설정 → 화이트리스트에 있는 origin만 허용
+  const allowed =
+    ALLOWED_ORIGINS.length === 0
+      ? origin ?? '*'
+      : origin && ALLOWED_ORIGINS.includes(origin)
+        ? origin
+        : '';
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Headers':
