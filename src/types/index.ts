@@ -7,6 +7,7 @@ export interface IMember {
   isMercenary?: boolean; // 용병 여부
   avatarUrl?: string; // 프로필 이미지
   positionKey?: string; // 포지션 (FW, MF, DF, GK 등)
+  linkedUserId?: string | null; // 이 선수에 연결된 user_id (1:1)
 }
 
 export interface ISquad {
