@@ -6,6 +6,8 @@ import { useAuthStore } from "@/stores/authStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { useAnnouncementStore } from "@/stores/announcementStore";
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/stores/toastStore";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 import type { IMatch } from "@/types";
 import { MatchCard } from "@/components/schedule/MatchCard";
 import { MatchDetailSheet } from "@/components/schedule/MatchDetailSheet";
@@ -105,7 +107,12 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
   const handleRSVP = async (status: "attending" | "absent" | "waitlist") => {
     if (!user || !selectedMatch) return;
     const linkedMemberId = user.user_metadata?.member_id as string | undefined;
-    await setAttendance(selectedMatch.id, user.id, status, linkedMemberId);
+    try {
+      await setAttendance(selectedMatch.id, user.id, status, linkedMemberId);
+    } catch (e) {
+      console.error("[RSVP] setAttendance failed:", e);
+      toast(toFriendlyMessage(e, "출석 응답을 저장하지 못했습니다"), "error");
+    }
   };
 
   const getMyDisplayName = () => {

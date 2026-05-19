@@ -5,6 +5,7 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useMatchStore } from "@/stores/matchStore";
+import { useAuthStore } from "@/stores/authStore";
 import {
   loadSquadFromSupabase,
   loadDivisionsFromSupabase,
@@ -124,6 +125,18 @@ export const useRealtimeSync = (squadId: string | null) => {
             (payload.old as { match_id?: string })?.match_id;
           if (!matchId) return;
           if (!useMatchStore.getState().matches.some((m) => m.id === matchId)) return;
+
+          // 본인 변경은 setAttendance가 직접 처리하므로 skip
+          // (loadAttendees 호출이 진행 중인 옵티미스틱 업데이트를 덮어쓰는 race condition 방지)
+          const myUserId = useAuthStore.getState().user?.id;
+          const changedUserId =
+            (payload.new as { user_id?: string })?.user_id ??
+            (payload.old as { user_id?: string })?.user_id;
+          if (myUserId && changedUserId === myUserId) {
+            console.log("⏭ 본인 출석 변경 Realtime skip (로컬에서 처리됨)");
+            return;
+          }
+
           console.log("✨ 출석 업데이트 감지:", matchId);
           await loadAttendees(matchId);
         }
