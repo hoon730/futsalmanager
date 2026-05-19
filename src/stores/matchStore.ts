@@ -248,6 +248,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
     }));
 
     // 비동기로 푸시 알림 전송 (실패해도 경기 생성에 영향 없음)
+    // 결과를 토스트로 안내해 운영자가 전송 성공/실패를 즉시 확인할 수 있도록 함
     supabase.functions
       .invoke('send-match-notification', {
         body: {
@@ -258,7 +259,26 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
           location: created.location ?? null,
         },
       })
-      .catch(() => { /* 알림 실패 무시 */ });
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[push] 알림 전송 실패:", error);
+          toast(toFriendlyMessage(error, "경기는 등록됐지만 알림 전송에 실패했습니다"), "error");
+          return;
+        }
+        const sent = (data as { sent?: number } | null)?.sent ?? 0;
+        const failed = (data as { failed?: number } | null)?.failed ?? 0;
+        if (sent === 0 && failed === 0) {
+          toast("알림 구독자가 없습니다 (멤버들이 설정에서 알림을 켜야 합니다)", "info");
+        } else if (failed > 0) {
+          toast(`${sent}명에게 알림 전송 (${failed}명 실패)`, "info");
+        } else {
+          toast(`${sent}명에게 경기 알림을 보냈습니다`);
+        }
+      })
+      .catch((e) => {
+        console.error("[push] invoke 예외:", e);
+        toast(toFriendlyMessage(e, "알림 전송 중 오류가 발생했습니다"), "error");
+      });
   },
 
   deleteMatch: async (matchId) => {
