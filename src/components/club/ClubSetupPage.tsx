@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toFriendlyMessage } from "@/lib/errorMessage";
 import { useAuthStore } from "@/stores/authStore";
@@ -15,7 +15,21 @@ import {
 type Mode = "select" | "create" | "join";
 
 export const ClubSetupPage = () => {
-  const [mode, setMode] = useState<Mode>("select");
+  // URL에 ?invite=CODE 가 있으면 자동으로 가입 모드로 진입 + 코드 채움
+  const [initialInviteCode] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    const code = new URLSearchParams(window.location.search).get("invite");
+    return code ? code.toUpperCase() : "";
+  });
+  const [mode, setMode] = useState<Mode>(initialInviteCode ? "join" : "select");
+
+  // 한 번 사용한 ?invite= 파라미터는 URL에서 정리 (새로고침 시 다시 자동 진입 방지)
+  useEffect(() => {
+    if (!initialInviteCode) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("invite");
+    window.history.replaceState({}, "", url.toString());
+  }, [initialInviteCode]);
 
   return (
     <div className="min-h-screen bg-background-dark flex flex-col items-center justify-center px-6 relative overflow-hidden">
@@ -39,7 +53,7 @@ export const ClubSetupPage = () => {
 
         {mode === "select" && <ModeSelect onSelect={setMode} />}
         {mode === "create" && <CreateClub onBack={() => setMode("select")} />}
-        {mode === "join" && <JoinClub onBack={() => setMode("select")} />}
+        {mode === "join" && <JoinClub onBack={() => setMode("select")} initialCode={initialInviteCode} />}
       </div>
     </div>
   );
@@ -186,12 +200,12 @@ const CreateClub = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-const JoinClub = ({ onBack }: { onBack: () => void }) => {
+const JoinClub = ({ onBack, initialCode = "" }: { onBack: () => void; initialCode?: string }) => {
   const { user } = useAuthStore();
   const { setSquad } = useSquadStore();
   const { setFixedTeams } = useFixedTeamStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(initialCode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 

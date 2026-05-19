@@ -26,7 +26,14 @@ type MatchFormModalProps = CreateModeProps | EditModeProps;
 function toLocalDatetime(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // 분은 항상 00으로 정규화 (시간 단위 선택)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+}
+
+/** "YYYY-MM-DDTHH:MM" → "YYYY-MM-DDTHH:00" — 분을 강제로 00으로 */
+function normalizeToHour(value: string): string {
+  if (!value || value.length < 13) return value;
+  return value.substring(0, 13) + ":00";
 }
 
 export function MatchFormModal(props: MatchFormModalProps) {
@@ -90,11 +97,12 @@ export function MatchFormModal(props: MatchFormModalProps) {
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간</label>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간 (1시간 단위)</label>
             <input
               type="datetime-local"
               value={matchDate}
-              onChange={(e) => setMatchDate(e.target.value)}
+              onChange={(e) => setMatchDate(normalizeToHour(e.target.value))}
+              step={3600}
               required
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]"
             />
