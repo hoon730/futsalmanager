@@ -58,8 +58,12 @@ export function shareSquadInvite(squadName: string, inviteCode: string) {
     objectType: "feed",
     content: {
       title: `[${squadName}] 동호회 초대`,
-      description: `초대 코드: ${inviteCode}\n앱에서 코드를 입력하면 동호회에 참가할 수 있습니다.`,
-      imageUrl: `${baseUrl}/og-image.svg`,
+      // 카드 본문에 코드 + 입장 URL 명시 → 길게 눌러 복사 가능 & 직접 접속 안내
+      description:
+        `초대 코드: ${inviteCode}\n` +
+        `\n👇 아래 버튼을 누르면 자동으로 가입 페이지로 이동합니다.\n` +
+        `또는 ${baseUrl} 에 접속해서 "동호회 참가" → 코드 입력`,
+      imageUrl: `${baseUrl}/og-image.png`,
       link: { mobileWebUrl: url, webUrl: url },
     },
     buttons: [{ title: "동호회 가입하기", link: { mobileWebUrl: url, webUrl: url } }],
@@ -94,7 +98,7 @@ export function shareMatch(opts: {
     content: {
       title: opts.title,
       description: desc,
-      imageUrl: `${baseUrl}/og-image.svg`,
+      imageUrl: `${baseUrl}/og-image.png`,
       link: { mobileWebUrl: baseUrl, webUrl: baseUrl },
     },
     buttons: [{ title: "참석 응답하기", link: { mobileWebUrl: baseUrl, webUrl: baseUrl } }],
