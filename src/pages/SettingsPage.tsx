@@ -848,6 +848,7 @@ export default function SettingsPage() {
         <LinkMemberModal
           members={membersOnly}
           linkedMemberId={linkedMemberId}
+          currentUserId={user?.id ?? null}
           onClose={() => setShowLinkPicker(false)}
           onLink={handleLinkMember}
         />

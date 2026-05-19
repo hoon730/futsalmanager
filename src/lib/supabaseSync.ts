@@ -90,6 +90,7 @@ export const loadSquadFromSupabase = async (squadId: string): Promise<ISquad | n
       isMercenary: m.is_mercenary ?? false,
       avatarUrl: m.avatar_url ?? undefined,
       positionKey: m.position_key ?? undefined,
+      linkedUserId: m.linked_user_id ?? null,
     }));
 
     return {

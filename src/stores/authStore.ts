@@ -150,6 +150,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearError: () => set({ error: null }),
 
   updateLinkedMember: async (memberId) => {
+    // 1. RPC로 DB 레벨 1:1 연결 강제 (중복 연결 시 23505 예외)
+    if (memberId) {
+      const { error: rpcError } = await supabase.rpc("link_my_member", { p_member_id: memberId });
+      if (rpcError) throw rpcError;
+    } else {
+      const { error: rpcError } = await supabase.rpc("unlink_my_member");
+      if (rpcError) throw rpcError;
+    }
+
+    // 2. RPC 성공 시에만 user_metadata 동기화 (클라이언트 측 조회용)
     const { data, error } = await supabase.auth.updateUser({
       data: { member_id: memberId },
     });
