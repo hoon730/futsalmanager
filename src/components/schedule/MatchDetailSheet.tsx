@@ -57,9 +57,6 @@ export function MatchDetailSheet({
   const [attendeesFilter, setAttendeesFilter] = useState<"attending" | "absent" | "waitlist" | null>(null);
   const [mercenaryDialogOpen, setMercenaryDialogOpen] = useState(false);
 
-  // 카카오 투표 스타일: 로컬 선택 → 버튼으로 제출 (null로 초기화, useEffect로 myStatus 동기화)
-  const [localSelection, setLocalSelection] = useState<"attending" | "absent" | "waitlist" | null>(null);
-
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [editingComment, setEditingComment] = useState<IMatchComment | null>(null);
   const [actionSheet, setActionSheet] = useState<IMatchComment | null>(null);
@@ -167,11 +164,6 @@ export function MatchDetailSheet({
     try { await onRSVP(status); } finally { setRsvpLoading(false); }
   };
 
-  // 낙관적 업데이트 반영 시 로컬 선택 동기화
-  useEffect(() => {
-    const valid = myStatus === "pending" ? null : myStatus as "attending" | "absent" | "waitlist" | null;
-    setLocalSelection(valid);
-  }, [myStatus]);
 
   const totalComments = comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0);
 
@@ -342,7 +334,7 @@ export function MatchDetailSheet({
               )}
 
               <div className="px-5 py-4 space-y-1">
-                {/* 투표 옵션 행 — 카카오 스타일 라디오 */}
+                {/* 투표 옵션 — 라디오 클릭 한 번으로 즉시 적용 */}
                 {(() => {
                   const showWaitlist = !isPast && (isOverCapacity || waitlist.length > 0) && myStatus !== "attending";
                   const opts = [
@@ -351,27 +343,27 @@ export function MatchDetailSheet({
                     ...(showWaitlist ? [{ key: "waitlist" as const, label: "대기", count: waitlist.length, radioColor: "#fb923c", checkColor: "#0a150d", barColor: "#fb923c" }] : []),
                   ];
                   return opts.map((opt) => {
-                    const isSelected = localSelection === opt.key;
+                    const isSelected = myStatus === opt.key;
                     const percent = Math.min((opt.count / (match.maxPlayers || 1)) * 100, 100);
-                    const disabled = isPast || rsvpLoading || (opt.key === "attending" && isOverCapacity && myStatus !== "attending");
+                    const disabled = isPast || rsvpLoading || (opt.key === "attending" && isOverCapacity && !isSelected);
                     return (
                       <button
                         key={opt.key}
-                        onClick={() => !disabled && setLocalSelection(opt.key)}
+                        onClick={() => !disabled && handleRSVP(opt.key)}
                         disabled={disabled}
-                        className="w-full text-left py-3 transition-all active:opacity-60 disabled:opacity-30 disabled:cursor-default"
+                        className="w-full text-left py-2.5 transition-all active:opacity-60 disabled:opacity-30 disabled:cursor-default"
                       >
-                        <div className="flex items-center gap-3 mb-2">
-                          {/* 라디오 원형 */}
+                        <div className="flex items-center gap-2.5 mb-2">
+                          {/* 라디오 원형 — 작게 */}
                           <div
-                            className="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200"
+                            className="w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200"
                             style={isSelected
                               ? { backgroundColor: opt.radioColor, borderColor: opt.radioColor }
                               : { borderColor: "rgba(255,255,255,0.22)", backgroundColor: "transparent" }
                             }
                           >
                             {isSelected && (
-                              <span className="material-icons" style={{ fontSize: 14, color: opt.checkColor, lineHeight: 1 }}>check</span>
+                              <span className="material-icons" style={{ fontSize: 12, color: opt.checkColor, lineHeight: 1 }}>check</span>
                             )}
                           </div>
                           <span className={`text-sm font-bold flex-1 ${isSelected ? "text-white" : "text-white/45"}`}>
@@ -381,11 +373,11 @@ export function MatchDetailSheet({
                             {opt.count}
                           </span>
                         </div>
-                        {/* 통계 바 */}
-                        <div className="ml-9 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        {/* 통계 바 — 행 전체 너비 */}
+                        <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                           <div
                             className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${percent}%`, background: opt.barColor, opacity: isSelected ? 0.85 : 0.28 }}
+                            style={{ width: `${percent}%`, background: opt.barColor, opacity: isSelected ? 0.9 : 0.32 }}
                           />
                         </div>
                       </button>
@@ -393,33 +385,8 @@ export function MatchDetailSheet({
                   });
                 })()}
 
-                {/* 구분선 */}
-                <div className="h-px bg-white/5 !mt-2 !mb-1" />
-
-                {/* 투표하기 / 변경하기 버튼 */}
-                {!isPast && (
-                  <button
-                    onClick={() => { if (localSelection && localSelection !== myStatus) handleRSVP(localSelection); }}
-                    disabled={rsvpLoading || !localSelection || localSelection === myStatus}
-                    className="w-full py-3.5 rounded-xl font-black text-sm transition-all active:scale-95 disabled:cursor-default !mt-3"
-                    style={
-                      localSelection && localSelection !== myStatus
-                        ? { background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.88)" }
-                        : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.22)" }
-                    }
-                  >
-                    {rsvpLoading
-                      ? "처리 중..."
-                      : myStatus === null
-                        ? "투표하기"
-                        : localSelection === myStatus
-                          ? "투표 완료"
-                          : "변경하기"}
-                  </button>
-                )}
-
                 {!isPast && isOverCapacity && myStatus !== "attending" && (
-                  <p className="text-[11px] text-white/25 flex items-center justify-center gap-1 pt-1">
+                  <p className="text-[11px] text-white/25 flex items-center justify-center gap-1 pt-2">
                     <span className="material-icons" style={{ fontSize: 13 }}>lock</span>
                     정원 마감 — 대기 신청만 가능합니다
                   </p>
