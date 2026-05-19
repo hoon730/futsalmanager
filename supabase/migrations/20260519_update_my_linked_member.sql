@@ -1,11 +1,10 @@
 -- ====================================================================
 -- 내 선수(연결된 members 행) 이름/포지션 수정 RPC
--- - auth.uid()와 연결된 user_metadata.member_id를 통해 본인 행만 수정
--- - SECURITY DEFINER로 RLS 회피 (내부에서 권한 검증)
--- - 이전 harden_definer_functions.sql 의 REVOKE FROM anon 와 호환 시그니처 사용
+-- - auth.uid() 와 연결된 user_metadata.member_id 를 통해 본인 행만 수정
+-- - members.id 가 text 타입이므로 v_member_id 도 text 로 통일
+-- - SECURITY DEFINER 로 RLS 회피 (내부에서 권한 검증)
 -- ====================================================================
 
--- 기존 함수가 존재하면 시그니처/리턴타입 변경 위해 먼저 DROP
 DROP FUNCTION IF EXISTS public.update_my_linked_member(text, text);
 
 CREATE FUNCTION public.update_my_linked_member(
@@ -19,7 +18,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
-  v_member_id uuid;
+  v_member_id text;
   v_member public.members;
   v_trimmed text;
 BEGIN
@@ -32,13 +31,21 @@ BEGIN
     RAISE EXCEPTION '이름을 입력해주세요' USING ERRCODE = '22023';
   END IF;
 
-  -- user_metadata 에서 연결된 member_id 조회
-  SELECT (raw_user_meta_data ->> 'member_id')::uuid
-    INTO v_member_id
-    FROM auth.users
-   WHERE id = v_user_id;
+  -- 우선 members.linked_user_id 로 본인 행 찾기 (1:1 강제 후 권장 경로)
+  SELECT id INTO v_member_id
+    FROM public.members
+   WHERE linked_user_id = v_user_id
+   LIMIT 1;
 
+  -- 폴백: user_metadata.member_id (백필 직전 호출 등 호환)
   IF v_member_id IS NULL THEN
+    SELECT raw_user_meta_data ->> 'member_id'
+      INTO v_member_id
+      FROM auth.users
+     WHERE id = v_user_id;
+  END IF;
+
+  IF v_member_id IS NULL OR length(v_member_id) = 0 THEN
     RAISE EXCEPTION '연결된 선수가 없습니다' USING ERRCODE = '42501';
   END IF;
 
@@ -47,7 +54,6 @@ BEGIN
     RAISE EXCEPTION '잘못된 포지션입니다' USING ERRCODE = '22023';
   END IF;
 
-  -- 본인이 연결된 멤버만 수정
   UPDATE public.members
      SET name = v_trimmed,
          position_key = p_position_key

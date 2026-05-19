@@ -3,6 +3,7 @@
 -- - members.linked_user_id 컬럼 + 부분 UNIQUE 인덱스
 -- - link_my_member / unlink_my_member RPC
 -- - 기존 user_metadata.member_id 데이터를 백필
+-- 참고: members.id 가 text 타입이므로 RPC 파라미터도 text 로 통일
 -- ====================================================================
 
 -- 1. 컬럼 추가
@@ -15,11 +16,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS members_linked_user_id_unique
   WHERE linked_user_id IS NOT NULL;
 
 -- 3. 기존 user_metadata.member_id → members.linked_user_id 백필
---    한 user가 여러 member에 metadata 연결되어 있던 비정상 케이스는 첫 번째만 적용
+--    members.id 가 text 이므로 JSON 텍스트와 text=text 비교
 WITH first_link AS (
   SELECT DISTINCT ON (u.id)
     u.id AS user_id,
-    (u.raw_user_meta_data ->> 'member_id')::uuid AS member_id
+    u.raw_user_meta_data ->> 'member_id' AS member_id
   FROM auth.users u
   WHERE u.raw_user_meta_data ? 'member_id'
     AND length(coalesce(u.raw_user_meta_data ->> 'member_id', '')) > 0
@@ -33,7 +34,8 @@ UPDATE public.members m
 
 -- 4. 연결 RPC
 DROP FUNCTION IF EXISTS public.link_my_member(uuid);
-CREATE FUNCTION public.link_my_member(p_member_id uuid)
+DROP FUNCTION IF EXISTS public.link_my_member(text);
+CREATE FUNCTION public.link_my_member(p_member_id text)
 RETURNS public.members
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -77,8 +79,8 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.link_my_member(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.link_my_member(uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.link_my_member(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.link_my_member(text) TO authenticated;
 
 -- 5. 해제 RPC
 DROP FUNCTION IF EXISTS public.unlink_my_member();
