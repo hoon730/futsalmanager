@@ -5,7 +5,10 @@
 -- - 이전 harden_definer_functions.sql 의 REVOKE FROM anon 와 호환 시그니처 사용
 -- ====================================================================
 
-CREATE OR REPLACE FUNCTION public.update_my_linked_member(
+-- 기존 함수가 존재하면 시그니처/리턴타입 변경 위해 먼저 DROP
+DROP FUNCTION IF EXISTS public.update_my_linked_member(text, text);
+
+CREATE FUNCTION public.update_my_linked_member(
   p_name text,
   p_position_key text
 )
