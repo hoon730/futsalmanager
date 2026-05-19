@@ -40,8 +40,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 허용되지 않은 origin 차단
-  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+  // ALLOWED_ORIGINS가 설정된 경우에만 origin 검증 (미설정 시 JWT 인증으로 충분)
+  if (ALLOWED_ORIGINS.length > 0 && origin && !ALLOWED_ORIGINS.includes(origin)) {
     return jsonResponse({ error: 'Origin not allowed' }, 403, corsHeaders);
   }
 
