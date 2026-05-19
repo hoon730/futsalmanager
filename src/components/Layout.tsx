@@ -1,12 +1,20 @@
-import { useState, useEffect } from "react";
-import DivisionPage from "@/pages/DivisionPage";
-import AttendancePage from "@/pages/AttendancePage";
-import SettingsPage from "@/pages/SettingsPage";
-import SchedulePage from "@/pages/SchedulePage";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { UserMenuPanel } from "@/components/club/UserMenuPanel";
 import { useAuthStore } from "@/stores/authStore";
 import { useSquadStore } from "@/stores/squadStore";
 import { useMatchStore } from "@/stores/matchStore";
+
+// Route-level code splitting: 탭별 페이지를 lazy-load 하여 초기 번들 축소
+const DivisionPage   = lazy(() => import("@/pages/DivisionPage"));
+const SchedulePage   = lazy(() => import("@/pages/SchedulePage"));
+const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
+const SettingsPage   = lazy(() => import("@/pages/SettingsPage"));
+
+const PageFallback = () => (
+  <div className="flex items-center justify-center h-full py-20">
+    <div className="loading-spinner" />
+  </div>
+);
 
 type Tab = "division" | "schedule" | "attendance" | "settings";
 
@@ -67,10 +75,12 @@ const Layout = () => {
 
       {/* 메인 컨텐츠 */}
       <main className="flex-1 overflow-y-auto hide-scrollbar pb-28">
-        {activeTab === "division"   && <DivisionPage />}
-        {activeTab === "schedule"   && <SchedulePage onGoToDivision={() => setActiveTab("division")} />}
-        {activeTab === "attendance" && <AttendancePage />}
-        {activeTab === "settings"   && <SettingsPage />}
+        <Suspense fallback={<PageFallback />}>
+          {activeTab === "division"   && <DivisionPage />}
+          {activeTab === "schedule"   && <SchedulePage onGoToDivision={() => setActiveTab("division")} />}
+          {activeTab === "attendance" && <AttendancePage />}
+          {activeTab === "settings"   && <SettingsPage />}
+        </Suspense>
       </main>
 
       {/* 하단 네비게이션 — 4탭 */}

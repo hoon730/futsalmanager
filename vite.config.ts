@@ -77,4 +77,17 @@ export default defineConfig({
   esbuild: {
     drop: ["console", "debugger"],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React 코어는 모든 페이지에서 사용 — 별도 청크로 분리하여 캐시 효율 ↑
+          "vendor-react": ["react", "react-dom"],
+          // Supabase 클라이언트 (auth + realtime) — 무거우므로 분리
+          "vendor-supabase": ["@supabase/supabase-js"],
+          // framer-motion / swiper 는 lazy 페이지 청크에 자연 포함되도록 분리하지 않음
+        },
+      },
+    },
+  },
 });
