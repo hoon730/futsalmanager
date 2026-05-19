@@ -23,24 +23,28 @@ interface EditModeProps {
 
 type MatchFormModalProps = CreateModeProps | EditModeProps;
 
-function toLocalDatetime(iso: string): string {
+/** ISO → "YYYY-MM-DD" */
+function toLocalDate(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  // 분은 항상 00으로 정규화 (시간 단위 선택)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** "YYYY-MM-DDTHH:MM" → "YYYY-MM-DDTHH:00" — 분을 강제로 00으로 */
-function normalizeToHour(value: string): string {
-  if (!value || value.length < 13) return value;
-  return value.substring(0, 13) + ":00";
+/** "YYYY-MM-DD" + hour → ISO string */
+function combineDateHour(date: string, hour: number): string {
+  if (!date) return "";
+  // 로컬 타임존 기준으로 매치 일자/시간 구성 후 ISO 변환
+  return new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).toISOString();
 }
 
 export function MatchFormModal(props: MatchFormModalProps) {
   const isEdit = props.mode === "edit";
   const initial = isEdit ? props.match : null;
 
-  const [matchDate, setMatchDate] = useState(initial ? toLocalDatetime(initial.matchDate) : "");
+  const initialDate = initial ? new Date(initial.matchDate) : null;
+  const [matchDate, setMatchDate] = useState<string>(initialDate ? toLocalDate(initial!.matchDate) : "");
+  // 디폴트 시간: 기존 매치는 그 시간, 신규는 19시 (저녁 7시)
+  const [matchHour, setMatchHour] = useState<number>(initialDate ? initialDate.getHours() : 19);
   const [location, setLocation] = useState(initial?.location ?? "");
   const [maxPlayers, setMaxPlayers] = useState(initial?.maxPlayers ?? 15);
   const [notes, setNotes] = useState(initial?.notes ?? "");
@@ -49,6 +53,11 @@ export function MatchFormModal(props: MatchFormModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!matchDate) {
+      setError("날짜를 선택해주세요");
+      return;
+    }
+    const matchDateIso = combineDateHour(matchDate, matchHour);
     setIsLoading(true);
     setError("");
     try {
@@ -57,7 +66,7 @@ export function MatchFormModal(props: MatchFormModalProps) {
           // title은 더 이상 사용자 입력으로 받지 않음. 식별은 날짜/시간으로.
           // DB 스키마 NOT NULL 호환을 위해 빈 문자열 저장.
           title: "",
-          matchDate: new Date(matchDate).toISOString(),
+          matchDate: matchDateIso,
           location: location || undefined,
           maxPlayers,
           notes: notes || undefined,
@@ -68,7 +77,7 @@ export function MatchFormModal(props: MatchFormModalProps) {
         await props.onSubmit({
           // 제목은 더 이상 사용자 편집 대상이 아님. 기존 값 유지.
           title: props.match.title,
-          matchDate: new Date(matchDate).toISOString(),
+          matchDate: matchDateIso,
           location: location || undefined,
           maxPlayers,
           notes: notes || undefined,
@@ -79,6 +88,14 @@ export function MatchFormModal(props: MatchFormModalProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 시간 옵션: 0~23시
+  const hourOptions = Array.from({ length: 24 }, (_, i) => i);
+  const formatHourLabel = (h: number) => {
+    const period = h < 12 ? "오전" : "오후";
+    const display = h === 0 ? 12 : h <= 12 ? h : h - 12;
+    return `${period} ${display}:00`;
   };
 
   return createPortal(
@@ -97,15 +114,26 @@ export function MatchFormModal(props: MatchFormModalProps) {
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간 (1시간 단위)</label>
-            <input
-              type="datetime-local"
-              value={matchDate}
-              onChange={(e) => setMatchDate(normalizeToHour(e.target.value))}
-              step={3600}
-              required
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]"
-            />
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">날짜 / 시간</label>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <input
+                type="date"
+                value={matchDate}
+                onChange={(e) => setMatchDate(e.target.value)}
+                required
+                className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]"
+              />
+              <select
+                value={matchHour}
+                onChange={(e) => setMatchHour(Number(e.target.value))}
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark] font-bold cursor-pointer"
+              >
+                {hourOptions.map((h) => (
+                  <option key={h} value={h}>{formatHourLabel(h)}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[10px] text-white/30 mt-1.5">분은 자동으로 00분</p>
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">장소 (선택)</label>
