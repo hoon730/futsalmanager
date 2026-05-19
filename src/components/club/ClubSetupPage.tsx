@@ -15,17 +15,24 @@ import {
 type Mode = "select" | "create" | "join";
 
 export const ClubSetupPage = () => {
-  // URL에 ?invite=CODE 가 있으면 자동으로 가입 모드로 진입 + 코드 채움
+  // 초대 코드 우선순위:
+  //   1) localStorage('pendingInviteCode') — main.tsx 에서 카카오 카드 진입 시 저장
+  //   2) URL ?invite= — 직접 링크로 들어온 경우
   const [initialInviteCode] = useState<string>(() => {
     if (typeof window === "undefined") return "";
-    const code = new URLSearchParams(window.location.search).get("invite");
-    return code ? code.toUpperCase() : "";
+    try {
+      const stored = localStorage.getItem("pendingInviteCode");
+      if (stored && stored.length > 0) return stored.toUpperCase();
+    } catch { /* ignore */ }
+    const fromUrl = new URLSearchParams(window.location.search).get("invite");
+    return fromUrl ? fromUrl.toUpperCase() : "";
   });
   const [mode, setMode] = useState<Mode>(initialInviteCode ? "join" : "select");
 
-  // 한 번 사용한 ?invite= 파라미터는 URL에서 정리 (새로고침 시 다시 자동 진입 방지)
+  // 사용 완료: localStorage + URL 정리 (새로고침 시 재진입 방지)
   useEffect(() => {
     if (!initialInviteCode) return;
+    try { localStorage.removeItem("pendingInviteCode"); } catch { /* ignore */ }
     const url = new URL(window.location.href);
     url.searchParams.delete("invite");
     window.history.replaceState({}, "", url.toString());

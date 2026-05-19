@@ -80,7 +80,7 @@ serve(async (req) => {
   const callerId = userData.user.id;
 
   try {
-    const { matchId, squadId, title, matchDate, location } = await req.json();
+    const { matchId, squadId, matchDate, location } = await req.json();
 
     if (!matchId || !squadId) {
       return jsonResponse({ error: 'matchId, squadId 필수' }, 400, corsHeaders);
@@ -125,17 +125,17 @@ serve(async (req) => {
       return jsonResponse({ sent: 0, failed: 0, message: '구독자 없음' }, 200, corsHeaders);
     }
 
-    const dateStr = new Date(matchDate).toLocaleString('ko-KR', {
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // 형식: "5월 19일 (화) 오후 2:00"
+    const d = new Date(matchDate);
+    const month = d.toLocaleString('ko-KR', { month: 'long' });
+    const day = d.getDate();
+    const weekday = d.toLocaleString('ko-KR', { weekday: 'short' });
+    const time = d.toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const dateStr = `${month} ${day}일 (${weekday}) ${time}`;
 
     const payload = JSON.stringify({
-      title: '⚽ 새 경기가 등록됐어요!',
-      body: `${title ?? '경기'} · ${dateStr}${location ? ` · ${location}` : ''}`,
+      title: '풋살 매니저',
+      body: `새 경기가 등록되었습니다.\n${dateStr}${location ? ` · ${location}` : ''}`,
       url: '/?tab=schedule',
       matchId,
     });
