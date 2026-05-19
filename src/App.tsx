@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Layout from "@/components/Layout";
-import { AuthPage } from "@/components/auth/AuthPage";
-import { ClubSetupPage } from "@/components/club/ClubSetupPage";
 import { useInitialLoad } from "@/hooks/useInitialLoad";
 import { useAuthSquadLoad } from "@/hooks/useAuthSquadLoad";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -10,6 +8,17 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useAuthStore } from "@/stores/authStore";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { ToastContainer } from "@/components/Toast";
+
+// 로그인 전/동호회 미설정 화면도 lazy-load — 정상 진입 후엔 다운로드 안 함
+const AuthPage      = lazy(() => import("@/components/auth/AuthPage").then(m => ({ default: m.AuthPage })));
+const ClubSetupPage = lazy(() => import("@/components/club/ClubSetupPage").then(m => ({ default: m.ClubSetupPage })));
+
+const FullscreenLoader = ({ message }: { message: string }) => (
+  <div className="loading-screen">
+    <div className="loading-spinner"></div>
+    <p>{message}</p>
+  </div>
+);
 
 const App = () => {
   const { user, isLoading: authLoading, initialize } = useAuthStore();
@@ -40,32 +49,30 @@ const App = () => {
 
   // 1. 인증 확인 중
   if (authLoading) {
-    return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
-        <p>로딩 중...</p>
-      </div>
-    );
+    return <FullscreenLoader message="로딩 중..." />;
   }
 
   // 2. 비로그인 → 인증 페이지
   if (!user) {
-    return <AuthPage />;
+    return (
+      <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
+        <AuthPage />
+      </Suspense>
+    );
   }
 
   // 3. 로그인 완료, 동호회 데이터 로딩 중
   if (authDataLoading) {
-    return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
-        <p>동호회 데이터 로드 중...</p>
-      </div>
-    );
+    return <FullscreenLoader message="동호회 데이터 로드 중..." />;
   }
 
   // 4. 로그인했지만 동호회 미설정
   if (!squad?.id) {
-    return <ClubSetupPage />;
+    return (
+      <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
+        <ClubSetupPage />
+      </Suspense>
+    );
   }
 
   // 5. 정상 진입
