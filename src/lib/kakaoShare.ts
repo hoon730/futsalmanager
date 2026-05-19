@@ -63,7 +63,7 @@ export function shareSquadInvite(squadName: string, inviteCode: string) {
         `초대 코드: ${inviteCode}\n` +
         `\n👇 아래 버튼을 누르면 자동으로 가입 페이지로 이동합니다.\n` +
         `또는 ${baseUrl} 에 접속해서 "동호회 참가" → 코드 입력`,
-      imageUrl: `${baseUrl}/og-image.png`,
+      imageUrl: `${baseUrl}/og-image.png?v=3`,
       link: { mobileWebUrl: url, webUrl: url },
     },
     buttons: [{ title: "동호회 가입하기", link: { mobileWebUrl: url, webUrl: url } }],
@@ -98,7 +98,7 @@ export function shareMatch(opts: {
     content: {
       title: opts.title,
       description: desc,
-      imageUrl: `${baseUrl}/og-image.png`,
+      imageUrl: `${baseUrl}/og-image.png?v=3`,
       link: { mobileWebUrl: baseUrl, webUrl: baseUrl },
     },
     buttons: [{ title: "참석 응답하기", link: { mobileWebUrl: baseUrl, webUrl: baseUrl } }],

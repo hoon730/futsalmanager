@@ -133,9 +133,12 @@ serve(async (req) => {
     const time = d.toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
     const dateStr = `${month} ${day}일 (${weekday}) ${time}`;
 
+    // iOS PWA 알림은 manifest.name("풋살 매니저") 을 헤더에 자동 표시함.
+    // title 을 PWA name 과 동일하게 두면 "from 풋살 매니저"로 중복 노출되므로
+    // title 자리에 핵심 메시지를, body 에 부가 정보를 분리.
     const payload = JSON.stringify({
-      title: '풋살 매니저',
-      body: `새 경기가 등록되었습니다.\n${dateStr}${location ? ` · ${location}` : ''}`,
+      title: '새 경기가 등록되었습니다',
+      body: `${dateStr}${location ? ` · ${location}` : ''}`,
       url: '/?tab=schedule',
       matchId,
     });
