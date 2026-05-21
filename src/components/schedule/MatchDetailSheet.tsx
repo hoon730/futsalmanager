@@ -46,6 +46,10 @@ export function MatchDetailSheet({
   onAddMercenary, onRemoveMercenary, onGoToDivision, onEditMatch,
 }: MatchDetailSheetProps) {
   const [visible, setVisible] = useState(false);
+  // 드래그 다운 닫기: 상단 핸들 영역을 아래로 끌면 시트가 닫힘
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartY = useRef<number>(0);
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
@@ -80,6 +84,29 @@ export function MatchDetailSheet({
   const handleClose = () => {
     setVisible(false);
     setTimeout(onClose, 320);
+  };
+
+  // 드래그 다운 제스처 ─ 상단 핸들에서 시작해서 아래로 100px 이상 끌면 닫힘
+  const CLOSE_THRESHOLD = 100;
+  const handleDragStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    dragStartY.current = e.touches[0].clientY;
+  };
+  const handleDragMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const dy = e.touches[0].clientY - dragStartY.current;
+    setDragY(Math.max(0, dy)); // 위로는 안 끌리도록
+  };
+  const handleDragEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragY > CLOSE_THRESHOLD) {
+      // 임계값 초과 → 닫기. visible=false 후 transform이 translateY(100%)로 자연 전환됨.
+      handleClose();
+    } else {
+      setDragY(0); // 스냅백
+    }
   };
 
   const cancelMode = () => {
@@ -172,8 +199,10 @@ export function MatchDetailSheet({
       <div
         className="fixed inset-0 z-[9999]"
         style={{
-          backgroundColor: visible ? "rgba(0,0,0,0.65)" : "transparent",
-          transition: "background-color 0.32s",
+          backgroundColor: visible
+            ? `rgba(0,0,0,${Math.max(0, 0.65 - dragY / 600)})`
+            : "transparent",
+          transition: isDragging ? "none" : "background-color 0.32s",
           pointerEvents: visible ? "auto" : "none",
         }}
         onClick={handleClose}
@@ -185,12 +214,25 @@ export function MatchDetailSheet({
               position: "absolute",
               inset: 0,
               background: "#0a150d",
-              transform: visible ? "translateY(0)" : "translateY(100%)",
-              transition: "transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
+              transform: !visible
+                ? "translateY(100%)"
+                : dragY > 0
+                  ? `translateY(${dragY}px)`
+                  : "translateY(0)",
+              transition: isDragging
+                ? "none"
+                : "transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
               display: "flex", flexDirection: "column", overflow: "hidden",
             }}
           >
-          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div
+            className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
+            style={{ touchAction: "none" }}
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+            onTouchCancel={handleDragEnd}
+          >
             <div className="w-10 h-1 rounded-full bg-white/20" />
           </div>
 

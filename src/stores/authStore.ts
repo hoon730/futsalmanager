@@ -26,7 +26,7 @@ interface AuthState {
   updateUsername: (username: string) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   profile: null,
@@ -172,7 +172,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   updateUsername: async (username) => {
     const trimmed = username.trim();
     if (!trimmed) throw new Error("닉네임을 입력해주세요");
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    // 스토어의 user를 직접 사용 (supabase.auth.getUser() 네트워크 호출 제거)
+    // 기존엔 getUser()가 네트워크 검증을 기다리느라 저장이 늦거나 hang 가능성이 있었음
+    const currentUser = get().user;
     if (!currentUser) throw new Error("로그인이 필요합니다");
     const { data, error } = await supabase
       .from("profiles")

@@ -82,6 +82,8 @@ export function MatchFormModal(props: MatchFormModalProps) {
           maxPlayers,
           notes: notes || undefined,
         });
+        // edit 모드에서도 저장 성공 후 모달 자동 닫기 (부모 wrapper에만 의존하지 않도록)
+        props.onClose();
       }
     } catch (err) {
       setError(toFriendlyMessage(err, isEdit ? "수정에 실패했습니다" : "경기 생성에 실패했습니다"));

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { useSquadStore } from "@/stores/squadStore";
@@ -44,6 +44,45 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const [savingName, setSavingName] = useState(false);
   // 현재 동호회의 전체 멤버 수 (owner 탈퇴 시 위임 vs 삭제 분기 판단용)
   const [squadMemberCount, setSquadMemberCount] = useState<number | null>(null);
+
+  // 드래그 다운 닫기 + 진입/퇴장 애니메이션 (controlled transform)
+  const [visible, setVisible] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartY = useRef<number>(0);
+
+  // 마운트 후 한 프레임 뒤에 visible=true로 → translateY(100%) → translateY(0) 애니메이션
+  useEffect(() => {
+    if (!isOpen) return;
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, [isOpen]);
+
+  const handleAnimatedClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 250);
+  };
+
+  const CLOSE_THRESHOLD = 100;
+  const handleDragStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    dragStartY.current = e.touches[0].clientY;
+  };
+  const handleDragMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const dy = e.touches[0].clientY - dragStartY.current;
+    setDragY(Math.max(0, dy));
+  };
+  const handleDragEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragY > CLOSE_THRESHOLD) {
+      handleAnimatedClose();
+    } else {
+      setDragY(0);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -195,12 +234,42 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
 
   return createPortal(
     <>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={onClose} />
+      <div
+        className="fixed inset-0 backdrop-blur-sm z-50"
+        style={{
+          backgroundColor: visible
+            ? `rgba(0,0,0,${Math.max(0, 0.7 - dragY / 600)})`
+            : "rgba(0,0,0,0)",
+          transition: isDragging ? "none" : "background-color 0.25s ease-out",
+        }}
+        onClick={handleAnimatedClose}
+      />
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto" style={{ animation: "slideUp 0.25s ease-out" }}>
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto"
+        style={{
+          transform: !visible
+            ? "translateY(100%)"
+            : dragY > 0
+              ? `translateY(${dragY}px)`
+              : "translateY(0)",
+          transition: isDragging
+            ? "none"
+            : "transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
+      >
         <div className="rounded-t-[2.5rem] px-5 pt-5 pb-10 bg-[#1a1a1a] border-t border-white/5">
-          {/* 핸들 */}
-          <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-6" />
+          {/* 핸들 — 드래그 다운으로 닫기 */}
+          <div
+            className="-mx-5 -mt-5 px-5 pt-5 pb-2 cursor-grab active:cursor-grabbing"
+            style={{ touchAction: "none" }}
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+            onTouchCancel={handleDragEnd}
+          >
+            <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-4" />
+          </div>
 
           {/* 계정 헤더 */}
           <div className="flex items-center gap-3 mb-6 px-1">

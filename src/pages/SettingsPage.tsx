@@ -85,7 +85,14 @@ export default function SettingsPage() {
         p_position_key: editPosition,
       });
       if (error) throw error;
-      // members 명단 새로고침은 다음 동기화에 맡기고 일단 토스트만
+      // members 테이블 realtime은 비활성화돼 있으므로 로컬 state를 직접 갱신
+      // (앱 재시작 없이 즉시 반영하기 위함)
+      if (linkedMemberId) {
+        updateMember(linkedMemberId, {
+          name: trimmed,
+          positionKey: editPosition ?? undefined,
+        });
+      }
       setShowEditMyMember(false);
       toast("내 선수 정보가 저장되었습니다");
     } catch (e) {
