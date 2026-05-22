@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Layout from "@/components/Layout";
 import { useInitialLoad } from "@/hooks/useInitialLoad";
 import { useAuthSquadLoad } from "@/hooks/useAuthSquadLoad";
@@ -8,10 +8,13 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useAuthStore } from "@/stores/authStore";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { ToastContainer } from "@/components/Toast";
+import { lazyWithRetry, clearChunkReloadFlag } from "@/lib/lazyWithRetry";
+import { ChunkErrorBoundary } from "@/components/ChunkErrorBoundary";
 
 // 로그인 전/동호회 미설정 화면도 lazy-load — 정상 진입 후엔 다운로드 안 함
-const AuthPage      = lazy(() => import("@/components/auth/AuthPage").then(m => ({ default: m.AuthPage })));
-const ClubSetupPage = lazy(() => import("@/components/club/ClubSetupPage").then(m => ({ default: m.ClubSetupPage })));
+// lazyWithRetry: 배포 직후 stale chunk 404 발생 시 자동 reload로 복구
+const AuthPage      = lazyWithRetry(() => import("@/components/auth/AuthPage").then(m => ({ default: m.AuthPage })));
+const ClubSetupPage = lazyWithRetry(() => import("@/components/club/ClubSetupPage").then(m => ({ default: m.ClubSetupPage })));
 
 const FullscreenLoader = ({ message }: { message: string }) => (
   <div className="loading-screen">
@@ -28,6 +31,12 @@ const App = () => {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // App이 정상적으로 마운트되었으므로 chunk 재시도 플래그 초기화
+  // (다음 배포에서 다시 stale chunk 발생 시 자동 reload가 재개되도록)
+  useEffect(() => {
+    clearChunkReloadFlag();
+  }, []);
 
   // v2 브랜치: 항상 인증 필요 — 레거시 로드 비활성화
   useInitialLoad(false);
@@ -55,9 +64,11 @@ const App = () => {
   // 2. 비로그인 → 인증 페이지
   if (!user) {
     return (
-      <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
-        <AuthPage />
-      </Suspense>
+      <ChunkErrorBoundary>
+        <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
+          <AuthPage />
+        </Suspense>
+      </ChunkErrorBoundary>
     );
   }
 
@@ -69,9 +80,11 @@ const App = () => {
   // 4. 로그인했지만 동호회 미설정
   if (!squad?.id) {
     return (
-      <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
-        <ClubSetupPage />
-      </Suspense>
+      <ChunkErrorBoundary>
+        <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
+          <ClubSetupPage />
+        </Suspense>
+      </ChunkErrorBoundary>
     );
   }
 
