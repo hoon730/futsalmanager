@@ -1,14 +1,17 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { UserMenuPanel } from "@/components/club/UserMenuPanel";
 import { useAuthStore } from "@/stores/authStore";
 import { useSquadStore } from "@/stores/squadStore";
 import { useMatchStore } from "@/stores/matchStore";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { ChunkErrorBoundary } from "@/components/ChunkErrorBoundary";
 
 // Route-level code splitting: 탭별 페이지를 lazy-load 하여 초기 번들 축소
-const DivisionPage   = lazy(() => import("@/pages/DivisionPage"));
-const SchedulePage   = lazy(() => import("@/pages/SchedulePage"));
-const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
-const SettingsPage   = lazy(() => import("@/pages/SettingsPage"));
+// lazyWithRetry: 배포 직후 stale chunk 404 발생 시 자동 reload로 복구
+const DivisionPage   = lazyWithRetry(() => import("@/pages/DivisionPage"));
+const SchedulePage   = lazyWithRetry(() => import("@/pages/SchedulePage"));
+const AttendancePage = lazyWithRetry(() => import("@/pages/AttendancePage"));
+const SettingsPage   = lazyWithRetry(() => import("@/pages/SettingsPage"));
 
 const PageFallback = () => (
   <div className="flex items-center justify-center h-full py-20">
@@ -75,12 +78,14 @@ const Layout = () => {
 
       {/* 메인 컨텐츠 */}
       <main className="flex-1 overflow-y-auto hide-scrollbar pb-28">
-        <Suspense fallback={<PageFallback />}>
-          {activeTab === "division"   && <DivisionPage />}
-          {activeTab === "schedule"   && <SchedulePage onGoToDivision={() => setActiveTab("division")} />}
-          {activeTab === "attendance" && <AttendancePage />}
-          {activeTab === "settings"   && <SettingsPage />}
-        </Suspense>
+        <ChunkErrorBoundary>
+          <Suspense fallback={<PageFallback />}>
+            {activeTab === "division"   && <DivisionPage />}
+            {activeTab === "schedule"   && <SchedulePage onGoToDivision={() => setActiveTab("division")} />}
+            {activeTab === "attendance" && <AttendancePage />}
+            {activeTab === "settings"   && <SettingsPage />}
+          </Suspense>
+        </ChunkErrorBoundary>
       </main>
 
       {/* 하단 네비게이션 — 4탭 */}
