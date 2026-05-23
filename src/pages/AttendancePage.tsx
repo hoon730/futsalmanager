@@ -1,8 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useSquadStore } from '@/stores/squadStore';
 import { useDivisionStore } from '@/stores/divisionStore';
-import { useMatchStore } from '@/stores/matchStore';
 import { ConfirmModal } from '@/components/modals';
 
 interface HistoryDetail {
@@ -15,7 +14,6 @@ export default function AttendancePage() {
   const { squad } = useSquadStore();
   const members = useMemo(() => (squad?.members || []).filter((m) => !m.isMercenary), [squad]);
   const { divisionHistory, deleteDivision } = useDivisionStore();
-  const { matches, attendees, loadMatches, loadAttendees } = useMatchStore();
 
   const [statsPage, setStatsPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
@@ -25,51 +23,43 @@ export default function AttendancePage() {
     isOpen: false, title: '', message: '', onConfirm: () => {},
   });
 
-  // 경기 일정 데이터 로드
-  useEffect(() => {
-    if (!squad?.id) return;
-    if (matches.length === 0) loadMatches(squad.id);
-  }, [squad?.id]);
-
-  useEffect(() => {
-    matches.forEach((m) => { if (!attendees[m.id]) loadAttendees(m.id); });
-  }, [matches.length]);
-
-  // 경기 RSVP 기반 출석 통계
-  const matchStats = useMemo(() => {
-    const totalMatches = matches.length;
-    if (totalMatches === 0 || members.length === 0) return { totalMatches, memberStats: [], overallRate: 0 };
+  // 팀 배정 기록 기반 실제 참석 통계 (앱 미사용자도 배정 기록에 포함되면 반영)
+  const divisionStats = useMemo(() => {
+    const totalSessions = divisionHistory.length;
+    if (totalSessions === 0 || members.length === 0) return { totalSessions, memberStats: [], overallRate: 0 };
 
     const statMap: Record<string, { name: string; attended: number }> = {};
     members.forEach((m) => { statMap[m.id] = { name: m.name, attended: 0 }; });
 
-    matches.forEach((match) => {
-      const matchAttendees = attendees[match.id] || [];
-      matchAttendees.forEach((a) => {
-        if (a.status === 'attending' && a.memberId && statMap[a.memberId]) {
-          statMap[a.memberId].attended++;
+    divisionHistory.forEach((session) => {
+      // 같은 배정에서 중복 카운트 방지 (전반/후반 같은 기록 내 중복 멤버 없어야 하지만 방어적으로 Set 사용)
+      const appearedIds = new Set<string>();
+      session.teams.flat().forEach((p) => {
+        if (!p.isMercenary && statMap[p.id]) {
+          appearedIds.add(p.id);
         }
       });
+      appearedIds.forEach((id) => { statMap[id].attended++; });
     });
 
     const memberStats = Object.entries(statMap).map(([id, s]) => ({
       id,
       name: s.name,
       attended: s.attended,
-      total: totalMatches,
-      rate: totalMatches > 0 ? Math.round((s.attended / totalMatches) * 100) : 0,
+      total: totalSessions,
+      rate: totalSessions > 0 ? Math.round((s.attended / totalSessions) * 100) : 0,
     })).sort((a, b) => b.rate - a.rate);
 
     const overallRate = memberStats.length > 0
       ? Math.round(memberStats.reduce((sum, s) => sum + s.rate, 0) / memberStats.length)
       : 0;
 
-    return { totalMatches, memberStats, overallRate };
-  }, [matches, attendees, members]);
+    return { totalSessions, memberStats, overallRate };
+  }, [divisionHistory, members]);
 
   const STATS_PAGE_SIZE = 5;
-  const statsTotalPages = Math.ceil(matchStats.memberStats.length / STATS_PAGE_SIZE);
-  const pagedStats = matchStats.memberStats.slice((statsPage - 1) * STATS_PAGE_SIZE, statsPage * STATS_PAGE_SIZE);
+  const statsTotalPages = Math.ceil(divisionStats.memberStats.length / STATS_PAGE_SIZE);
+  const pagedStats = divisionStats.memberStats.slice((statsPage - 1) * STATS_PAGE_SIZE, statsPage * STATS_PAGE_SIZE);
 
   const HISTORY_PAGE_SIZE = 5;
   const reversedHistory = [...divisionHistory].reverse();
@@ -102,7 +92,7 @@ export default function AttendancePage() {
     });
   };
 
-  const top3 = matchStats.memberStats.slice(0, 3);
+  const top3 = divisionStats.memberStats.slice(0, 3);
 
   return (
     <div className="animate-fade-in">
@@ -116,7 +106,7 @@ export default function AttendancePage() {
 
       <div className="px-6 space-y-14">
 
-        {/* 경기 참석률 원형 차트 */}
+        {/* 팀 배정 기반 참석률 원형 차트 */}
         <section className="flex flex-col items-center">
           <div className="relative w-44 h-44 flex items-center justify-center">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 176 176">
@@ -124,19 +114,19 @@ export default function AttendancePage() {
               <circle
                 cx="88" cy="88" r="68" stroke="#0df23e" strokeWidth="15" fill="none"
                 strokeDasharray="427.3"
-                strokeDashoffset={427.3 * (1 - matchStats.overallRate / 100)}
+                strokeDashoffset={427.3 * (1 - divisionStats.overallRate / 100)}
                 strokeLinecap="round"
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center">
               <span className="text-4xl font-black italic">
-                {matchStats.overallRate}<span className="text-primary text-xl">%</span>
+                {divisionStats.overallRate}<span className="text-primary text-xl">%</span>
               </span>
               <span className="text-[9px] text-white/40 uppercase tracking-[0.2em] mt-2 font-bold">평균 참석률</span>
             </div>
           </div>
           <p className="text-[10px] text-white/20 mt-2 uppercase tracking-widest">
-            총 {matchStats.totalMatches}경기 기준
+            총 {divisionStats.totalSessions}회 배정 기준
           </p>
         </section>
 
@@ -145,7 +135,7 @@ export default function AttendancePage() {
           <h2 className="text-base font-black uppercase tracking-widest mb-5 flex items-center gap-2 text-white/80">
             <span className="material-icons text-sm text-primary">emoji_events</span>TOP 출석률
           </h2>
-          {top3.length === 0 || matchStats.totalMatches === 0 ? (
+          {top3.length === 0 || divisionStats.totalSessions === 0 ? (
             <div className="py-12 text-center">
               <span className="material-icons text-white/10 text-5xl">group_off</span>
               <p className="text-xs text-white/20 mt-4">아직 경기 기록이 없습니다</p>
@@ -190,7 +180,7 @@ export default function AttendancePage() {
         </section>
 
         {/* 전체 멤버 출석률 */}
-        {matchStats.memberStats.length > 0 && matchStats.totalMatches > 0 && (
+        {divisionStats.memberStats.length > 0 && divisionStats.totalSessions > 0 && (
           <section>
             <h2 className="text-base font-black uppercase tracking-widest mb-5 flex items-center gap-2 text-white/80">
               <span className="material-icons text-sm text-primary">bar_chart</span>전체 현황
