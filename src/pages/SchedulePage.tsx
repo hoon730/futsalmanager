@@ -104,6 +104,35 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
 
   const handleCloseDetail = () => setSelectedMatch(null);
 
+  // 푸시 알림 클릭 진입: URL의 ?match=<id> 를 읽어 매치가 로드되면 상세 시트 자동 오픈.
+  // 한 번 처리한 뒤 URL을 정리해 새로고침/뒤로가기 시 재오픈되지 않게 함.
+  const [pendingMatchId, setPendingMatchId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return new URLSearchParams(window.location.search).get("match");
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (!pendingMatchId) return;
+    if (selectedMatch?.id === pendingMatchId) return; // 이미 열려있으면 skip
+    if (matches.length === 0) return; // 매치 아직 로드 전 → 다음 렌더에서 재시도
+    const target = matches.find((m) => m.id === pendingMatchId);
+    if (target) handleOpenDetail(target);
+    // 찾았든 못 찾았든 한 번 시도하면 정리 (없는 매치면 그냥 일정 목록만 보임)
+    setPendingMatchId(null);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("match");
+      url.searchParams.delete("tab");
+      window.history.replaceState(null, "", url.pathname + (url.search || ""));
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingMatchId, matches]);
+
   const handleRSVP = async (status: "attending" | "absent" | "waitlist") => {
     if (!user || !selectedMatch) return;
     const linkedMemberId = user.user_metadata?.member_id as string | undefined;
