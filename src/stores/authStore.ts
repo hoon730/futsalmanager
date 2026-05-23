@@ -34,62 +34,52 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initialize: async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle();
-        set({ user: session.user, session, profile, isLoading: false });
-      } else {
-        set({ isLoading: false });
-      }
-    } catch {
-      set({ isLoading: false });
-    }
-
-    // 세션 변경 감지
-    // INITIAL_SESSION은 initialize()가 이미 처리했으므로 스킵.
-    // TOKEN_REFRESHED/USER_UPDATED는 user/session만 갱신하고 profile은 재조회 안 함.
+    // onAuthStateChange를 getSession()보다 먼저 등록한다.
+    //
+    // 이유: 카카오 등 OAuth PKCE 방식은 ?code= 를 토큰으로 교환하는 작업이 비동기다.
+    // 이전 코드는 "await getSession() → onAuthStateChange 등록" 순서였는데,
+    // getSession()을 기다리는 동안 교환이 완료되어 SIGNED_IN 이벤트가 발화해도
+    // 리스너가 아직 없어서 이벤트가 유실됐다.
+    // 결과: user=null, isLoading=false → 로그인 직후 앱이 빈 화면만 표시.
+    //
+    // 수정: 리스너를 먼저 등록하고 INITIAL_SESSION(기존 세션 복원 + OAuth 콜백 완료)까지
+    // 처리하면 모든 경우를 놓치지 않는다. getSession() 별도 호출 불필요.
     supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "INITIAL_SESSION") return;
-
+      // 세션 없음 또는 로그아웃
       if (event === "SIGNED_OUT" || !session?.user) {
-        set({ user: null, session: null, profile: null });
+        set({ user: null, session: null, profile: null, isLoading: false });
         return;
       }
 
+      // 토큰 갱신 / 유저 메타 업데이트 — profile 재조회 불필요
       if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
         set({ user: session.user, session });
         return;
       }
 
-      // SIGNED_IN: 프로필 조회 + (없으면) OAuth 신규 유저용 자동 생성
-      if (event === "SIGNED_IN") {
-        let { data: profile } = await supabase
+      // INITIAL_SESSION(기존 세션 복원 또는 OAuth 콜백) / SIGNED_IN
+      let { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      // OAuth 신규 유저 자동 프로필 생성 (SIGNED_IN 시에만)
+      if (!profile && event === "SIGNED_IN") {
+        const defaultUsername =
+          (session.user.user_metadata?.name as string) ||
+          (session.user.user_metadata?.full_name as string) ||
+          session.user.email?.split("@")[0] ||
+          "사용자";
+        const { data: upserted } = await supabase
           .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (!profile) {
-          const defaultUsername =
-            (session.user.user_metadata?.name as string) ||
-            (session.user.user_metadata?.full_name as string) ||
-            session.user.email?.split("@")[0] ||
-            "사용자";
-          const { data: upserted } = await supabase
-            .from("profiles")
-            .upsert({ id: session.user.id, username: defaultUsername })
-            .select()
-            .single();
-          profile = upserted;
-        }
-
-        set({ user: session.user, session, profile });
+          .upsert({ id: session.user.id, username: defaultUsername })
+          .select()
+          .single();
+        profile = upserted;
       }
+
+      set({ user: session.user, session, profile, isLoading: false });
     });
   },
 
