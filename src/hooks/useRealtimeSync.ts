@@ -81,8 +81,20 @@ export const useRealtimeSync = (squadId: string | null) => {
           table: "divisions",
           filter: `squad_id=eq.${squadId}`,
         },
-        async () => {
+        async (payload) => {
           console.log("✨ 이력 업데이트 감지!");
+          if (payload.eventType === "DELETE") {
+            // 전체 재조회 시 읽기 레플리카 지연으로 삭제된 항목이 복원되는 것을 방지
+            // payload.old 에는 삭제된 행의 PK(id)가 항상 포함됨
+            const deletedId = (payload.old as { id?: string })?.id;
+            if (deletedId) {
+              setDivisionHistory(
+                useDivisionStore.getState().divisionHistory.filter((d) => d.id !== deletedId)
+              );
+              return;
+            }
+          }
+          // INSERT / UPDATE: 다른 기기의 변경을 반영하기 위해 전체 로드
           const divisions = await loadDivisionsFromSupabase(squadId);
           setDivisionHistory(divisions);
         }
