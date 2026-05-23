@@ -45,41 +45,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // 수정: 리스너를 먼저 등록하고 INITIAL_SESSION(기존 세션 복원 + OAuth 콜백 완료)까지
     // 처리하면 모든 경우를 놓치지 않는다. getSession() 별도 호출 불필요.
     supabase.auth.onAuthStateChange(async (event, session) => {
-      // 세션 없음 또는 로그아웃
-      if (event === "SIGNED_OUT" || !session?.user) {
-        set({ user: null, session: null, profile: null, isLoading: false });
-        return;
-      }
+      try {
+        // 세션 없음 또는 로그아웃
+        if (event === "SIGNED_OUT" || !session?.user) {
+          set({ user: null, session: null, profile: null, isLoading: false });
+          return;
+        }
 
-      // 토큰 갱신 / 유저 메타 업데이트 — profile 재조회 불필요
-      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-        set({ user: session.user, session });
-        return;
-      }
+        // 토큰 갱신 / 유저 메타 업데이트 — profile 재조회 불필요
+        // isLoading: false도 함께 설정 (TOKEN_REFRESHED가 INITIAL_SESSION보다 먼저 오는 edge case 대응)
+        if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          set({ user: session.user, session, isLoading: false });
+          return;
+        }
 
-      // INITIAL_SESSION(기존 세션 복원 또는 OAuth 콜백) / SIGNED_IN
-      let { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      // OAuth 신규 유저 자동 프로필 생성 (SIGNED_IN 시에만)
-      if (!profile && event === "SIGNED_IN") {
-        const defaultUsername =
-          (session.user.user_metadata?.name as string) ||
-          (session.user.user_metadata?.full_name as string) ||
-          session.user.email?.split("@")[0] ||
-          "사용자";
-        const { data: upserted } = await supabase
+        // INITIAL_SESSION(기존 세션 복원 또는 OAuth 콜백) / SIGNED_IN
+        let { data: profile } = await supabase
           .from("profiles")
-          .upsert({ id: session.user.id, username: defaultUsername })
-          .select()
-          .single();
-        profile = upserted;
-      }
+          .select("*")
+          .eq("id", session.user.id)
+          .maybeSingle();
 
-      set({ user: session.user, session, profile, isLoading: false });
+        // OAuth 신규 유저 자동 프로필 생성 (SIGNED_IN 시에만)
+        if (!profile && event === "SIGNED_IN") {
+          const defaultUsername =
+            (session.user.user_metadata?.name as string) ||
+            (session.user.user_metadata?.full_name as string) ||
+            session.user.email?.split("@")[0] ||
+            "사용자";
+          const { data: upserted } = await supabase
+            .from("profiles")
+            .upsert({ id: session.user.id, username: defaultUsername })
+            .select()
+            .single();
+          profile = upserted;
+        }
+
+        set({ user: session.user, session, profile, isLoading: false });
+      } catch {
+        // 예외 발생 시에도 반드시 로딩 해제 (무한 로딩 방지)
+        set((state) => ({ ...state, isLoading: false }));
+      }
     });
   },
 
