@@ -9,6 +9,7 @@ interface MemberEditModalProps {
   skillLevel: number;
   onClose: () => void;
   onSubmit: (updates: { name: string; positionKey?: Position; skillLevel: number }) => void;
+  onDelete: () => void;
 }
 
 export function MemberEditModal({
@@ -17,6 +18,7 @@ export function MemberEditModal({
   skillLevel,
   onClose,
   onSubmit,
+  onDelete,
 }: MemberEditModalProps) {
   const [localName, setLocalName] = useState(name);
   const [localPosition, setLocalPosition] = useState<Position | null>(position);
@@ -117,6 +119,15 @@ export function MemberEditModal({
             저장
           </button>
         </div>
+
+        {/* 삭제 */}
+        <button
+          onClick={onDelete}
+          className="w-full mt-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-colors border border-red-500/15"
+        >
+          <span className="material-icons align-middle text-sm mr-1" style={{ fontSize: 14 }}>delete</span>
+          멤버 삭제
+        </button>
       </div>
     </div>,
     document.body,

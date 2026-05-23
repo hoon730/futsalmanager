@@ -301,7 +301,6 @@ export default function SettingsPage() {
   };
 
   // 상태
-  const [isEditMode, setIsEditMode] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -466,24 +465,11 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* 멤버 수 및 편집 모드 토글 (편집은 운영자/관리자만) */}
-        <div className="flex items-center justify-between mb-6 bg-white/5 p-5 rounded-2xl border border-white/5">
+        {/* 현재 멤버 수 */}
+        <div className="mb-6 bg-white/5 p-5 rounded-2xl border border-white/5">
           <div className="text-primary font-black text-md italic">
             현재 {membersOnly.length}명
           </div>
-          {isOwnerOrAdmin && (
-            <button
-              onClick={() => setIsEditMode(!isEditMode)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
-                isEditMode
-                  ? 'bg-primary text-background-dark border-primary'
-                  : 'bg-white/5 text-white/40 border-white/10'
-              }`}
-            >
-              <span className="material-icons text-sm">{isEditMode ? 'check' : 'edit'}</span>
-              {isEditMode ? '완료' : '멤버 편집'}
-            </button>
-          )}
         </div>
 
         {/* 멤버 리스트 (페이지네이션) */}
@@ -510,8 +496,8 @@ export default function SettingsPage() {
                   .map((member) => (
                     <div
                       key={member.id}
-                      onClick={isOwnerOrAdmin && !isEditMode ? () => setEditingMember(member) : undefined}
-                      className={`rounded-2xl p-5 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group${isOwnerOrAdmin && !isEditMode ? ' cursor-pointer active:scale-[0.98]' : ''}`}
+                      onClick={isOwnerOrAdmin ? () => setEditingMember(member) : undefined}
+                      className={`rounded-2xl p-5 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group${isOwnerOrAdmin ? ' cursor-pointer active:scale-[0.98]' : ''}`}
                     >
                       {/* 상단 행: 아바타 + 이름 + 삭제 */}
                       <div className="flex items-center gap-4">
@@ -543,63 +529,11 @@ export default function SettingsPage() {
                           </div>
                         </div>
 
-                        {isEditMode && isOwnerOrAdmin ? (
-                          <button
-                            onClick={() => handleRemoveMember(member.id, member.name)}
-                            className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20 flex-shrink-0 transition-all active:scale-95"
-                          >
-                            <span className="material-icons text-lg">delete</span>
-                          </button>
-                        ) : isOwnerOrAdmin && !isEditMode ? (
+                        {isOwnerOrAdmin && (
                           <span className="material-icons text-white/10 group-hover:text-primary transition-colors">chevron_right</span>
-                        ) : null}
+                        )}
                       </div>
 
-                      {/* 편집 모드 (운영자): 포지션 + 별점 */}
-                      {isEditMode && isOwnerOrAdmin && (
-                        <div className="mt-3 pt-3 border-t border-white/5 space-y-2.5">
-                          {/* 포지션 선택 */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 w-10 flex-shrink-0">포지션</span>
-                            <div className="flex gap-1.5">
-                              {(['GK','DF','MF','FW'] as const).map((pos) => (
-                                <button
-                                  key={pos}
-                                  onClick={() => updateMember(member.id, {
-                                    positionKey: member.positionKey === pos ? undefined : pos,
-                                  })}
-                                  className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all"
-                                  style={member.positionKey === pos
-                                    ? { backgroundColor: '#0DF23E', color: '#0a150d' }
-                                    : { backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.08)' }
-                                  }
-                                >
-                                  {pos}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* 별점 선택 */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 w-10 flex-shrink-0">실력</span>
-                            <div className="flex gap-1">
-                              {[1,2,3,4,5].map((star) => (
-                                <button
-                                  key={star}
-                                  onClick={() => updateMember(member.id, {
-                                    skillLevel: member.skillLevel === star ? 3 : star,
-                                  })}
-                                  className="text-xl leading-none transition-all active:scale-90"
-                                  style={{ color: star <= (member.skillLevel ?? 3) ? '#FBBF24' : 'rgba(255,255,255,0.12)' }}
-                                >
-                                  ★
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ))}
               </div>
@@ -856,6 +790,11 @@ export default function SettingsPage() {
           skillLevel={editingMember.skillLevel ?? 3}
           onClose={() => setEditingMember(null)}
           onSubmit={handleEditMemberSubmit}
+          onDelete={() => {
+            const target = editingMember;
+            setEditingMember(null);
+            handleRemoveMember(target.id, target.name);
+          }}
         />
       )}
 
