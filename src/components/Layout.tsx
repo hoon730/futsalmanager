@@ -23,8 +23,22 @@ type Tab = "division" | "schedule" | "attendance" | "settings";
 
 const LAST_SCHEDULE_VISIT_KEY = "lastScheduleVisit";
 
+// URL의 ?tab=... 으로 초기 탭 결정 (푸시 알림 클릭 시 진입 경로)
+function readInitialTab(): Tab {
+  if (typeof window === "undefined") return "division";
+  try {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "schedule" || t === "division" || t === "attendance" || t === "settings") {
+      return t;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "division";
+}
+
 const Layout = () => {
-  const [activeTab, setActiveTab] = useState<Tab>("division");
+  const [activeTab, setActiveTab] = useState<Tab>(readInitialTab);
   const [menuOpen, setMenuOpen] = useState(false);
   const { profile, user } = useAuthStore();
   const { squad } = useSquadStore();

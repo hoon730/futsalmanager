@@ -136,10 +136,12 @@ serve(async (req) => {
     // iOS PWA 알림은 manifest.name("풋살 매니저") 을 헤더에 자동 표시함.
     // title 을 PWA name 과 동일하게 두면 "from 풋살 매니저"로 중복 노출되므로
     // title 자리에 핵심 메시지를, body 에 부가 정보를 분리.
+    // URL에 matchId를 포함해 클라이언트가 해당 경기 상세 시트로 바로 진입할 수 있게 함.
+    // 클라이언트(Layout)는 ?tab=schedule을, SchedulePage는 ?match=<id>를 읽어 동작.
     const payload = JSON.stringify({
       title: '새 경기가 등록되었습니다',
       body: `${dateStr}${location ? ` · ${location}` : ''}`,
-      url: '/?tab=schedule',
+      url: `/?tab=schedule&match=${encodeURIComponent(matchId)}`,
       matchId,
     });
 

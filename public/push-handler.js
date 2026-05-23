@@ -29,18 +29,28 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = event.notification.data?.url ?? '/?tab=schedule';
 
   event.waitUntil(
-    self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.navigate(targetUrl);
-            return client.focus();
-          }
+    (async () => {
+      const clientList = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+
+      for (const client of clientList) {
+        if (!client.url.includes(self.location.origin)) continue;
+        // 이미 열려있는 탭이면 그 탭을 우선 사용 (새 창을 또 띄우지 않음)
+        try {
+          // client.navigate는 새 WindowClient를 resolve할 수 있음 — 그걸 focus
+          const navigated = await client.navigate(targetUrl);
+          await (navigated ?? client).focus();
+        } catch {
+          // 일부 브라우저는 cross-origin이거나 cross-tab navigate를 거부함 → focus만
+          if ('focus' in client) await client.focus();
         }
-        if (self.clients.openWindow) {
-          return self.clients.openWindow(targetUrl);
-        }
-      })
+        return;
+      }
+      if (self.clients.openWindow) {
+        await self.clients.openWindow(targetUrl);
+      }
+    })()
   );
 });
