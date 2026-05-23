@@ -17,6 +17,7 @@ import type { IMember } from '@/types';
 import type { ISquadUserRow } from '@/components/settings/types';
 import { SquadUserDetailModal } from '@/components/settings/SquadUserDetailModal';
 import { EditMyMemberModal } from '@/components/settings/EditMyMemberModal';
+import { MemberEditModal } from '@/components/settings/MemberEditModal';
 import { LinkMemberModal } from '@/components/settings/LinkMemberModal';
 import { AddMemberModal } from '@/components/settings/AddMemberModal';
 
@@ -42,6 +43,8 @@ export default function SettingsPage() {
   const [showMyProfileMenu, setShowMyProfileMenu] = useState(false);
   // 동호회 회원 상세 모달
   const [selectedSquadUser, setSelectedSquadUser] = useState<ISquadUserRow | null>(null);
+  // 관리자용 멤버 편집 모달
+  const [editingMember, setEditingMember] = useState<IMember | null>(null);
 
   // user 스토어가 업데이트되면 linkedMemberId도 동기화
   useEffect(() => {
@@ -73,6 +76,13 @@ export default function SettingsPage() {
     setEditName(m?.name ?? "");
     setEditPosition((m?.positionKey as "GK" | "DF" | "MF" | "FW" | undefined) ?? null);
     setShowEditMyMember(true);
+  };
+
+  const handleEditMemberSubmit = (updates: { name: string; positionKey?: "GK" | "DF" | "MF" | "FW"; skillLevel: number }) => {
+    if (!editingMember) return;
+    updateMember(editingMember.id, updates);
+    toast(`${updates.name} 정보가 수정되었습니다`);
+    setEditingMember(null);
   };
 
   const handleSaveMyMember = async () => {
@@ -500,7 +510,8 @@ export default function SettingsPage() {
                   .map((member) => (
                     <div
                       key={member.id}
-                      className="rounded-2xl p-5 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group"
+                      onClick={isOwnerOrAdmin && !isEditMode ? () => setEditingMember(member) : undefined}
+                      className={`rounded-2xl p-5 bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group${isOwnerOrAdmin && !isEditMode ? ' cursor-pointer active:scale-[0.98]' : ''}`}
                     >
                       {/* 상단 행: 아바타 + 이름 + 삭제 */}
                       <div className="flex items-center gap-4">
@@ -524,7 +535,7 @@ export default function SettingsPage() {
                                 {member.positionKey}
                               </span>
                             )}
-                            {(member.skillLevel ?? 0) > 0 && (
+                            {isOwnerOrAdmin && (member.skillLevel ?? 0) > 0 && (
                               <span className="text-[10px] text-yellow-400/70">
                                 {'★'.repeat(member.skillLevel ?? 3)}{'☆'.repeat(5 - (member.skillLevel ?? 3))}
                               </span>
@@ -539,7 +550,7 @@ export default function SettingsPage() {
                           >
                             <span className="material-icons text-lg">delete</span>
                           </button>
-                        ) : !isEditMode ? (
+                        ) : isOwnerOrAdmin && !isEditMode ? (
                           <span className="material-icons text-white/10 group-hover:text-primary transition-colors">chevron_right</span>
                         ) : null}
                       </div>
@@ -834,6 +845,17 @@ export default function SettingsPage() {
           onClose={() => setSelectedSquadUser(null)}
           onChangeRole={handleChangeRole}
           onRemove={handleRemoveSquadMember}
+        />
+      )}
+
+      {/* 관리자 멤버 편집 모달 */}
+      {editingMember && isOwnerOrAdmin && (
+        <MemberEditModal
+          name={editingMember.name}
+          position={(editingMember.positionKey as "GK" | "DF" | "MF" | "FW") ?? null}
+          skillLevel={editingMember.skillLevel ?? 3}
+          onClose={() => setEditingMember(null)}
+          onSubmit={handleEditMemberSubmit}
         />
       )}
 
