@@ -34,6 +34,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initialize: async () => {
+    // 안전망 타이머: getSession()이 hang하는 경우 5초 후 강제로 로딩 해제
+    // (네트워크 응답 없음 + 에러도 없는 상황 → catch가 실행되지 않아 무한 로딩 발생)
+    const safetyTimer = setTimeout(() => {
+      if (get().isLoading) {
+        set((state) => ({ ...state, isLoading: false }));
+      }
+    }, 5000);
+
     // 1단계: onAuthStateChange를 먼저 등록 (OAuth PKCE 콜백 이벤트 유실 방지)
     //
     // 카카오 등 OAuth PKCE 방식은 ?code= → 토큰 교환이 비동기이므로
@@ -92,10 +100,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { data: { session } } = await supabase.auth.getSession();
 
       // INITIAL_SESSION이 이미 처리됐으면 종료 (isLoading이 false로 바뀐 경우)
-      if (!get().isLoading) return;
+      if (!get().isLoading) { clearTimeout(safetyTimer); return; }
 
       if (!session?.user) {
         set({ user: null, session: null, profile: null, isLoading: false });
+        clearTimeout(safetyTimer);
         return;
       }
 
@@ -109,11 +118,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (get().isLoading) {
         set({ user: session.user, session, profile, isLoading: false });
       }
+      clearTimeout(safetyTimer);
     } catch {
       // getSession 자체가 실패해도 로딩 해제
       if (get().isLoading) {
         set((state) => ({ ...state, isLoading: false }));
       }
+      clearTimeout(safetyTimer);
     }
   },
 
