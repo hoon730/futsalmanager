@@ -1,6 +1,5 @@
 import { useState, useEffect, Suspense } from "react";
 import Layout from "@/components/Layout";
-import { useInitialLoad } from "@/hooks/useInitialLoad";
 import { useAuthSquadLoad } from "@/hooks/useAuthSquadLoad";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useAutoSync } from "@/hooks/useAutoSync";
@@ -38,8 +37,6 @@ const App = () => {
     clearChunkReloadFlag();
   }, []);
 
-  // v2 브랜치: 항상 인증 필요 — 레거시 로드 비활성화
-  useInitialLoad(false);
   const { isLoading: authDataLoading } = useAuthSquadLoad(user?.id);
 
   const { isConnected } = useRealtimeSync(squad?.id || null);

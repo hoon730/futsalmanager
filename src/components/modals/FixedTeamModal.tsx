@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { IMember, IFixedTeam } from "@/types";
 
@@ -22,6 +22,12 @@ const FixedTeamModal = ({
   onAddFixedTeam,
 }: FixedTeamModalProps) => {
   const [selection, setSelection] = useState<string[]>([]);
+
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [onClose]);
 
   // 오늘 참석하는 멤버와 용병
   const attendingMembers = useMemo(
