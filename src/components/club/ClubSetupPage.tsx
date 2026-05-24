@@ -422,6 +422,12 @@ const CreateClub = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
+interface JoinedClubData {
+  squadName: string;
+  memberCount: number;
+  onEnter: () => void;
+}
+
 const JoinClub = ({ onBack, initialCode = "" }: { onBack: () => void; initialCode?: string }) => {
   const { user } = useAuthStore();
   const { setSquad } = useSquadStore();
@@ -430,6 +436,7 @@ const JoinClub = ({ onBack, initialCode = "" }: { onBack: () => void; initialCod
   const [code, setCode] = useState(initialCode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [joinedClub, setJoinedClub] = useState<JoinedClubData | null>(null);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -467,10 +474,17 @@ const JoinClub = ({ onBack, initialCode = "" }: { onBack: () => void; initialCod
       ]);
 
       if (fullSquad) {
-        setSquad(fullSquad);
-        setFixedTeams(fixedTeams);
-        setDivisionHistory(divisions);
-        updateTeammateHistory(history);
+        // 데이터는 준비해 두고, 환영 화면을 먼저 표시
+        setJoinedClub({
+          squadName: fullSquad.name,
+          memberCount: fullSquad.members.filter((m) => !m.isMercenary).length,
+          onEnter: () => {
+            setSquad(fullSquad);
+            setFixedTeams(fixedTeams);
+            setDivisionHistory(divisions);
+            updateTeammateHistory(history);
+          },
+        });
       }
     } catch (err: unknown) {
       setError(toFriendlyMessage(err, "참가에 실패했습니다"));
@@ -478,6 +492,49 @@ const JoinClub = ({ onBack, initialCode = "" }: { onBack: () => void; initialCod
       setIsLoading(false);
     }
   };
+
+  // 환영 화면
+  if (joinedClub) {
+    return (
+      <div className="space-y-8 text-center animate-fade-in">
+        <div>
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(13,242,62,0.3)]"
+            style={{ background: "rgba(13,242,62,0.15)", border: "2px solid rgba(13,242,62,0.4)" }}
+          >
+            <span className="material-icons text-4xl" style={{ color: "#0DF23E" }}>check</span>
+          </div>
+          <p className="text-primary text-xs font-black uppercase tracking-[0.3em] mb-2">가입 완료</p>
+          <h2 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
+            {joinedClub.squadName}
+          </h2>
+          <div className="h-1 w-10 bg-primary mx-auto mt-4 rounded-full shadow-[0_0_10px_#0df23e]" />
+        </div>
+
+        <div className="bg-white/5 border border-white/5 rounded-2xl p-5 text-left space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="material-icons text-primary/60 text-sm">groups</span>
+            <span className="text-white/70 text-sm">
+              현재 멤버 <span className="text-white font-black">{joinedClub.memberCount}명</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="material-icons text-primary/60 text-sm">sports_soccer</span>
+            <span className="text-white/70 text-sm">팀 배정 · 경기 일정 · 출석 기록을 함께 관리해요</span>
+          </div>
+        </div>
+
+        <button
+          onClick={joinedClub.onEnter}
+          className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+          style={{ backgroundColor: "#0DF23E", color: "#0a150d" }}
+        >
+          <span className="material-icons text-base">login</span>
+          입장하기
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleJoin} className="space-y-5">

@@ -8,6 +8,7 @@ import { toast } from "@/stores/toastStore";
 import { toFriendlyMessage } from "@/lib/errorMessage";
 import { CommentItem } from "./CommentItem";
 import { MatchFormModal } from "./MatchFormModal";
+import { supabase } from "@/lib/supabase";
 
 interface MatchDetailSheetProps {
   match: IMatch;
@@ -121,6 +122,18 @@ export function MatchDetailSheet({
     setCommentText("");
   };
 
+  /** 댓글 텍스트에서 @이름 패턴을 파싱해 해당 멤버의 linkedUserId 목록 반환 */
+  const parseMentionedUserIds = (text: string): string[] => {
+    if (!squad?.members) return [];
+    const found = new Set<string>();
+    for (const match of text.matchAll(/@([^\s@]+)/g)) {
+      const name = match[1];
+      const member = squad.members.find((m) => m.name === name);
+      if (member?.linkedUserId) found.add(member.linkedUserId);
+    }
+    return [...found];
+  };
+
   const handleActionRequest = (comment: IMatchComment, x?: number, y?: number) => {
     if (x !== undefined && y !== undefined) {
       const menuW = 148, menuH = 100;
@@ -152,6 +165,16 @@ export function MatchDetailSheet({
       } else {
         await onAddComment(text, replyTo?.parentId);
         setReplyTo(null);
+        // @멘션 푸시 알림 (실패해도 댓글 작성에 영향 없음)
+        const targetUserIds = parseMentionedUserIds(text);
+        if (targetUserIds.length > 0 && squad) {
+          const commenterName = squad.members.find((m) => m.linkedUserId === userId)?.name ?? "";
+          supabase.functions
+            .invoke("send-mention-notification", {
+              body: { targetUserIds, matchId: match.id, squadId: squad.id, commenterName },
+            })
+            .catch((e) => console.warn("[mention-push]", e));
+        }
       }
       setCommentText("");
     } finally {
@@ -657,6 +680,7 @@ export function MatchDetailSheet({
         <MatchFormModal
           mode="edit"
           match={match}
+          isAdmin={isAdmin}
           onClose={() => setShowEditModal(false)}
           onSubmit={async (data) => { await onEditMatch(data); setShowEditModal(false); }}
         />
