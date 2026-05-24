@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { IMatch } from "@/types";
 import PlaceSearchInput from "@/components/PlaceSearchInput";
@@ -59,6 +59,9 @@ export function MatchFormModal(props: MatchFormModalProps) {
   const [error, setError] = useState("");
   // 반복 일정 (create 모드 전용)
   const [repeatWeeks, setRepeatWeeks] = useState(0);
+  // 커스텀 시간 드롭다운
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const timePickerRef = useRef<HTMLDivElement>(null);
 
   // 즐겨찾기 장소
   const [savedVenues, setSavedVenues] = useState<SavedVenue[]>([]);
@@ -100,6 +103,18 @@ export function MatchFormModal(props: MatchFormModalProps) {
     document.addEventListener('keydown', handle);
     return () => document.removeEventListener('keydown', handle);
   }, [props.onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 시간 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!showTimePicker) return;
+    const handle = (e: MouseEvent) => {
+      if (timePickerRef.current && !timePickerRef.current.contains(e.target as Node)) {
+        setShowTimePicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [showTimePicker]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,15 +194,47 @@ export function MatchFormModal(props: MatchFormModalProps) {
                 required
                 className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark]"
               />
-              <select
-                value={matchHour}
-                onChange={(e) => setMatchHour(Number(e.target.value))}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all [color-scheme:dark] font-bold cursor-pointer"
-              >
-                {hourOptions.map((h) => (
-                  <option key={h} value={h}>{formatHourLabel(h)}</option>
-                ))}
-              </select>
+              <div className="relative" ref={timePickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowTimePicker((v) => !v)}
+                  className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm text-white font-bold outline-none transition-all whitespace-nowrap"
+                  style={showTimePicker ? { borderColor: "rgba(13,242,62,0.5)" } : {}}
+                >
+                  {formatHourLabel(matchHour)}
+                  <span className="material-icons text-white/30" style={{ fontSize: 14 }}>
+                    {showTimePicker ? "expand_less" : "expand_more"}
+                  </span>
+                </button>
+                {showTimePicker && (
+                  <div
+                    className="absolute right-0 bottom-full mb-1 z-50 rounded-xl overflow-y-auto hide-scrollbar"
+                    style={{
+                      background: "rgba(18,24,18,0.98)",
+                      border: "1px solid rgba(13,242,62,0.15)",
+                      boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
+                      minWidth: "110px",
+                      maxHeight: "220px",
+                    }}
+                  >
+                    {hourOptions.map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => { setMatchHour(h); setShowTimePicker(false); }}
+                        className="w-full px-4 py-2.5 text-sm text-left transition-colors"
+                        style={{
+                          color: h === matchHour ? "#0DF23E" : "rgba(255,255,255,0.65)",
+                          backgroundColor: h === matchHour ? "rgba(13,242,62,0.08)" : "transparent",
+                          fontWeight: h === matchHour ? 700 : 400,
+                        }}
+                      >
+                        {formatHourLabel(h)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <p className="text-[10px] text-white/30 mt-1.5">분은 자동으로 00분</p>
           </div>

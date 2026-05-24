@@ -54,8 +54,13 @@ const Layout = () => {
     const v = localStorage.getItem(LAST_SCHEDULE_VISIT_KEY);
     return v ? Number(v) : 0;
   });
+  // Date.now()를 렌더 중 직접 호출하면 react-hooks/purity 위반.
+  // useState 지연 초기화는 마운트 시 1회만 실행되므로 안전함.
+  const [now] = useState<number>(() => Date.now());
   const newMatchCount = matches.filter(
-    (m) => new Date(m.createdAt).getTime() > lastVisit
+    (m) =>
+      new Date(m.createdAt).getTime() > lastVisit &&
+      new Date(m.matchDate).getTime() >= now
   ).length;
 
   const handleTabChange = (tab: Tab) => {
