@@ -184,74 +184,22 @@ export default function SettingsPage() {
     if (!squad?.id) return;
     setSquadUsersLoading(true);
     try {
-      // 1) squad_members
-      const { data: memberRows, error } = await supabase
-        .from("squad_members")
-        .select("user_id, role, joined_at")
-        .eq("squad_id", squad.id);
-      if (error || !memberRows) return;
+      const { data, error } = await supabase
+        .rpc("get_squad_users_with_stats", { p_squad_id: squad.id });
+      if (error) throw error;
 
-      const userIds = memberRows.map((m) => m.user_id);
-
-      // 2) profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, username")
-        .in("id", userIds);
-      const profileMap: Record<string, string> = Object.fromEntries(
-        (profiles || []).map((p) => [p.id, p.username ?? "알 수 없음"])
-      );
-
-      // 3) 지난 경기 목록 (출석률 계산용)
-      const nowIso = new Date().toISOString();
-      const { data: matchesData } = await supabase
-        .from("matches")
-        .select("id, match_date")
-        .eq("squad_id", squad.id)
-        .lt("match_date", nowIso);
-      const pastMatches = matchesData || [];
-
-      // 4) 멤버들의 출석 응답
-      const matchIds = pastMatches.map((m) => m.id);
-      let attendances: { user_id: string; match_id: string; status: string }[] = [];
-      if (matchIds.length > 0 && userIds.length > 0) {
-        const { data: att } = await supabase
-          .from("match_attendees")
-          .select("user_id, match_id, status")
-          .in("match_id", matchIds)
-          .in("user_id", userIds);
-        attendances = att || [];
-      }
-
-      // 5) 멤버별 출석률 계산 (가입일 이후 경기만 분모로)
-      const rows: ISquadUserRow[] = memberRows.map((m) => {
-        const eligible = pastMatches.filter(
-          (pm) => new Date(pm.match_date) >= new Date(m.joined_at)
-        );
-        const eligibleIds = new Set(eligible.map((e) => e.id));
-        const userAtts = attendances.filter(
-          (a) => a.user_id === m.user_id && eligibleIds.has(a.match_id)
-        );
-        const attended = userAtts.filter((a) => a.status === "attending").length;
-        const total = eligible.length;
-        const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
-
-        return {
-          userId: m.user_id,
-          role: m.role as ISquadUserRow["role"],
-          username: profileMap[m.user_id] ?? "알 수 없음",
-          joinedAt: m.joined_at,
-          attendedMatches: attended,
-          totalMatches: total,
-          attendanceRate: rate,
-        };
-      });
-
-      // owner 먼저, 그 다음 admin, 그 다음 member
-      rows.sort((a, b) => {
-        const order = { owner: 0, admin: 1, member: 2 };
-        return order[a.role] - order[b.role];
-      });
+      const rows: ISquadUserRow[] = (data || []).map((row: {
+        user_id: string; role: string; username: string; joined_at: string;
+        attended_matches: number; total_matches: number; attendance_rate: number;
+      }) => ({
+        userId: row.user_id,
+        role: row.role as ISquadUserRow["role"],
+        username: row.username,
+        joinedAt: row.joined_at,
+        attendedMatches: Number(row.attended_matches),
+        totalMatches: Number(row.total_matches),
+        attendanceRate: row.attendance_rate,
+      }));
       setSquadUsers(rows);
     } finally {
       setSquadUsersLoading(false);

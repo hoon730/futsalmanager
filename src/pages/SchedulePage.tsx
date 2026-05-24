@@ -70,6 +70,22 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
     loadAnnouncements(squad.id);
   }, [squad?.id]);
 
+  // 공지 모달 ESC 닫기
+  useEffect(() => {
+    if (!showAllAnnouncements) return;
+    const handle = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAllAnnouncements(false);
+        setNoticeMode("list");
+        setNewNotice("");
+        setEditingNoticeId(null);
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [showAllAnnouncements]);
+
   // loadMatches가 한 번에 attendees까지 로드하므로 별도 N+1 effect 불필요.
   // createMatch 직후 새 match만 attendees 비어있을 수 있으니 보강.
   const matchIdsKey = matches.map((m) => m.id).join(",");
@@ -214,7 +230,11 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
               <>
                 {/* 핀 고정 or 최신 공지 1개 */}
                 <div className="flex items-start gap-3 px-4 py-3">
-                  <span className="material-icons text-primary/60 text-base flex-shrink-0 mt-0.5">campaign</span>
+                  {announcements[0].pinned ? (
+                    <span className="material-icons text-primary text-base flex-shrink-0 mt-0.5">push_pin</span>
+                  ) : (
+                    <span className="material-icons text-primary/60 text-base flex-shrink-0 mt-0.5">campaign</span>
+                  )}
                   <p className="text-sm text-white/80 flex-1 leading-relaxed line-clamp-2">
                     {announcements[0].content}
                   </p>
@@ -228,7 +248,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                   <span className="text-[10px] text-white/20">
                     {new Date(announcements[0].createdAt).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}
                     {announcements[0].pinned && (
-                      <span className="ml-2 text-primary/50 font-black">· 고정</span>
+                      <span className="ml-2 text-primary font-black">· 고정</span>
                     )}
                   </span>
                   <span className="text-[10px] font-black text-white/25 uppercase tracking-widest">
@@ -530,6 +550,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
           mode="create"
           squadId={squad?.id || ""}
           userId={user?.id || ""}
+          isAdmin={isAdmin}
           onClose={() => setShowCreateModal(false)}
           onSubmit={createMatch}
         />
