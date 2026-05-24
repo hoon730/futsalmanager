@@ -34,16 +34,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initialize: async () => {
-    // onAuthStateChange를 getSession()보다 먼저 등록한다.
+    // 1단계: onAuthStateChange를 먼저 등록 (OAuth PKCE 콜백 이벤트 유실 방지)
     //
-    // 이유: 카카오 등 OAuth PKCE 방식은 ?code= 를 토큰으로 교환하는 작업이 비동기다.
-    // 이전 코드는 "await getSession() → onAuthStateChange 등록" 순서였는데,
-    // getSession()을 기다리는 동안 교환이 완료되어 SIGNED_IN 이벤트가 발화해도
-    // 리스너가 아직 없어서 이벤트가 유실됐다.
-    // 결과: user=null, isLoading=false → 로그인 직후 앱이 빈 화면만 표시.
-    //
-    // 수정: 리스너를 먼저 등록하고 INITIAL_SESSION(기존 세션 복원 + OAuth 콜백 완료)까지
-    // 처리하면 모든 경우를 놓치지 않는다. getSession() 별도 호출 불필요.
+    // 카카오 등 OAuth PKCE 방식은 ?code= → 토큰 교환이 비동기이므로
+    // getSession() await 중에 SIGNED_IN이 발화해도 리스너가 없으면 유실됨.
+    // 리스너를 먼저 등록해 모든 이벤트를 놓치지 않는다.
     supabase.auth.onAuthStateChange(async (event, session) => {
       try {
         // 세션 없음 또는 로그아웃
@@ -87,6 +82,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set((state) => ({ ...state, isLoading: false }));
       }
     });
+
+    // 2단계: getSession()을 안전망으로 호출
+    //
+    // 개발 환경 React Strict Mode, HMR, 또는 Supabase 내부 AbortError로
+    // INITIAL_SESSION 이벤트가 누락될 수 있음. 이 경우 isLoading이 영원히 true.
+    // getSession()으로 현재 세션을 직접 확인해 무한 로딩을 방지한다.
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // INITIAL_SESSION이 이미 처리됐으면 종료 (isLoading이 false로 바뀐 경우)
+      if (!get().isLoading) return;
+
+      if (!session?.user) {
+        set({ user: null, session: null, profile: null, isLoading: false });
+        return;
+      }
+
+      // 세션이 있는데 INITIAL_SESSION이 아직 처리되지 않은 경우: 직접 처리
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (get().isLoading) {
+        set({ user: session.user, session, profile, isLoading: false });
+      }
+    } catch {
+      // getSession 자체가 실패해도 로딩 해제
+      if (get().isLoading) {
+        set((state) => ({ ...state, isLoading: false }));
+      }
+    }
   },
 
   signUp: async (email, password, username) => {
