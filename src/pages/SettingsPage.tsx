@@ -24,7 +24,7 @@ import { AddMemberModal } from '@/components/settings/AddMemberModal';
 export default function SettingsPage() {
   const { squad, addMember, removeMember, updateMember } = useSquadStore();
   const members = squad?.members || [];
-  const { user, updateLinkedMember } = useAuthStore();
+  const { user, updateLinkedMember, linkKakao } = useAuthStore();
 
 
   // 내 선수 프로필 연결
@@ -129,11 +129,26 @@ export default function SettingsPage() {
         if (!cancelled) setUserRole(data?.role ?? null);
       });
     return () => { cancelled = true; };
-  }, [user, squad?.id]);
+  }, [user?.id, squad?.id]);
 
   const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
 
   // 푸시 알림 설정
+  // 카카오 계정 연결
+  const [kakaoLinkLoading, setKakaoLinkLoading] = useState(false);
+  const hasKakaoLinked = user?.identities?.some((i) => i.provider === "kakao") ?? false;
+
+  const handleLinkKakao = async () => {
+    setKakaoLinkLoading(true);
+    try {
+      await linkKakao();
+      // linkIdentity는 OAuth 리다이렉트를 트리거하므로 이 줄 이후 코드는 실행되지 않음
+    } catch (e) {
+      toast(toFriendlyMessage(e, "카카오 연결에 실패했습니다"), "error");
+      setKakaoLinkLoading(false);
+    }
+  };
+
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
@@ -188,25 +203,77 @@ export default function SettingsPage() {
         .rpc("get_squad_users_with_stats", { p_squad_id: squad.id });
       if (error) throw error;
 
+      // RPC 컬럼명은 'o_' 접두어 사용 (RETURNS TABLE 의 OUT param 모호성 회피를 위해)
       const rows: ISquadUserRow[] = (data || []).map((row: {
-        user_id: string; role: string; username: string; joined_at: string;
-        attended_matches: number; total_matches: number; attendance_rate: number;
+        o_user_id: string; o_role: string; o_username: string; o_joined_at: string;
+        o_attended_matches: number; o_total_matches: number; o_attendance_rate: number;
       }) => ({
-        userId: row.user_id,
-        role: row.role as ISquadUserRow["role"],
-        username: row.username,
-        joinedAt: row.joined_at,
-        attendedMatches: Number(row.attended_matches),
-        totalMatches: Number(row.total_matches),
-        attendanceRate: row.attendance_rate,
+        userId: row.o_user_id,
+        role: row.o_role as ISquadUserRow["role"],
+        username: row.o_username,
+        joinedAt: row.o_joined_at,
+        attendedMatches: Number(row.o_attended_matches),
+        totalMatches: Number(row.o_total_matches),
+        attendanceRate: row.o_attendance_rate,
       }));
       setSquadUsers(rows);
+    } catch (e) {
+      // RPC가 아직 배포되지 않았거나 권한 오류 시 — FK 없는 2단계 쿼리로 폴백
+      // (squad_members.user_id → profiles.id 는 PostgREST가 인식하는 FK가 아니므로
+      //  inline join `profiles(username)` 은 실패함)
+      console.error("get_squad_users_with_stats 실패, 폴백 쿼리 시도:", e);
+      try {
+        // 1. squad_members 조회
+        const { data: smRows, error: smErr } = await supabase
+          .from("squad_members")
+          .select("user_id, role, joined_at")
+          .eq("squad_id", squad.id);
+        if (smErr) throw smErr;
+
+        const userIds = (smRows || []).map((r) => r.user_id);
+
+        // 2. 해당 user_id 들의 프로필 조회 (RLS: 같은 squad 멤버끼리 조회 가능)
+        let profileMap: Record<string, string> = {};
+        if (userIds.length > 0) {
+          const { data: profileRows } = await supabase
+            .from("profiles")
+            .select("id, username")
+            .in("id", userIds);
+          profileMap = Object.fromEntries(
+            (profileRows || []).map((p) => [p.id, p.username || "알 수 없음"])
+          );
+        }
+
+        const rows: ISquadUserRow[] = (smRows || []).map((row) => ({
+          userId: row.user_id,
+          role: row.role as ISquadUserRow["role"],
+          username: profileMap[row.user_id] || "알 수 없음",
+          joinedAt: row.joined_at,
+          attendedMatches: 0,
+          totalMatches: 0,
+          attendanceRate: 0,
+        }))
+        // owner → admin → member 순 정렬
+        .sort((a, b) => {
+          const order = { owner: 0, admin: 1, member: 2 } as const;
+          return order[a.role] - order[b.role];
+        });
+
+        setSquadUsers(rows);
+      } catch (fbE) {
+        console.error("폴백 쿼리도 실패:", fbE);
+      }
     } finally {
       setSquadUsersLoading(false);
     }
   };
 
-  useEffect(() => { loadSquadUsers(); }, [squad?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 운영자/관리자만 RPC를 호출 (비-운영자는 RPC가 'Unauthorized' 42501 → HTTP 403 반환)
+  // userRole 이 아직 미정(null)일 때는 호출 보류 → 권한 확정 후에만 시도
+  useEffect(() => {
+    if (!isOwnerOrAdmin) { setSquadUsers([]); return; }
+    loadSquadUsers();
+  }, [squad?.id, isOwnerOrAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChangeRole = async (userId: string, newRole: "admin" | "member") => {
     if (!squad?.id || userRole !== "owner") return;
@@ -668,6 +735,47 @@ export default function SettingsPage() {
                 </span>
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 연결된 계정 (소셜 로그인 연결) */}
+      {user && (
+        <div className="px-6 mb-6">
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">연결된 계정</p>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {/* 카카오 아이콘 */}
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: hasKakaoLinked ? "#FEE500" : "rgba(255,255,255,0.07)" }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                    <path
+                      d="M9 1.5C4.86 1.5 1.5 4.19 1.5 7.5c0 2.07 1.2 3.9 3.04 5.03l-.77 2.84a.25.25 0 0 0 .38.27L7.6 13.5c.45.07.92.1 1.4.1 4.14 0 7.5-2.69 7.5-6S13.14 1.5 9 1.5Z"
+                      fill={hasKakaoLinked ? "#3C1E1E" : "rgba(255,255,255,0.2)"}
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-white/70 text-sm font-bold">카카오</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: hasKakaoLinked ? "#0DF23E" : "rgba(255,255,255,0.2)" }}>
+                    {hasKakaoLinked ? "연결됨" : "연결 안됨"}
+                  </p>
+                </div>
+              </div>
+              {!hasKakaoLinked && (
+                <button
+                  onClick={handleLinkKakao}
+                  disabled={kakaoLinkLoading}
+                  className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40"
+                  style={{ backgroundColor: "rgba(254,229,0,0.15)", color: "#FEE500", border: "1px solid rgba(254,229,0,0.3)" }}
+                >
+                  {kakaoLinkLoading ? "이동 중..." : "연결하기"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
