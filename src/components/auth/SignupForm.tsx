@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
+import { supabase } from "@/lib/supabase";
 
 interface Props {
   onSwitchToLogin: () => void;
@@ -125,7 +126,42 @@ export const SignupForm = ({ onSwitchToLogin }: Props) => {
         disabled={kakaoLoading || isLoading}
         onClick={async () => {
           setKakaoLoading(true);
-          try { await signInWithKakao(); } catch { setKakaoLoading(false); }
+          const isPWA =
+            window.matchMedia("(display-mode: standalone)").matches ||
+            (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+          if (isPWA) {
+            const popup = window.open("about:blank", "kakaoAuth");
+            try {
+              const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: "kakao",
+                options: {
+                  redirectTo: window.location.origin,
+                  scopes: "profile_nickname profile_image account_email",
+                  skipBrowserRedirect: true,
+                },
+              });
+              if (error || !data?.url) { popup?.close(); throw error ?? new Error("OAuth URL 오류"); }
+              if (popup) popup.location.href = data.url;
+
+              const pollClosed = setInterval(() => {
+                if (popup?.closed) { clearInterval(pollClosed); window.removeEventListener("message", onCode); setKakaoLoading(false); }
+              }, 500);
+
+              const onCode = async (e: MessageEvent) => {
+                if (e.origin !== window.location.origin || e.data?.type !== "kakao-oauth-code") return;
+                clearInterval(pollClosed);
+                window.removeEventListener("message", onCode);
+                try {
+                  const { error: err } = await supabase.auth.exchangeCodeForSession(e.data.code);
+                  if (err) throw err;
+                } catch { /* onAuthStateChange가 실패를 처리 */ } finally { setKakaoLoading(false); }
+              };
+              window.addEventListener("message", onCode);
+            } catch { popup?.close(); setKakaoLoading(false); }
+          } else {
+            try { await signInWithKakao(); } catch { setKakaoLoading(false); }
+          }
         }}
         className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-sm tracking-wide transition-all active:scale-95 disabled:opacity-40"
         style={{ backgroundColor: "#FEE500", color: "#3C1E1E" }}
