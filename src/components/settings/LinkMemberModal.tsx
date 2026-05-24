@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { IMember } from "@/types";
 
@@ -10,6 +11,12 @@ interface LinkMemberModalProps {
 }
 
 export function LinkMemberModal({ members, linkedMemberId, currentUserId, onClose, onLink }: LinkMemberModalProps) {
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [onClose]);
+
   return createPortal(
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"

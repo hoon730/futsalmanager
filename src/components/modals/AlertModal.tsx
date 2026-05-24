@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface IAlertModalProps {
@@ -9,6 +10,13 @@ interface IAlertModalProps {
 }
 
 export const AlertModal = ({ isOpen, onClose, title = "알림", message, icon = "notifications" }: IAlertModalProps) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // \n 이스케이프 문자 처리

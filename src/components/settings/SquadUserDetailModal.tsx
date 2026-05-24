@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { ISquadUserRow } from "./types";
 
@@ -9,6 +10,12 @@ interface SquadUserDetailModalProps {
 }
 
 export function SquadUserDetailModal({ user, onClose, onChangeRole, onRemove }: SquadUserDetailModalProps) {
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [onClose]);
+
   return createPortal(
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"

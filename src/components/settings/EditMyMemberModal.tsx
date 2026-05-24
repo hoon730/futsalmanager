@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
 type Position = "GK" | "DF" | "MF" | "FW";
@@ -21,6 +22,13 @@ export function EditMyMemberModal({
   onClose,
   onSubmit,
 }: EditMyMemberModalProps) {
+  useEffect(() => {
+    if (saving) return;
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [saving, onClose]);
+
   return createPortal(
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"

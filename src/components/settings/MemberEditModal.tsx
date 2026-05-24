@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
 type Position = "GK" | "DF" | "MF" | "FW";
@@ -23,6 +23,12 @@ export function MemberEditModal({
   const [localName, setLocalName] = useState(name);
   const [localPosition, setLocalPosition] = useState<Position | null>(position);
   const [localSkill, setLocalSkill] = useState(skillLevel);
+
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [onClose]);
 
   const handleSubmit = () => {
     const trimmed = localName.trim();

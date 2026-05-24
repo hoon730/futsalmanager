@@ -32,6 +32,8 @@ export const ClubSetupPage = () => {
   const [myClubs, setMyClubs] = useState<MyClub[]>([]);
   const [myClubsLoading, setMyClubsLoading] = useState(true);
   const [selectingClubId, setSelectingClubId] = useState<string | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<MyClub | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
 
   // 로그인된 유저의 기존 동호회 목록 조회
   // nested join(squads(id,name))은 squads RLS에 걸려 data:null이 될 수 있으므로
@@ -97,6 +99,28 @@ export const ClubSetupPage = () => {
     }
   };
 
+  // 동호회 탈퇴 (leave_squad RPC: 마지막 멤버면 삭제, owner면 자동 위임)
+  const handleLeaveMyClub = async (club: MyClub) => {
+    if (!user) return;
+    setLeavingId(club.id);
+    try {
+      if (club.role === "owner") {
+        // owner는 squad 자체를 삭제
+        const { error } = await supabase.from("squads").delete().eq("id", club.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.rpc("leave_squad", { p_squad_id: club.id });
+        if (error) throw error;
+      }
+      setMyClubs((prev) => prev.filter((c) => c.id !== club.id));
+      setLeaveTarget(null);
+    } catch (e) {
+      alert(toFriendlyMessage(e, "탈퇴에 실패했습니다"));
+    } finally {
+      setLeavingId(null);
+    }
+  };
+
   const [initialInviteCode] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     try {
@@ -144,7 +168,49 @@ export const ClubSetupPage = () => {
             myClubsLoading={myClubsLoading}
             selectingClubId={selectingClubId}
             onSelectMyClub={handleSelectMyClub}
+            onLeaveMyClub={setLeaveTarget}
           />
+        )}
+
+        {/* 탈퇴/삭제 확인 다이얼로그 */}
+        {leaveTarget && (
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center px-6 z-50"
+            onClick={() => setLeaveTarget(null)}
+          >
+            <div
+              className="w-full max-w-sm rounded-[2.5rem] p-8"
+              style={{ background: "rgba(22,38,27,0.95)", border: "2px solid rgba(239,68,68,0.3)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-black italic uppercase text-white mb-2">
+                {leaveTarget.role === "owner" ? "동호회 삭제" : "동호회 탈퇴"}
+              </h3>
+              <p className="text-sm text-white/60 leading-relaxed mb-8">
+                <span className="text-white font-bold">"{leaveTarget.name}"</span>
+                {leaveTarget.role === "owner"
+                  ? "을(를) 삭제하시겠습니까?\n운영자가 삭제하면 동호회와 모든 데이터가 영구 삭제됩니다."
+                  : "에서 탈퇴하시겠습니까?"}
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleLeaveMyClub(leaveTarget)}
+                  disabled={leavingId !== null}
+                  className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40"
+                  style={{ backgroundColor: "#ef4444", color: "#fff" }}
+                >
+                  {leavingId ? "처리 중..." : leaveTarget.role === "owner" ? "삭제하기" : "탈퇴하기"}
+                </button>
+                <button
+                  onClick={() => setLeaveTarget(null)}
+                  className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] text-white/60"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  뒤로가기
+                </button>
+              </div>
+            </div>
+          </div>
         )}
         {mode === "create" && <CreateClub onBack={() => setMode("select")} />}
         {mode === "join" && <JoinClub onBack={() => setMode("select")} initialCode={initialInviteCode} />}
@@ -159,9 +225,10 @@ interface ModeSelectProps {
   myClubsLoading: boolean;
   selectingClubId: string | null;
   onSelectMyClub: (clubId: string) => void;
+  onLeaveMyClub: (club: MyClub) => void;
 }
 
-const ModeSelect = ({ onSelect, myClubs, myClubsLoading, selectingClubId, onSelectMyClub }: ModeSelectProps) => (
+const ModeSelect = ({ onSelect, myClubs, myClubsLoading, selectingClubId, onSelectMyClub, onLeaveMyClub }: ModeSelectProps) => (
   <div className="space-y-3">
     {/* 기존 동호회 목록 */}
     {myClubsLoading ? (
@@ -173,30 +240,42 @@ const ModeSelect = ({ onSelect, myClubs, myClubsLoading, selectingClubId, onSele
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">내 동호회</p>
         <div className="space-y-2">
           {myClubs.map((club) => (
-            <button
-              key={club.id}
-              onClick={() => onSelectMyClub(club.id)}
-              disabled={selectingClubId !== null}
-              className="w-full bg-white/5 border border-white/5 hover:border-primary/40 rounded-2xl p-4 text-left transition-all group active:scale-[0.98] disabled:opacity-60"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="material-icons text-primary text-base">sports_soccer</span>
+            <div key={club.id} className="relative">
+              <button
+                onClick={() => onSelectMyClub(club.id)}
+                disabled={selectingClubId !== null}
+                className="w-full bg-white/5 border border-white/5 hover:border-primary/40 rounded-2xl p-4 text-left transition-all group active:scale-[0.98] disabled:opacity-60 pr-12"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                    <span className="material-icons text-primary text-base">sports_soccer</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-black text-sm uppercase tracking-wide truncate group-hover:text-primary transition-colors">
+                      {club.name}
+                    </p>
+                  </div>
+                  {selectingClubId === club.id ? (
+                    <div className="loading-spinner flex-shrink-0" style={{ width: 16, height: 16 }} />
+                  ) : (
+                    <span className="material-icons text-white/20 group-hover:text-primary/50 transition-colors flex-shrink-0">
+                      chevron_right
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-black text-sm uppercase tracking-wide truncate group-hover:text-primary transition-colors">
-                    {club.name}
-                  </p>
-                </div>
-                {selectingClubId === club.id ? (
-                  <div className="loading-spinner flex-shrink-0" style={{ width: 16, height: 16 }} />
-                ) : (
-                  <span className="material-icons text-white/20 group-hover:text-primary/50 transition-colors flex-shrink-0">
-                    chevron_right
-                  </span>
-                )}
-              </div>
-            </button>
+              </button>
+              {/* 탈퇴/삭제 버튼 */}
+              <button
+                onClick={(e) => { e.stopPropagation(); onLeaveMyClub(club); }}
+                disabled={selectingClubId !== null}
+                className="absolute top-1/2 -translate-y-1/2 right-2 w-8 h-8 flex items-center justify-center rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                title={club.role === "owner" ? "동호회 삭제" : "동호회 탈퇴"}
+              >
+                <span className="material-icons text-sm">
+                  {club.role === "owner" ? "delete_outline" : "logout"}
+                </span>
+              </button>
+            </div>
           ))}
         </div>
         <div className="h-px bg-white/5 my-4" />

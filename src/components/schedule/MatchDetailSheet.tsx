@@ -74,6 +74,12 @@ export function MatchDetailSheet({
   }, []);
 
   useEffect(() => {
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (!contextMenu) return;
     const close = () => setContextMenu(null);
     document.addEventListener("click", close);
