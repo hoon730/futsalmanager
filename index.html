@@ -56,6 +56,21 @@
       defer></script>
   </head>
   <body>
+    <!-- PWA Kakao OAuth popup callback: runs before React/Supabase to prevent duplicate code exchange -->
+    <script>
+      (function () {
+        if (!window.opener) return;
+        var params = new URLSearchParams(window.location.search);
+        var code = params.get('code');
+        if (!code) return;
+        // Remove code from URL so Supabase does not try to exchange it in this popup window
+        window.history.replaceState({}, '', window.location.pathname);
+        try {
+          window.opener.postMessage({ type: 'kakao-oauth-code', code: code }, window.location.origin);
+        } catch (_) {}
+        setTimeout(function () { window.close(); }, 300);
+      })();
+    </script>
     <div id="root" class="pitch-grid"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
