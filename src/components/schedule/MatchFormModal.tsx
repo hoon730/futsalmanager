@@ -208,11 +208,11 @@ export function MatchFormModal(props: MatchFormModalProps) {
                 </button>
                 {showTimePicker && (
                   <div
-                    className="absolute right-0 bottom-full mb-1 z-50 rounded-xl overflow-y-auto hide-scrollbar"
+                    className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-y-auto hide-scrollbar"
                     style={{
                       background: "rgba(18,24,18,0.98)",
                       border: "1px solid rgba(13,242,62,0.15)",
-                      boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                       minWidth: "110px",
                       maxHeight: "220px",
                     }}
@@ -237,6 +237,17 @@ export function MatchFormModal(props: MatchFormModalProps) {
               </div>
             </div>
             <p className="text-[10px] text-white/30 mt-1.5">분은 자동으로 00분</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
+            <input
+              type="number"
+              value={maxPlayers}
+              onChange={(e) => setMaxPlayers(Number(e.target.value))}
+              min={2}
+              max={50}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold"
+            />
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">장소 (선택)</label>
@@ -288,17 +299,6 @@ export function MatchFormModal(props: MatchFormModalProps) {
                 </button>
               )}
             </div>
-          </div>
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">최대 인원</label>
-            <input
-              type="number"
-              value={maxPlayers}
-              onChange={(e) => setMaxPlayers(Number(e.target.value))}
-              min={2}
-              max={50}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all text-center font-bold"
-            />
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">메모 (선택)</label>
