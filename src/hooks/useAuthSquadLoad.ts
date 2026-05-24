@@ -30,26 +30,31 @@ export const useAuthSquadLoad = (userId: string | null | undefined) => {
     const load = async () => {
       setIsLoading(true);
       try {
-        // 유저가 속한 가장 최근 동호회 조회
-        const { data } = await supabase
+        // 유저가 속한 모든 동호회 조회
+        const { data: memberships } = await supabase
           .from("squad_members")
           .select("squad_id")
           .eq("user_id", userId)
-          .order("joined_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .order("joined_at", { ascending: false });
 
-        if (!data) {
+        if (!memberships || memberships.length === 0) {
           // 가입된 동호회 없음 → ClubSetupPage로 이동 (squad=null 유지)
           setIsLoading(false);
           return;
         }
 
+        if (memberships.length > 1) {
+          // 동호회가 여러 개 → ClubSetupPage에서 직접 선택하게 함 (squad=null 유지)
+          setIsLoading(false);
+          return;
+        }
+
+        // 동호회가 정확히 1개인 경우만 자동 진입
         const [fullSquad, fixedTeams, divisions, history] = await Promise.all([
-          loadSquadFromSupabase(data.squad_id),
-          loadFixedTeamsFromSupabase(data.squad_id),
-          loadDivisionsFromSupabase(data.squad_id),
-          loadTeammateHistoryFromSupabase(data.squad_id),
+          loadSquadFromSupabase(memberships[0].squad_id),
+          loadFixedTeamsFromSupabase(memberships[0].squad_id),
+          loadDivisionsFromSupabase(memberships[0].squad_id),
+          loadTeammateHistoryFromSupabase(memberships[0].squad_id),
         ]);
 
         if (fullSquad) {
