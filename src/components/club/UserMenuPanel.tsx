@@ -35,6 +35,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const { setFixedTeams } = useFixedTeamStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
   const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<"idle" | "input" | "deleting">("idle");
@@ -86,22 +87,25 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
 
   useEffect(() => {
     if (!isOpen || !user) return;
+    setClubsLoading(true);
     supabase
       .from("squad_members")
       .select("role, squads(id, name, invite_code)")
       .eq("user_id", user.id)
       .then(({ data }) => {
-        if (!data) return;
-        const list = data.map((row) => {
-          const squad = Array.isArray(row.squads) ? row.squads[0] : row.squads;
-          return {
-            id: squad.id as string,
-            name: squad.name as string,
-            invite_code: squad.invite_code as string,
-            role: row.role as string,
-          };
-        });
-        setClubs(list);
+        if (data) {
+          const list = data.map((row) => {
+            const squad = Array.isArray(row.squads) ? row.squads[0] : row.squads;
+            return {
+              id: squad.id as string,
+              name: squad.name as string,
+              invite_code: squad.invite_code as string,
+              role: row.role as string,
+            };
+          });
+          setClubs(list);
+        }
+        setClubsLoading(false);
       });
   }, [isOpen, user]);
 
@@ -222,11 +226,15 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
 
   const handleSignOut = async () => {
     onClose();
-    clearSquad();
+    // signOut을 먼저 호출해 user=null → AuthPage로 전환한 뒤 squad 정리
+    // (clearSquad를 먼저 하면 user=있음 + squad=null 상태가 돼 ClubSetupPage가 순간 노출됨)
     await signOut();
+    clearSquad();
   };
 
   const currentClub = clubs.find((c) => c.id === squad?.id);
+  // squad 데이터로 현재 동호회 이름 표시 (clubs fetch 완료 전에도 보여줌)
+  const currentClubName = currentClub?.name ?? squad?.name ?? "";
   const isOwner = currentClub?.role === "owner";
   const avatarLetter = (profile?.username || user?.email || "?")[0].toUpperCase();
 
@@ -340,20 +348,25 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
           </div>
 
           {/* === CURRENT SQUAD === */}
-          {currentClub && (
+          {squad?.id && (
             <>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">현재 동호회</p>
               <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4 mb-5">
                 {/* 동호회 이름 + 권한 */}
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-white font-black text-base uppercase tracking-wide truncate">{currentClub.name}</p>
-                  <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-                    style={{ background: isOwner ? "rgba(13,242,62,0.12)" : "rgba(255,255,255,0.05)", color: isOwner ? "#0DF23E" : "rgba(255,255,255,0.5)" }}>
-                    {isOwner ? "운영자" : "멤버"}
-                  </span>
+                  <p className="text-white font-black text-base uppercase tracking-wide truncate">{currentClubName}</p>
+                  {currentClub ? (
+                    <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                      style={{ background: isOwner ? "rgba(13,242,62,0.12)" : "rgba(255,255,255,0.05)", color: isOwner ? "#0DF23E" : "rgba(255,255,255,0.5)" }}>
+                      {isOwner ? "운영자" : "멤버"}
+                    </span>
+                  ) : clubsLoading ? (
+                    <span className="text-[9px] text-white/20 animate-pulse">로딩 중...</span>
+                  ) : null}
                 </div>
 
-                {/* 초대 코드 */}
+                {/* 초대 코드 — clubs 데이터 로드 완료 시에만 표시 */}
+                {currentClub && (
                 <div className="mt-4 pt-4 border-t border-white/5">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">초대 코드</p>
                   <div className="flex items-center justify-between gap-3">
@@ -397,9 +410,10 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                     </button>
                   )}
                 </div>
+                )}
 
-                {/* 위험 액션 — 카드 하단 작은 텍스트 링크 */}
-                {(() => {
+                {/* 위험 액션 — clubs 로드 완료 후에만 표시 (currentClub.name 사용) */}
+                {currentClub && (() => {
                   // owner가 혼자인 경우만 "동호회 삭제" — 데이터 영구 삭제
                   // owner여도 다른 멤버 있으면 "탈퇴" (자동 위임)
                   // 일반 멤버는 그냥 "탈퇴"
@@ -497,6 +511,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
               </div>
             </>
           )}
+
 
           {/* === SWITCH SQUAD === */}
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">동호회 전환</p>
