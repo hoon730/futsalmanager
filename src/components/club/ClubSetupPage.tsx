@@ -18,6 +18,7 @@ interface MyClub {
   id: string;
   name: string;
   role: string;
+  createdAt: string;
 }
 
 export const ClubSetupPage = () => {
@@ -48,16 +49,21 @@ export const ClubSetupPage = () => {
 
         if (!memberships || memberships.length === 0) return;
 
-        // 2) squad 이름 조회
+        // 2) squad 이름 + 생성일 조회
         const { data: squads } = await supabase
           .from("squads")
-          .select("id, name")
+          .select("id, name, created_at")
           .in("id", memberships.map((m) => m.squad_id));
 
         if (squads && squads.length > 0) {
           const roleMap = Object.fromEntries(memberships.map((m) => [m.squad_id, m.role]));
           setMyClubs(
-            squads.map((s) => ({ id: s.id as string, name: s.name as string, role: roleMap[s.id] ?? "member" }))
+            squads.map((s) => ({
+              id: s.id as string,
+              name: s.name as string,
+              role: roleMap[s.id] ?? "member",
+              createdAt: s.created_at as string,
+            }))
           );
         }
       } catch (e) {
@@ -182,7 +188,7 @@ const ModeSelect = ({ onSelect, myClubs, myClubsLoading, selectingClubId, onSele
                     {club.name}
                   </p>
                   <p className="text-white/30 text-xs mt-0.5">
-                    {club.role === "owner" ? "운영자" : "멤버"}
+                    {club.role === "owner" ? "운영자" : "멤버"} · {new Date(club.createdAt).toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric" })}
                   </p>
                 </div>
                 {selectingClubId === club.id ? (
