@@ -187,9 +187,6 @@ const ModeSelect = ({ onSelect, myClubs, myClubsLoading, selectingClubId, onSele
                   <p className="text-white font-black text-sm uppercase tracking-wide truncate group-hover:text-primary transition-colors">
                     {club.name}
                   </p>
-                  <p className="text-white/30 text-xs mt-0.5">
-                    {club.role === "owner" ? "운영자" : "멤버"} · {new Date(club.createdAt).toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric" })}
-                  </p>
                 </div>
                 {selectingClubId === club.id ? (
                   <div className="loading-spinner flex-shrink-0" style={{ width: 16, height: 16 }} />
