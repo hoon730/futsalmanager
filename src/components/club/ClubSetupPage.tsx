@@ -33,23 +33,41 @@ export const ClubSetupPage = () => {
   const [selectingClubId, setSelectingClubId] = useState<string | null>(null);
 
   // 로그인된 유저의 기존 동호회 목록 조회
+  // nested join(squads(id,name))은 squads RLS에 걸려 data:null이 될 수 있으므로
+  // squad_members → squads 두 단계로 분리해 안정적으로 조회
   useEffect(() => {
     if (!user) { setMyClubsLoading(false); return; }
-    supabase
-      .from("squad_members")
-      .select("role, squads(id, name)")
-      .eq("user_id", user.id)
-      .then(({ data }) => {
-        if (data) {
+
+    const fetchMyClubs = async () => {
+      try {
+        // 1) 내 squad_id + role 목록 조회
+        const { data: memberships } = await supabase
+          .from("squad_members")
+          .select("squad_id, role")
+          .eq("user_id", user.id);
+
+        if (!memberships || memberships.length === 0) return;
+
+        // 2) squad 이름 조회
+        const { data: squads } = await supabase
+          .from("squads")
+          .select("id, name")
+          .in("id", memberships.map((m) => m.squad_id));
+
+        if (squads && squads.length > 0) {
+          const roleMap = Object.fromEntries(memberships.map((m) => [m.squad_id, m.role]));
           setMyClubs(
-            data.map((row) => {
-              const s = Array.isArray(row.squads) ? row.squads[0] : row.squads;
-              return { id: s.id as string, name: s.name as string, role: row.role as string };
-            })
+            squads.map((s) => ({ id: s.id as string, name: s.name as string, role: roleMap[s.id] ?? "member" }))
           );
         }
+      } catch (e) {
+        console.error("기존 동호회 목록 조회 실패:", e);
+      } finally {
         setMyClubsLoading(false);
-      });
+      }
+    };
+
+    fetchMyClubs();
   }, [user]);
 
   // 기존 동호회 선택 시 전체 데이터 로드 후 앱으로 진입
