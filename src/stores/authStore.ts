@@ -24,6 +24,7 @@ interface AuthState {
   clearError: () => void;
   updateLinkedMember: (memberId: string | null) => Promise<void>;
   updateUsername: (username: string) => Promise<void>;
+  updateAvatarUrl: (url: string) => Promise<void>;
   linkKakao: () => Promise<void>;
 }
 
@@ -244,6 +245,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (data.user) {
       set((state) => ({ user: data.user, session: state.session }));
     }
+  },
+
+  updateAvatarUrl: async (url) => {
+    const currentUser = get().user;
+    if (!currentUser) throw new Error("로그인이 필요합니다");
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: url })
+      .eq("id", currentUser.id)
+      .select()
+      .single();
+    if (error) throw error;
+    set((state) => ({
+      profile: state.profile
+        ? { ...state.profile, avatar_url: data.avatar_url }
+        : data,
+    }));
   },
 
   linkKakao: async () => {

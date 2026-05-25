@@ -1,24 +1,31 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { AvatarUploader } from "@/components/AvatarUploader";
 
 type Position = "GK" | "DF" | "MF" | "FW";
 
 interface MemberEditModalProps {
+  memberId: string;
   name: string;
   position: Position | null;
   skillLevel: number;
+  avatarUrl?: string | null;
   onClose: () => void;
   onSubmit: (updates: { name: string; positionKey?: Position; skillLevel: number }) => void;
   onDelete: () => void;
+  onAvatarChange: (url: string) => Promise<void>;
 }
 
 export function MemberEditModal({
+  memberId,
   name,
   position,
   skillLevel,
+  avatarUrl,
   onClose,
   onSubmit,
   onDelete,
+  onAvatarChange,
 }: MemberEditModalProps) {
   const [localName, setLocalName] = useState(name);
   const [localPosition, setLocalPosition] = useState<Position | null>(position);
@@ -51,7 +58,17 @@ export function MemberEditModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">선수 편집</h3>
-        <p className="text-white/40 text-xs mb-5">이름 · 포지션 · 실력을 수정합니다</p>
+        <p className="text-white/40 text-xs mb-5">사진 · 이름 · 포지션 · 실력을 수정합니다</p>
+
+        {/* 사진 업로드 */}
+        <div className="mb-5 flex justify-center">
+          <AvatarUploader
+            currentUrl={avatarUrl}
+            fallbackText={localName}
+            basePath={`members/${memberId}`}
+            onUploaded={onAvatarChange}
+          />
+        </div>
 
         {/* 이름 */}
         <div className="mb-4">

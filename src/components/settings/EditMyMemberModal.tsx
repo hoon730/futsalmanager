@@ -1,24 +1,31 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { AvatarUploader } from "@/components/AvatarUploader";
 
 type Position = "GK" | "DF" | "MF" | "FW";
 
 interface EditMyMemberModalProps {
+  memberId: string;
   name: string;
   position: Position | null;
+  avatarUrl?: string | null;
   saving: boolean;
   onChangeName: (name: string) => void;
   onChangePosition: (pos: Position | null) => void;
+  onAvatarChange: (url: string) => Promise<void>;
   onClose: () => void;
   onSubmit: () => void;
 }
 
 export function EditMyMemberModal({
+  memberId,
   name,
   position,
+  avatarUrl,
   saving,
   onChangeName,
   onChangePosition,
+  onAvatarChange,
   onClose,
   onSubmit,
 }: EditMyMemberModalProps) {
@@ -40,7 +47,18 @@ export function EditMyMemberModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 정보</h3>
-        <p className="text-white/40 text-xs mb-5">동호회에 표시될 이름과 포지션을 수정합니다</p>
+        <p className="text-white/40 text-xs mb-5">동호회에 표시될 사진 · 이름 · 포지션을 수정합니다</p>
+
+        {/* 사진 업로드 */}
+        <div className="mb-5 flex justify-center">
+          <AvatarUploader
+            currentUrl={avatarUrl}
+            fallbackText={name}
+            basePath={`members/${memberId}`}
+            onUploaded={onAvatarChange}
+            disabled={saving}
+          />
+        </div>
 
         <div className="mb-4">
           <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">이름</label>
