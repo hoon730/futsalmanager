@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 interface AddMemberModalProps {
   name: string;
@@ -8,12 +10,19 @@ interface AddMemberModalProps {
 }
 
 export function AddMemberModal({ name, onChangeName, onClose, onConfirm }: AddMemberModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+
   return createPortal(
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-member-title"
         className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden"
         style={{
           background: "rgba(22,28,22,0.98)",
@@ -22,7 +31,7 @@ export function AddMemberModal({ name, onChangeName, onClose, onConfirm }: AddMe
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-black italic uppercase text-white mb-3">멤버 추가</h3>
+        <h3 id="add-member-title" className="text-lg font-black italic uppercase text-white mb-3">멤버 추가</h3>
         <p className="text-xs text-white/50 font-bold leading-relaxed mb-5">추가할 멤버 이름을 입력하세요</p>
         <input
           type="text"
