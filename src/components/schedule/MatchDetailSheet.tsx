@@ -10,6 +10,7 @@ import { toFriendlyMessage } from "@/lib/errorMessage";
 import { CommentItem } from "./CommentItem";
 import { MatchFormModal } from "./MatchFormModal";
 import { supabase } from "@/lib/supabase";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { getRsvpInfo } from "./scheduleUtils";
 
 interface MatchDetailSheetProps {
@@ -70,6 +71,9 @@ export function MatchDetailSheet({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  // 시트 자체에 포커스 트랩 — visible 일 때만 활성화 (펼침 애니메이션 후 적용)
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(sheetRef, visible);
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true));
@@ -267,6 +271,10 @@ export function MatchDetailSheet({
       >
         <div className="max-w-md mx-auto h-full relative">
           <div
+            ref={sheetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="경기 상세"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: "absolute",

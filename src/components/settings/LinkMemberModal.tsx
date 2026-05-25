@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import type { IMember } from "@/types";
 
 interface LinkMemberModalProps {
@@ -11,6 +12,9 @@ interface LinkMemberModalProps {
 }
 
 export function LinkMemberModal({ members, linkedMemberId, currentUserId, onClose, onLink }: LinkMemberModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+
   useEffect(() => {
     const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handle);
@@ -23,11 +27,15 @@ export function LinkMemberModal({ members, linkedMemberId, currentUserId, onClos
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="link-member-title"
         className="w-full max-w-sm rounded-2xl p-6 overflow-y-auto"
         style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)", maxHeight: "85vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 선택</h3>
+        <h3 id="link-member-title" className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 선택</h3>
         <p className="text-white/40 text-xs mb-5">명단에서 나의 이름을 선택하세요</p>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {members.map((member) => {

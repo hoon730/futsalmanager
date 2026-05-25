@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface IAlertModalProps {
   isOpen: boolean;
@@ -10,6 +11,9 @@ interface IAlertModalProps {
 }
 
 export const AlertModal = ({ isOpen, onClose, title = "알림", message, icon = "notifications" }: IAlertModalProps) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen);
+
   useEffect(() => {
     if (!isOpen) return;
     const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -29,6 +33,10 @@ export const AlertModal = ({ isOpen, onClose, title = "알림", message, icon = 
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="alert-modal-title"
         className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden"
         style={{
           background: 'rgba(22,38,27,0.95)',
@@ -41,9 +49,9 @@ export const AlertModal = ({ isOpen, onClose, title = "알림", message, icon = 
         {/* 헤더 - 아이콘 + 중앙 정렬 */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'rgba(13,242,62,0.1)', border: '1px solid rgba(13,242,62,0.2)' }}>
-            <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>{icon}</span>
+            <span className="material-icons text-3xl" style={{ color: '#0DF23E' }} aria-hidden="true">{icon}</span>
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">{title}</h2>
+          <h2 id="alert-modal-title" className="text-2xl font-black tracking-tight text-white uppercase italic">{title}</h2>
         </div>
 
         <p className="text-sm text-white/60 font-medium leading-relaxed mb-8 text-center" style={{ whiteSpace: 'pre-line' }}>
