@@ -7,6 +7,7 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useAuthStore } from "@/stores/authStore";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { ToastContainer } from "@/components/Toast";
+import { InviteGate } from "@/components/InviteGate";
 import { lazyWithRetry, clearChunkReloadFlag } from "@/lib/lazyWithRetry";
 import { ChunkErrorBoundary } from "@/components/ChunkErrorBoundary";
 
@@ -24,7 +25,7 @@ const FullscreenLoader = ({ message }: { message: string }) => (
 
 const App = () => {
   const { user, isLoading: authLoading, initialize } = useAuthStore();
-  const { squad } = useSquadStore();
+  const { squad, clearSquad } = useSquadStore();
 
   // 인증 상태 초기화
   useEffect(() => {
@@ -41,6 +42,25 @@ const App = () => {
 
   const { isConnected } = useRealtimeSync(squad?.id || null);
   const [syncErrorModal, setSyncErrorModal] = useState(false);
+
+  // 초대 링크(?invite=CODE)로 진입 + 이미 동호회 있는 경우 → 하단 시트로 가입 안내
+  // useState 지연 초기화로 마운트 시 1회 localStorage 읽기 (useEffect 내 setState 금지 규칙 회피)
+  const [pendingInviteCode] = useState<string | null>(() => {
+    try { return localStorage.getItem("pendingInviteCode") || null; } catch { return null; }
+  });
+  const [inviteDismissed, setInviteDismissed] = useState(false);
+  const showInviteGate = !!user && !!squad?.id && !!pendingInviteCode && !inviteDismissed;
+
+  const handleInviteJoin = () => {
+    setInviteDismissed(true);
+    // localStorage 코드는 유지 → ClubSetupPage가 마운트될 때 읽어서 자동 입력
+    clearSquad();
+  };
+
+  const handleInviteDismiss = () => {
+    try { localStorage.removeItem("pendingInviteCode"); } catch { /* ignore */ }
+    setInviteDismissed(true);
+  };
 
   useAutoSync();
 
@@ -89,6 +109,9 @@ const App = () => {
   return (
     <>
       <Layout />
+      {showInviteGate && (
+        <InviteGate onJoin={handleInviteJoin} onDismiss={handleInviteDismiss} />
+      )}
       <AlertModal
         isOpen={syncErrorModal}
         message="⚠️ 실시간 동기화 연결 실패\n\n인터넷 연결을 확인해주세요."
