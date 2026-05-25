@@ -88,17 +88,20 @@ export function AvatarUploader({
             <div className="loading-spinner" style={{ width: 22, height: 22 }} />
           </div>
         )}
-        {/* 우하단 카메라 인디케이터 — 작고 미묘하게 (disabled 면 숨김) */}
+        {/* 우하단 카메라 인디케이터 — 시인성 위해 살짝 더 키우고 밖으로 빼냄 */}
         {!uploading && !disabled && (
           <div
-            className="absolute right-0 bottom-0 w-4 h-4 rounded-full flex items-center justify-center"
+            className="absolute w-6 h-6 rounded-full flex items-center justify-center"
             style={{
-              background: "rgba(13,242,62,0.85)",
-              border: "1.5px solid rgba(10,21,13,0.95)",
+              right: -4,
+              bottom: -4,
+              background: "#0DF23E",
+              border: "2px solid #0a150d",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
             }}
             aria-hidden="true"
           >
-            <span className="material-icons text-[#0a150d]" style={{ fontSize: 10 }}>photo_camera</span>
+            <span className="material-icons text-[#0a150d]" style={{ fontSize: 14 }}>photo_camera</span>
           </div>
         )}
       </button>
