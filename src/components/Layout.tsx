@@ -5,6 +5,7 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useMatchStore } from "@/stores/matchStore";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { ChunkErrorBoundary } from "@/components/ChunkErrorBoundary";
+import { PageErrorBoundary } from "@/components/PageErrorBoundary";
 
 // Route-level code splitting: 탭별 페이지를 lazy-load 하여 초기 번들 축소
 // lazyWithRetry: 배포 직후 stale chunk 404 발생 시 자동 reload로 복구
@@ -22,6 +23,15 @@ const PageFallback = () => (
 type Tab = "division" | "schedule" | "attendance" | "settings";
 
 const LAST_SCHEDULE_VISIT_KEY = "lastScheduleVisit";
+
+function pageLabelFor(tab: Tab): string {
+  switch (tab) {
+    case "division":   return "팀 배정";
+    case "schedule":   return "일정";
+    case "attendance": return "기록";
+    case "settings":   return "설정";
+  }
+}
 
 // URL의 ?tab=... 으로 초기 탭 결정 (푸시 알림 클릭 시 진입 경로)
 function readInitialTab(): Tab {
@@ -109,10 +119,13 @@ const Layout = () => {
       <main className="flex-1 overflow-y-auto hide-scrollbar pb-28">
         <ChunkErrorBoundary>
           <Suspense fallback={<PageFallback />}>
-            {activeTab === "division"   && <DivisionPage />}
-            {activeTab === "schedule"   && <SchedulePage onGoToDivision={() => setActiveTab("division")} />}
-            {activeTab === "attendance" && <AttendancePage />}
-            {activeTab === "settings"   && <SettingsPage />}
+            {/* key={activeTab}: 탭 전환 시 에러 상태 자동 reset */}
+            <PageErrorBoundary key={activeTab} pageLabel={pageLabelFor(activeTab)}>
+              {activeTab === "division"   && <DivisionPage />}
+              {activeTab === "schedule"   && <SchedulePage onGoToDivision={() => setActiveTab("division")} />}
+              {activeTab === "attendance" && <AttendancePage />}
+              {activeTab === "settings"   && <SettingsPage />}
+            </PageErrorBoundary>
           </Suspense>
         </ChunkErrorBoundary>
       </main>
