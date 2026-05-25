@@ -321,18 +321,20 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                   <button
                     onClick={handleSaveName}
                     disabled={savingName}
+                    aria-label="닉네임 저장"
                     className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary/15 text-primary active:scale-90 disabled:opacity-40"
                   >
-                    <span className="material-icons" style={{ fontSize: 16 }}>
+                    <span className="material-icons" style={{ fontSize: 16 }} aria-hidden="true">
                       {savingName ? "refresh" : "check"}
                     </span>
                   </button>
                   <button
                     onClick={() => setEditingName(false)}
                     disabled={savingName}
+                    aria-label="닉네임 편집 취소"
                     className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 text-white/50 active:scale-90 disabled:opacity-40"
                   >
-                    <span className="material-icons" style={{ fontSize: 16 }}>close</span>
+                    <span className="material-icons" style={{ fontSize: 16 }} aria-hidden="true">close</span>
                   </button>
                 </div>
               ) : (
@@ -342,9 +344,10 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                   </p>
                   <button
                     onClick={handleStartEditName}
+                    aria-label="닉네임 편집"
                     className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/60 transition-colors active:scale-90"
                   >
-                    <span className="material-icons" style={{ fontSize: 14 }}>edit</span>
+                    <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">edit</span>
                   </button>
                 </div>
               )}

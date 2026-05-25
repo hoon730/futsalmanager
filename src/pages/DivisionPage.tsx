@@ -430,6 +430,8 @@ const DivisionPage = () => {
                     <button
                       key={i}
                       onClick={() => handlePageClick(i)}
+                      aria-label={`${i + 1}페이지로 이동`}
+                      aria-current={activePage === i ? "page" : undefined}
                       className="h-1.5 rounded-full transition-all duration-300"
                       style={activePage === i
                         ? { width: '2rem', backgroundColor: '#0DF23E', boxShadow: '0 0 8px rgba(13,242,62,0.5)' }
