@@ -10,7 +10,8 @@ import { KakaoIcon } from "@/components/icons/KakaoIcon";
 import { ShareMenu } from "@/components/ShareMenu";
 import { toast } from "@/stores/toastStore";
 import { toFriendlyMessage } from "@/lib/errorMessage";
-import { AvatarUploader } from "@/components/AvatarUploader";
+import { AccountEditModal } from "@/components/club/AccountEditModal";
+import { SquadEditModal } from "@/components/club/SquadEditModal";
 import {
   loadSquadFromSupabase,
   loadFixedTeamsFromSupabase,
@@ -31,8 +32,8 @@ interface Props {
 }
 
 export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
-  const { user, profile, signOut, updateUsername, updateAvatarUrl } = useAuthStore();
-  const { squad, clearSquad, setSquad, updateSquadLogo } = useSquadStore();
+  const { user, profile, signOut } = useAuthStore();
+  const { squad, clearSquad, setSquad } = useSquadStore();
   const { setFixedTeams } = useFixedTeamStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -41,11 +42,13 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const [regenerating, setRegenerating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<"idle" | "input" | "deleting">("idle");
   const [deleteInput, setDeleteInput] = useState("");
-  const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState("");
-  const [savingName, setSavingName] = useState(false);
   // 현재 동호회의 전체 멤버 수 (owner 탈퇴 시 위임 vs 삭제 분기 판단용)
   const [squadMemberCount, setSquadMemberCount] = useState<number | null>(null);
+
+  // 프로필 편집 모달 (사진 + 닉네임 동시 편집)
+  const [showAccountEdit, setShowAccountEdit] = useState(false);
+  // 동호회 정보 편집 모달 (로고 + 이름 동시 편집, 운영자만)
+  const [showSquadEdit, setShowSquadEdit] = useState(false);
 
   // 드래그 다운 닫기 + 진입/퇴장 애니메이션 (controlled transform)
   const [visible, setVisible] = useState(false);
@@ -127,33 +130,6 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
     toast("초대 코드가 복사되었습니다");
   };
 
-  const handleStartEditName = () => {
-    setNameInput(profile?.username ?? "");
-    setEditingName(true);
-  };
-
-  const handleSaveName = async () => {
-    const trimmed = nameInput.trim();
-    if (!trimmed) {
-      toast("닉네임을 입력해주세요", "error");
-      return;
-    }
-    if (trimmed === profile?.username) {
-      setEditingName(false);
-      return;
-    }
-    setSavingName(true);
-    try {
-      await updateUsername(trimmed);
-      setEditingName(false);
-      toast("닉네임이 변경되었습니다");
-    } catch (e) {
-      toast(toFriendlyMessage(e, "닉네임 변경에 실패했습니다"), "error");
-    } finally {
-      setSavingName(false);
-    }
-  };
-
   const handleRegenerateCode = async () => {
     if (!squad?.id) return;
     setRegenerating(true);
@@ -225,13 +201,6 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
     onClose();
   };
 
-  const handleLogoUpload = async (url: string) => {
-    if (!squad?.id) return;
-    const { error } = await supabase.from("squads").update({ logo_url: url }).eq("id", squad.id);
-    if (error) throw error;
-    updateSquadLogo(url);
-  };
-
   const handleSignOut = async () => {
     onClose();
     // signOut을 먼저 호출해 user=null → AuthPage로 전환한 뒤 squad 정리
@@ -289,70 +258,38 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
 
           {/* 계정 헤더 */}
           <div className="flex items-center gap-3 mb-6 px-1">
-            {/* 아바타 — 클릭 시 사진 변경 */}
-            {user && (
-              <AvatarUploader
-                currentUrl={profile?.avatar_url}
-                fallbackText={avatarLetter}
-                basePath={`profiles/${user.id}`}
-                onUploaded={updateAvatarUrl}
-                size={48}
-                shape="square"
-                showLabel={false}
-              />
-            )}
+            {/* 아바타 — 표시 전용 */}
+            <div
+              className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+              style={{ background: "rgba(13,242,62,0.10)", border: "1px solid rgba(13,242,62,0.20)" }}
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              ) : (
+                <span className="text-lg font-black text-primary">{avatarLetter}</span>
+              )}
+            </div>
             {/* 이름 / 이메일 */}
             <div className="flex-1 min-w-0">
-              {editingName ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    autoFocus
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveName();
-                      if (e.key === "Escape") setEditingName(false);
-                    }}
-                    disabled={savingName}
-                    maxLength={30}
-                    className="flex-1 min-w-0 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1 text-sm font-black text-white outline-none focus:border-primary/50"
-                    placeholder="닉네임"
-                  />
-                  <button
-                    onClick={handleSaveName}
-                    disabled={savingName}
-                    aria-label="닉네임 저장"
-                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary/15 text-primary active:scale-90 disabled:opacity-40"
-                  >
-                    <span className="material-icons" style={{ fontSize: 16 }} aria-hidden="true">
-                      {savingName ? "refresh" : "check"}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setEditingName(false)}
-                    disabled={savingName}
-                    aria-label="닉네임 편집 취소"
-                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 text-white/50 active:scale-90 disabled:opacity-40"
-                  >
-                    <span className="material-icons" style={{ fontSize: 16 }} aria-hidden="true">close</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <p className="text-white font-black text-base uppercase tracking-wide truncate">
-                    {profile?.username || "사용자"}
-                  </p>
-                  <button
-                    onClick={handleStartEditName}
-                    aria-label="닉네임 편집"
-                    className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/60 transition-colors active:scale-90"
-                  >
-                    <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">edit</span>
-                  </button>
-                </div>
-              )}
+              <p className="text-white font-black text-base uppercase tracking-wide truncate">
+                {profile?.username || "사용자"}
+              </p>
               <p className="text-white/30 text-xs truncate mt-0.5">{user?.email}</p>
             </div>
+            {/* 편집 아이콘 — 사진 + 닉네임 모달 트리거 */}
+            <button
+              onClick={() => setShowAccountEdit(true)}
+              aria-label="내 프로필 편집"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors active:scale-90 flex-shrink-0"
+            >
+              <span className="material-icons text-base" aria-hidden="true">edit</span>
+            </button>
           </div>
 
           {/* === CURRENT SQUAD === */}
@@ -360,19 +297,38 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
             <>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">현재 동호회</p>
               <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4 mb-5">
-                {/* 로고 + 동호회 이름 + 권한 */}
+                {/* 로고 + 동호회 이름 + 편집 + 권한 */}
                 <div className="flex items-center gap-3">
-                  <AvatarUploader
-                    currentUrl={squad.logoUrl}
-                    fallbackText={currentClubName}
-                    basePath={`squads/${squad.id}`}
-                    onUploaded={handleLogoUpload}
-                    size={40}
-                    shape="square"
-                    showLabel={false}
-                    disabled={!isOwner}
-                  />
+                  {/* 로고 — 표시 전용 (변경은 우측 ✏️ 아이콘) */}
+                  <div
+                    className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+                    style={{ background: "rgba(13,242,62,0.10)", border: "1px solid rgba(13,242,62,0.20)" }}
+                  >
+                    {squad.logoUrl ? (
+                      <img
+                        src={squad.logoUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <span className="text-sm font-black text-primary">
+                        {currentClubName.slice(0, 1) || "?"}
+                      </span>
+                    )}
+                  </div>
                   <p className="flex-1 text-white font-black text-base uppercase tracking-wide truncate">{currentClubName}</p>
+                  {/* 운영자만 동호회 정보 편집 가능 */}
+                  {isOwner && (
+                    <button
+                      onClick={() => setShowSquadEdit(true)}
+                      aria-label="동호회 정보 편집"
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors active:scale-90 flex-shrink-0"
+                    >
+                      <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">edit</span>
+                    </button>
+                  )}
                   {currentClub ? (
                     <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
                       style={{ background: isOwner ? "rgba(13,242,62,0.12)" : "rgba(255,255,255,0.05)", color: isOwner ? "#0DF23E" : "rgba(255,255,255,0.5)" }}>
@@ -572,6 +528,16 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
           </div>
         </div>
       </div>
+
+      {/* 내 프로필 편집 모달 */}
+      {showAccountEdit && (
+        <AccountEditModal onClose={() => setShowAccountEdit(false)} />
+      )}
+
+      {/* 동호회 정보 편집 모달 */}
+      {showSquadEdit && (
+        <SquadEditModal onClose={() => setShowSquadEdit(false)} />
+      )}
     </>,
     document.body
   );
