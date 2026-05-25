@@ -245,6 +245,9 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       matches: [...state.matches, newMatch].sort(
         (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
       ),
+      // 새 매치의 attendees 를 빈 배열로 초기화 → SchedulePage 의 보강 effect 불필요
+      // (이 한 줄로 N+1 loadAttendees 호출이 사라진다)
+      attendees: { ...state.attendees, [newMatch.id]: [] },
     }));
 
     // 비동기로 푸시 알림 전송 (실패해도 경기 생성에 영향 없음)

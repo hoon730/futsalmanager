@@ -86,13 +86,8 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
     return () => document.removeEventListener('keydown', handle);
   }, [showAllAnnouncements]);
 
-  // loadMatches가 한 번에 attendees까지 로드하므로 별도 N+1 effect 불필요.
-  // createMatch 직후 새 match만 attendees 비어있을 수 있으니 보강.
-  const matchIdsKey = matches.map((m) => m.id).join(",");
-  useEffect(() => {
-    matches.forEach((m) => { if (!attendees[m.id]) loadAttendees(m.id); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchIdsKey]);
+  // loadMatches 가 한 번에 모든 attendees 를 로드하고, createMatch 도 새 매치를
+  // 빈 attendees 로 초기화하므로 N+1 보강 effect 는 더 이상 필요하지 않음.
 
   useEffect(() => {
     if (!user || !squad?.id) return;
