@@ -57,6 +57,8 @@ const Layout = () => {
   // 경기 목록 미리 로드 (배지용)
   useEffect(() => {
     if (squad?.id && matches.length === 0) loadMatches(squad.id);
+    // squad 전환 시점 한 번만 — matches.length / loadMatches 변경 시 재로드 X
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [squad?.id]);
 
   // 알림 배지: 마지막 일정 탭 방문 이후 추가된 경기 수
@@ -76,9 +78,8 @@ const Layout = () => {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     if (tab === "schedule") {
-      // eslint-disable-next-line react-hooks/purity
-      const now = Date.now();
-      localStorage.setItem(LAST_SCHEDULE_VISIT_KEY, String(now));
+      // 이벤트 핸들러 안이라 purity 규칙 위반 없음 — Date.now() 그대로 호출
+      localStorage.setItem(LAST_SCHEDULE_VISIT_KEY, String(Date.now()));
     }
   };
 
