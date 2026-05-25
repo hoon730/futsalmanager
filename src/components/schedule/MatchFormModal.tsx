@@ -4,6 +4,7 @@ import type { IMatch } from "@/types";
 import PlaceSearchInput from "@/components/PlaceSearchInput";
 import { toFriendlyMessage } from "@/lib/errorMessage";
 import { supabase } from "@/lib/supabase";
+import { computeRsvpDeadline, deadlineToHoursBefore } from "./scheduleUtils";
 
 type MatchInput = Omit<IMatch, "id" | "createdAt" | "squadId">;
 
@@ -59,6 +60,12 @@ export function MatchFormModal(props: MatchFormModalProps) {
   const [error, setError] = useState("");
   // 반복 일정 (create 모드 전용)
   const [repeatWeeks, setRepeatWeeks] = useState(0);
+  // 참가 신청 마감: 경기 시각 N시간 전 (0 = 마감 없음)
+  // edit 모드에서는 기존 rsvp_deadline 을 역산해서 초기화
+  const initialRsvpHours = isEdit
+    ? deadlineToHoursBefore(initial!.matchDate, initial!.rsvpDeadline)
+    : 0;
+  const [rsvpHoursBefore, setRsvpHoursBefore] = useState<number>(initialRsvpHours);
   // 커스텀 시간 드롭다운
   const [showTimePicker, setShowTimePicker] = useState(false);
   const timePickerRef = useRef<HTMLDivElement>(null);
@@ -132,13 +139,15 @@ export function MatchFormModal(props: MatchFormModalProps) {
         for (let i = 0; i < totalCount; i++) {
           const date = new Date(matchDateIso);
           date.setDate(date.getDate() + i * 7);
+          const dateIso = date.toISOString();
           await props.onSubmit(props.squadId, {
             title: "",
-            matchDate: date.toISOString(),
+            matchDate: dateIso,
             location: location || undefined,
             maxPlayers,
             notes: notes || undefined,
             createdBy: props.userId,
+            rsvpDeadline: computeRsvpDeadline(dateIso, rsvpHoursBefore),
           });
         }
         props.onClose();
@@ -150,6 +159,7 @@ export function MatchFormModal(props: MatchFormModalProps) {
           location: location || undefined,
           maxPlayers,
           notes: notes || undefined,
+          rsvpDeadline: computeRsvpDeadline(matchDateIso, rsvpHoursBefore),
         });
         // edit 모드에서도 저장 성공 후 모달 자동 닫기 (부모 wrapper에만 의존하지 않도록)
         props.onClose();
@@ -310,6 +320,42 @@ export function MatchFormModal(props: MatchFormModalProps) {
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all resize-none"
             />
           </div>
+          {/* 참가 신청 마감 (선택) — 경기 시각 기준 N시간 전 */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">
+              참가 신청 마감 (선택)
+            </label>
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                { value: 0,  label: "마감 없음" },
+                { value: 1,  label: "1시간 전" },
+                { value: 3,  label: "3시간 전" },
+                { value: 6,  label: "6시간 전" },
+                { value: 12, label: "12시간 전" },
+                { value: 24, label: "24시간 전" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setRsvpHoursBefore(opt.value)}
+                  className="px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95 border"
+                  style={
+                    rsvpHoursBefore === opt.value
+                      ? { backgroundColor: "rgba(13,242,62,0.15)", color: "#0DF23E", borderColor: "rgba(13,242,62,0.3)" }
+                      : { backgroundColor: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", borderColor: "rgba(255,255,255,0.08)" }
+                  }
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {rsvpHoursBefore > 0 && (
+              <p className="text-[10px] text-primary/60 mt-1.5">
+                마감 이후엔 일반 멤버는 참석 응답을 변경할 수 없습니다.
+              </p>
+            )}
+          </div>
+
           {/* 반복 일정 — create 모드 전용 */}
           {!isEdit && (
             <div>

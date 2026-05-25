@@ -1,5 +1,5 @@
 import type { IMatch, IMatchAttendee, IMember } from "@/types";
-import { STATUS_CONFIG, getDDay } from "./scheduleUtils";
+import { STATUS_CONFIG, getDDay, getRsvpInfo } from "./scheduleUtils";
 
 interface MatchCardProps {
   match: IMatch;
@@ -20,6 +20,7 @@ export function MatchCard({ match, attendees, mercenaries, userId, isPast, onOpe
   const statusCfg = myStatus ? STATUS_CONFIG[myStatus] : null;
   const dday = !isPast ? getDDay(match.matchDate) : null;
   const isDDay = dday === "D-Day";
+  const rsvp = !isPast ? getRsvpInfo(match.rsvpDeadline) : { hasDeadline: false, isClosed: false, label: "", remainingMs: 0 };
 
   const isMine = myStatus === "attending" && !isPast;
   const weekday = date.toLocaleDateString("ko-KR", { weekday: "short" });
@@ -54,6 +55,11 @@ export function MatchCard({ match, attendees, mercenaries, userId, isPast, onOpe
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {isFull && (
                   <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-500/15 text-red-400/80">마감</span>
+                )}
+                {!isFull && rsvp.isClosed && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-white/[0.08] text-white/40">
+                    응답 마감
+                  </span>
                 )}
                 {dday && !isFull && (
                   <span
