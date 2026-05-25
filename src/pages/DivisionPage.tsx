@@ -102,18 +102,26 @@ const DivisionPage = () => {
 
 
   const todayAttendees = todayMatch ? (attendees[todayMatch.id] || []) : [];
-  const todayMatchMercenaries = todayMatch ? (matchMercenaries[todayMatch.id] || []) : [];
+  // todayMatchMercenaries 는 매 렌더마다 새 배열이라 effect deps 안정성을 위해 useMemo
+  const todayMatchMercenaries = useMemo(
+    () => (todayMatch ? (matchMercenaries[todayMatch.id] || []) : []),
+    [todayMatch, matchMercenaries],
+  );
 
   useEffect(() => {
     if (squad?.id && matches.length === 0) {
       loadMatches(squad.id);
     }
+    // squad 전환 시점만 — store action / matches.length 변화엔 무반응
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [squad?.id]);
 
   useEffect(() => {
     if (todayMatch && !attendees[todayMatch.id]) {
       loadAttendees(todayMatch.id);
     }
+    // todayMatch 변경 시에만 한 번 호출 — attendees 전체 변화엔 재실행 X
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayMatch?.id]);
 
   // 오늘 경기 참석자가 로드되면 자동으로 참석 현황에 체크
@@ -163,8 +171,12 @@ const DivisionPage = () => {
     }
   };
 
-  const members = squad?.members || [];
-  const sortedMembers = useMemo(() => [...members].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en'])), [members]);
+  const sortedMembers = useMemo(() => {
+    const list = squad?.members ?? [];
+    return [...list].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en']));
+  }, [squad?.members]);
+  // 합집합/선택해제 분기에서 사용 — useMemo 와 별개로 squad members 참조
+  const members = squad?.members ?? [];
   const sortedMercenaries = useMemo(() => [...mercenaries].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en'])), [mercenaries]);
 
   const attendingCount = selectedParticipants.length;

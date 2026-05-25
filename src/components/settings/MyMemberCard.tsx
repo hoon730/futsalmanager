@@ -15,7 +15,6 @@ import type { IMember } from "@/types";
 export function MyMemberCard() {
   const { user, updateLinkedMember } = useAuthStore();
   const { squad, updateMember } = useSquadStore();
-  const members = squad?.members || [];
 
   const [linkedMemberId, setLinkedMemberId] = useState<string | null>(
     (user?.user_metadata?.member_id as string) ?? null
@@ -31,12 +30,12 @@ export function MyMemberCard() {
   const [editSaving, setEditSaving] = useState(false);
 
   // 정규 멤버 (용병 제외) — LinkMemberModal 선수 후보 및 me 매칭에 사용
-  const membersOnly = useMemo(() =>
-    [...members.filter((m) => !m.isMercenary)].sort((a, b) =>
+  const membersOnly = useMemo(() => {
+    const list = squad?.members ?? [];
+    return [...list.filter((m) => !m.isMercenary)].sort((a, b) =>
       a.name.localeCompare(b.name, ["ko", "en"])
-    ),
-    [members]
-  );
+    );
+  }, [squad?.members]);
 
   // auth user 가 갱신되면 linkedMemberId 도 동기화
   useEffect(() => {

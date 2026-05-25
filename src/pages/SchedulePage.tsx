@@ -69,6 +69,8 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
     if (!squad?.id) return;
     loadMatches(squad.id);
     loadAnnouncements(squad.id);
+    // squad 전환 시점만 트리거 — store action 변화에는 반응 X
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [squad?.id]);
 
   // 공지 모달 ESC 닫기
@@ -105,6 +107,8 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
         if (!cancelled && data) setUserRole(data.role);
       });
     return () => { cancelled = true; };
+    // user / squad 변경 시점만 — user 객체 자체 변경엔 무반응 (id 만 추적)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, squad?.id]);
 
   const handleOpenDetail = (match: IMatch) => {

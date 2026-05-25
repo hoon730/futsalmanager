@@ -34,6 +34,8 @@ export default function SettingsPage() {
       if (!cancelled) setUserRole(data?.role ?? null);
     })();
     return () => { cancelled = true; };
+    // user / squad 변경 시점만 추적
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, squad?.id]);
 
   const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";

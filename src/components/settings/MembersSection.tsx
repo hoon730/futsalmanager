@@ -19,15 +19,16 @@ const ITEMS_PER_PAGE = 5;
 
 export function MembersSection({ isOwnerOrAdmin }: Props) {
   const { squad, addMember, removeMember, updateMember } = useSquadStore();
-  const members = squad?.members || [];
 
-  // 정규 멤버만 (용병 제외), 가나다 정렬
-  const membersOnly = useMemo(() =>
-    [...members.filter((m) => !m.isMercenary)].sort((a, b) =>
+  // 정규 멤버만 (용병 제외), 가나다 정렬 — useMemo 내부에서 직접 squad?.members 참조
+  const membersOnly = useMemo(() => {
+    const list = squad?.members ?? [];
+    return [...list.filter((m) => !m.isMercenary)].sort((a, b) =>
       a.name.localeCompare(b.name, ["ko", "en"])
-    ),
-    [members]
-  );
+    );
+  }, [squad?.members]);
+  // 중복 가입 검사 등 다른 곳에서도 squad 멤버 전체가 필요
+  const members = squad?.members ?? [];
   const totalPages = Math.ceil(membersOnly.length / ITEMS_PER_PAGE);
 
   // 페이지네이션 + 드래그 스크롤
