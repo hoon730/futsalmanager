@@ -164,17 +164,41 @@ export function MatchDetailSheet({
         await onUpdateComment(editingComment.id, text);
         setEditingComment(null);
       } else {
-        await onAddComment(text, replyTo?.parentId);
+        const submittedReplyTo = replyTo; // 비동기 호출 전에 캡처 (아래에서 setReplyTo(null) 호출됨)
+        await onAddComment(text, submittedReplyTo?.parentId);
         setReplyTo(null);
+
+        const commenterName = squad?.members.find((m) => m.linkedUserId === userId)?.name ?? "";
+
         // @멘션 푸시 알림 (실패해도 댓글 작성에 영향 없음)
         const targetUserIds = parseMentionedUserIds(text);
         if (targetUserIds.length > 0 && squad) {
-          const commenterName = squad.members.find((m) => m.linkedUserId === userId)?.name ?? "";
           supabase.functions
             .invoke("send-mention-notification", {
               body: { targetUserIds, matchId: match.id, squadId: squad.id, commenterName },
             })
             .catch((e) => console.warn("[mention-push]", e));
+        }
+
+        // 답글 푸시 알림 — 부모 댓글 작성자에게 (자기 자신 답글은 제외)
+        if (submittedReplyTo?.parentId && squad) {
+          // 부모는 최상위 댓글이거나 댓글의 답글 → 둘 다에서 찾기
+          const parent =
+            comments.find((c) => c.id === submittedReplyTo.parentId) ??
+            comments.flatMap((c) => c.replies ?? []).find((c) => c.id === submittedReplyTo.parentId);
+          if (parent && parent.userId !== userId) {
+            supabase.functions
+              .invoke("send-reply-notification", {
+                body: {
+                  matchId: match.id,
+                  squadId: squad.id,
+                  parentAuthorUserId: parent.userId,
+                  commenterName,
+                  replyPreview: text,
+                },
+              })
+              .catch((e) => console.warn("[reply-push]", e));
+          }
         }
       }
       setCommentText("");
