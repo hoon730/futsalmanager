@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AvatarUploader } from "@/components/AvatarUploader";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 type Position = "GK" | "DF" | "MF" | "FW";
 
@@ -30,6 +31,8 @@ export function MemberEditModal({
   const [localName, setLocalName] = useState(name);
   const [localPosition, setLocalPosition] = useState<Position | null>(position);
   const [localSkill, setLocalSkill] = useState(skillLevel);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
     const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -53,11 +56,15 @@ export function MemberEditModal({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="member-edit-title"
         className="w-full max-w-sm rounded-2xl p-6"
         style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">선수 편집</h3>
+        <h3 id="member-edit-title" className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">선수 편집</h3>
         <p className="text-white/40 text-xs mb-5">사진 · 이름 · 포지션 · 실력을 수정합니다</p>
 
         {/* 사진 업로드 */}

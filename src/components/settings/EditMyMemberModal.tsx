@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AvatarUploader } from "@/components/AvatarUploader";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 type Position = "GK" | "DF" | "MF" | "FW";
 
@@ -29,6 +30,9 @@ export function EditMyMemberModal({
   onClose,
   onSubmit,
 }: EditMyMemberModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, !saving);
+
   useEffect(() => {
     if (saving) return;
     const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -42,11 +46,15 @@ export function EditMyMemberModal({
       onClick={() => !saving && onClose()}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-my-member-title"
         className="w-full max-w-sm rounded-2xl p-6"
         style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 정보</h3>
+        <h3 id="edit-my-member-title" className="text-lg font-black italic uppercase tracking-tighter text-white mb-1">내 선수 정보</h3>
         <p className="text-white/40 text-xs mb-5">동호회에 표시될 사진 · 이름 · 포지션을 수정합니다</p>
 
         {/* 사진 업로드 */}

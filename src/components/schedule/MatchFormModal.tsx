@@ -4,6 +4,7 @@ import type { IMatch } from "@/types";
 import PlaceSearchInput from "@/components/PlaceSearchInput";
 import { toFriendlyMessage } from "@/lib/errorMessage";
 import { supabase } from "@/lib/supabase";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { computeRsvpDeadline, deadlineToHoursBefore, defaultMatchTitle } from "./scheduleUtils";
 
 type MatchInput = Omit<IMatch, "id" | "createdAt" | "squadId">;
@@ -69,6 +70,9 @@ export function MatchFormModal(props: MatchFormModalProps) {
   // 커스텀 시간 드롭다운
   const [showTimePicker, setShowTimePicker] = useState(false);
   const timePickerRef = useRef<HTMLDivElement>(null);
+  // 포커스 트랩용 컨테이너 ref
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   // 즐겨찾기 장소
   const [savedVenues, setSavedVenues] = useState<SavedVenue[]>([]);
@@ -186,11 +190,15 @@ export function MatchFormModal(props: MatchFormModalProps) {
       onClick={props.onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-form-title"
         className="w-full max-w-sm rounded-2xl p-6 overflow-y-auto"
         style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)", maxHeight: "90vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-black italic uppercase tracking-tighter text-white mb-1">
+        <h2 id="match-form-title" className="text-xl font-black italic uppercase tracking-tighter text-white mb-1">
           {isEdit ? "경기 수정" : "경기 추가"}
         </h2>
         <div className="h-0.5 w-6 bg-primary rounded-full shadow-[0_0_8px_#0df23e] mb-6" />
