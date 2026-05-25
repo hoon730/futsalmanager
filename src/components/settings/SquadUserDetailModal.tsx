@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import type { ISquadUserRow } from "./types";
 
 interface SquadUserDetailModalProps {
@@ -10,6 +11,9 @@ interface SquadUserDetailModalProps {
 }
 
 export function SquadUserDetailModal({ user, onClose, onChangeRole, onRemove }: SquadUserDetailModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+
   useEffect(() => {
     const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handle);
@@ -22,6 +26,10 @@ export function SquadUserDetailModal({ user, onClose, onChangeRole, onRemove }: 
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="squad-user-detail-title"
         className="w-full max-w-sm rounded-2xl overflow-hidden"
         style={{ background: "rgba(22,28,22,0.98)", border: "1px solid rgba(13,242,62,0.15)" }}
         onClick={(e) => e.stopPropagation()}
@@ -32,11 +40,12 @@ export function SquadUserDetailModal({ user, onClose, onChangeRole, onRemove }: 
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-base font-bold"
               style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
+              aria-hidden="true"
             >
               {user.username[0]?.toUpperCase() ?? "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-black text-base truncate">{user.username}</p>
+              <p id="squad-user-detail-title" className="text-white font-black text-base truncate">{user.username}</p>
               <p
                 className="text-[10px] font-black uppercase tracking-widest mt-0.5"
                 style={{
