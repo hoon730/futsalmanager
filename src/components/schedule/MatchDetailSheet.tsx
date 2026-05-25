@@ -9,6 +9,7 @@ import { toFriendlyMessage } from "@/lib/errorMessage";
 import { CommentItem } from "./CommentItem";
 import { MatchFormModal } from "./MatchFormModal";
 import { supabase } from "@/lib/supabase";
+import { getRsvpInfo } from "./scheduleUtils";
 
 interface MatchDetailSheetProps {
   match: IMatch;
@@ -201,6 +202,9 @@ export function MatchDetailSheet({
   const isPast = new Date(match.matchDate) < new Date();
   const totalAttending = attending.length + mercenaries.length;
   const isOverCapacity = totalAttending >= match.maxPlayers;
+  const rsvp = getRsvpInfo(match.rsvpDeadline);
+  // 마감 후엔 일반 멤버 RSVP 변경 차단. 관리자/owner 는 지각 응답 처리를 위해 허용.
+  const rsvpLocked = rsvp.isClosed && !isAdmin;
 
   const date = new Date(match.matchDate);
   const dateStr = date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
@@ -416,7 +420,7 @@ export function MatchDetailSheet({
                   return opts.map((opt) => {
                     const isSelected = myStatus === opt.key;
                     const percent = Math.min((opt.count / (match.maxPlayers || 1)) * 100, 100);
-                    const disabled = isPast || rsvpLoading || (opt.key === "attending" && isOverCapacity && !isSelected);
+                    const disabled = isPast || rsvpLoading || rsvpLocked || (opt.key === "attending" && isOverCapacity && !isSelected);
                     return (
                       <button
                         key={opt.key}
@@ -460,6 +464,19 @@ export function MatchDetailSheet({
                   <p className="text-[11px] text-white/25 flex items-center justify-center gap-1 pt-2">
                     <span className="material-icons" style={{ fontSize: 13 }}>lock</span>
                     정원 마감 — 대기 신청만 가능합니다
+                  </p>
+                )}
+                {!isPast && rsvp.hasDeadline && (
+                  <p
+                    className="text-[11px] flex items-center justify-center gap-1 pt-2"
+                    style={{ color: rsvp.isClosed ? "rgba(255,255,255,0.3)" : "rgba(13,242,62,0.6)" }}
+                  >
+                    <span className="material-icons" style={{ fontSize: 13 }}>
+                      {rsvp.isClosed ? "lock" : "schedule"}
+                    </span>
+                    {rsvp.isClosed
+                      ? (isAdmin ? "응답 마감됨 (관리자는 변경 가능)" : "응답 마감되어 변경할 수 없습니다")
+                      : rsvp.label}
                   </p>
                 )}
               </div>

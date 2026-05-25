@@ -26,3 +26,58 @@ export function getDDay(matchDate: string): string {
   if (diff === 0) return "D-Day";
   return `D-${diff}`;
 }
+
+/**
+ * 참가 신청 마감 정보 계산.
+ * - 마감 시각이 없으면 hasDeadline: false (제약 없음)
+ * - 마감 시각이 지났으면 isClosed: true
+ * - 남은 시간을 한국어 라벨로 변환
+ */
+export function getRsvpInfo(rsvpDeadline?: string | null): {
+  hasDeadline: boolean;
+  isClosed: boolean;
+  remainingMs: number;
+  label: string;
+} {
+  if (!rsvpDeadline) {
+    return { hasDeadline: false, isClosed: false, remainingMs: 0, label: "" };
+  }
+  const deadlineMs = new Date(rsvpDeadline).getTime();
+  const remainingMs = deadlineMs - Date.now();
+  const isClosed = remainingMs <= 0;
+
+  if (isClosed) return { hasDeadline: true, isClosed: true, remainingMs, label: "참가 마감됨" };
+
+  const minutes = Math.floor(remainingMs / 60_000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  let label: string;
+  if (days >= 1) label = `참가 마감 ${days}일 전`;
+  else if (hours >= 1) label = `참가 마감 ${hours}시간 전`;
+  else label = `참가 마감 ${Math.max(minutes, 1)}분 전`;
+  return { hasDeadline: true, isClosed: false, remainingMs, label };
+}
+
+/**
+ * "경기 시각 N시간 전" → ISO 타임스탬프 변환.
+ * hoursBefore <= 0 이면 null (마감 없음)
+ */
+export function computeRsvpDeadline(matchDateIso: string, hoursBefore: number): string | null {
+  if (!matchDateIso || hoursBefore <= 0) return null;
+  const matchMs = new Date(matchDateIso).getTime();
+  if (Number.isNaN(matchMs)) return null;
+  return new Date(matchMs - hoursBefore * 3600 * 1000).toISOString();
+}
+
+/**
+ * 기존 ISO 마감 시각을 "경기 N시간 전" 형태로 역산 (수정 모드 초기값용).
+ * 매핑되지 않는 값은 0 반환 ("마감 없음").
+ */
+export function deadlineToHoursBefore(matchDateIso: string, rsvpDeadline?: string | null): number {
+  if (!rsvpDeadline) return 0;
+  const matchMs = new Date(matchDateIso).getTime();
+  const deadlineMs = new Date(rsvpDeadline).getTime();
+  if (Number.isNaN(matchMs) || Number.isNaN(deadlineMs)) return 0;
+  const diffHours = Math.round((matchMs - deadlineMs) / (3600 * 1000));
+  return diffHours > 0 ? diffHours : 0;
+}

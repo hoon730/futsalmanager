@@ -57,7 +57,7 @@ export interface IMatch {
   notes?: string;
   createdBy?: string;
   createdAt: string;
-  rsvpDeadline?: string; // 참가 신청 마감 시각 (ISO 8601)
+  rsvpDeadline?: string | null; // 참가 신청 마감 시각 (ISO 8601). null = 마감 해제
 }
 
 export interface IMatchAttendee {
