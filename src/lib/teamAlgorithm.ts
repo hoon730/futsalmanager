@@ -1,4 +1,5 @@
 import type { IMember, IFixedTeam, ITeammateHistory } from "@/types";
+import { logger } from "@/lib/logger";
 
 interface IDivisionResult {
   teams: IMember[][];
@@ -18,7 +19,7 @@ export const divideTeamsWithConstraints = async (
     return null;
   }
 
-  console.log("팀 나누기 알고리즘 시작:", {
+  logger.log("팀 나누기 알고리즘 시작:", {
     참가자: players.map((p) => p.name),
     팀개수: teamCount,
     고정팀수: fixedTeams.length,
@@ -54,7 +55,7 @@ export const divideTeamsWithConstraints = async (
     }
   }
 
-  console.log("팀 나누기 결과:", {
+  logger.log("팀 나누기 결과:", {
     성공한시도: successfulAttempts,
     최고점수: bestScore,
     결과: bestDivision ? "성공" : "실패",
@@ -101,11 +102,11 @@ const attemptDivision = (
 
     // 그룹의 모든 인원이 아직 배치되지 않았는지 확인
     if (groupPlayers.length !== group.playerIds.length) {
-      console.log("고정 그룹 일부 멤버가 이미 배치됨, 스킵:", group);
+      logger.log("고정 그룹 일부 멤버가 이미 배치됨, 스킵:", group);
       continue;
     }
 
-    console.log("고정 그룹 배치 시도:", {
+    logger.log("고정 그룹 배치 시도:", {
       그룹크기: groupPlayers.length,
       멤버: groupPlayers.map((p) => p.name),
     });
@@ -120,14 +121,14 @@ const attemptDivision = (
         teams[i].push(...groupPlayers);
         groupPlayers.forEach((p) => assigned.add(p.id));
         placed = true;
-        console.log(`고정 그룹을 팀 ${i}에 배치 성공`);
+        logger.log(`고정 그룹을 팀 ${i}에 배치 성공`);
         break;
       }
     }
 
     // 고정 그룹을 배치할 수 없으면 실패
     if (!placed) {
-      console.log("고정 그룹 배치 실패, 이번 시도 폐기");
+      logger.log("고정 그룹 배치 실패, 이번 시도 폐기");
       return null;
     }
   }

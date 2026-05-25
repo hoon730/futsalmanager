@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { logger } from "@/lib/logger";
 import { isChunkLoadError } from "@/lib/lazyWithRetry";
 
 interface Props {
@@ -37,7 +38,7 @@ export class PageErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: unknown) {
-    console.error("[PageErrorBoundary]", error, info);
+    logger.error("[PageErrorBoundary]", error, info);
   }
 
   handleRetry = () => {

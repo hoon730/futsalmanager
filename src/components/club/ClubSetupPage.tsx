@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
 import { toFriendlyMessage } from "@/lib/errorMessage";
 import { useAuthStore } from "@/stores/authStore";
@@ -69,7 +70,7 @@ export const ClubSetupPage = () => {
           );
         }
       } catch (e) {
-        console.error("기존 동호회 목록 조회 실패:", e);
+        logger.error("기존 동호회 목록 조회 실패:", e);
       } finally {
         setMyClubsLoading(false);
       }

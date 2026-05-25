@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
 import { useSquadStore } from "@/stores/squadStore";
 import { useDivisionStore } from "@/stores/divisionStore";
@@ -32,7 +33,7 @@ export const useAuthSquadLoad = (userId: string | null | undefined) => {
       // Promise.all 내 쿼리 중 하나가 hang하면 finally가 실행되지 않아 무한 로딩 발생.
       // 10초 안전망 타이머로 강제 해제한다.
       const safetyTimer = setTimeout(() => {
-        console.warn("동호회 데이터 로드 타임아웃 (10초) — 로딩 강제 해제");
+        logger.warn("동호회 데이터 로드 타임아웃 (10초) — 로딩 강제 해제");
         setIsLoading(false);
       }, 10_000);
       try {
@@ -70,7 +71,7 @@ export const useAuthSquadLoad = (userId: string | null | undefined) => {
           updateTeammateHistory(history);
         }
       } catch (e) {
-        console.error("동호회 데이터 로드 실패:", e);
+        logger.error("동호회 데이터 로드 실패:", e);
       } finally {
         clearTimeout(safetyTimer);
         setIsLoading(false);

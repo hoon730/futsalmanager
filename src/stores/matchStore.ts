@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/stores/toastStore";
 import { toFriendlyMessage } from "@/lib/errorMessage";
@@ -203,7 +204,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         set((state) => ({ attendees: { ...state.attendees, ...grouped } }));
       }
     } catch (e) {
-      console.error("경기 로드 실패:", e);
+      logger.error("경기 로드 실패:", e);
       toast(toFriendlyMessage(e, "경기 일정을 불러오지 못했습니다"), "error");
     } finally {
       set({ isLoading: false });
@@ -264,7 +265,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
       })
       .then(({ data, error }) => {
         if (error) {
-          console.error("[push] 알림 전송 실패:", error);
+          logger.error("[push] 알림 전송 실패:", error);
           toast(toFriendlyMessage(error, "경기는 등록됐지만 알림 전송에 실패했습니다"), "error");
           return;
         }
@@ -279,7 +280,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
         }
       })
       .catch((e) => {
-        console.error("[push] invoke 예외:", e);
+        logger.error("[push] invoke 예외:", e);
         toast(toFriendlyMessage(e, "알림 전송 중 오류가 발생했습니다"), "error");
       });
   },
@@ -444,7 +445,7 @@ export const useMatchStore = create<IMatchStore>()((set, get) => ({
     // 부모가 루트가 아닌 경우(중첩 또는 삭제된 부모) — UI에 안 나타나는 데이터가 생기지 않도록 경고
     const orphans = replyRows.filter((r) => r.parent_id && !rootIds.has(r.parent_id));
     if (orphans.length > 0) {
-      console.warn(
+      logger.warn(
         `[matchStore] 댓글 ${orphans.length}개가 부모를 찾지 못해 표시되지 않습니다 (match ${matchId})`,
         orphans.map((o) => ({ id: o.id, parent_id: o.parent_id })),
       );
