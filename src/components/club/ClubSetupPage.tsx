@@ -371,32 +371,29 @@ const JoinClub = ({ onBack, initialCode = "" }: { onBack: () => void; initialCod
     setError("");
 
     try {
-      // RLS 우회용 함수 호출 (가입 전이라도 invite_code로 squad 조회 가능)
-      const { data: squadList, error: squadErr } = await supabase
-        .rpc("find_squad_by_invite_code", { p_code: code.toUpperCase().trim() });
+      // 단일 SECURITY DEFINER RPC 가 코드 검증 + rate limit + 멤버 INSERT 까지 처리.
+      // 직접 squad_members.insert 호출은 RLS 정책 제거 후 차단됨.
+      const { data: joinResult, error: joinErr } = await supabase
+        .rpc("join_squad_with_code", { p_code: code.toUpperCase().trim() });
 
-      const squad = Array.isArray(squadList) ? squadList[0] : null;
-
-      if (squadErr || !squad) {
+      if (joinErr) {
+        // P0002 = invalid code, P0001 = rate limit, 그 외는 일반 에러
+        if (joinErr.code === "P0002") setError("유효하지 않은 초대 코드입니다.");
+        else setError(toFriendlyMessage(joinErr, "참가에 실패했습니다"));
+        return;
+      }
+      const row = Array.isArray(joinResult) ? joinResult[0] : null;
+      if (!row?.squad_id) {
         setError("유효하지 않은 초대 코드입니다.");
         return;
       }
 
-      const { error: memberErr } = await supabase.from("squad_members").insert({
-        squad_id: squad.id,
-        user_id: user.id,
-        role: "member",
-      });
-
-      // 23505 = unique_violation (이미 가입된 squad). 그 외 에러는 throw.
-      if (memberErr && memberErr.code !== "23505") throw memberErr;
-
       // 전체 데이터 로드 (멤버, 고정팀, 이력 포함)
       const [fullSquad, fixedTeams, divisions, history] = await Promise.all([
-        loadSquadFromSupabase(squad.id),
-        loadFixedTeamsFromSupabase(squad.id),
-        loadDivisionsFromSupabase(squad.id),
-        loadTeammateHistoryFromSupabase(squad.id),
+        loadSquadFromSupabase(row.squad_id),
+        loadFixedTeamsFromSupabase(row.squad_id),
+        loadDivisionsFromSupabase(row.squad_id),
+        loadTeammateHistoryFromSupabase(row.squad_id),
       ]);
 
       if (fullSquad) {
