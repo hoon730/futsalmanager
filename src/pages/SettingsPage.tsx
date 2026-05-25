@@ -85,6 +85,16 @@ export default function SettingsPage() {
     setEditingMember(null);
   };
 
+  /** 멤버 사진 업로드 후 DB + 로컬 store 동기화 */
+  const handleMemberAvatarUpload = async (memberId: string, url: string) => {
+    const { error } = await supabase
+      .from("members")
+      .update({ avatar_url: url })
+      .eq("id", memberId);
+    if (error) throw error;
+    updateMember(memberId, { avatarUrl: url });
+  };
+
   const handleSaveMyMember = async () => {
     const trimmed = editName.trim();
     if (!trimmed) { toast("이름을 입력해주세요", "error"); return; }
@@ -841,11 +851,17 @@ export default function SettingsPage() {
       {/* 관리자 멤버 편집 모달 */}
       {editingMember && isOwnerOrAdmin && (
         <MemberEditModal
+          memberId={editingMember.id}
           name={editingMember.name}
           position={(editingMember.positionKey as "GK" | "DF" | "MF" | "FW") ?? null}
           skillLevel={editingMember.skillLevel ?? 3}
+          avatarUrl={editingMember.avatarUrl}
           onClose={() => setEditingMember(null)}
           onSubmit={handleEditMemberSubmit}
+          onAvatarChange={async (url) => {
+            await handleMemberAvatarUpload(editingMember.id, url);
+            setEditingMember((prev) => prev ? { ...prev, avatarUrl: url } : prev);
+          }}
           onDelete={() => {
             const target = editingMember;
             setEditingMember(null);
@@ -855,13 +871,16 @@ export default function SettingsPage() {
       )}
 
       {/* 내 선수 정보 수정 모달 */}
-      {showEditMyMember && (
+      {showEditMyMember && linkedMemberId && (
         <EditMyMemberModal
+          memberId={linkedMemberId}
           name={editName}
           position={editPosition}
+          avatarUrl={membersOnly.find((m) => m.id === linkedMemberId)?.avatarUrl}
           saving={editSaving}
           onChangeName={setEditName}
           onChangePosition={setEditPosition}
+          onAvatarChange={(url) => handleMemberAvatarUpload(linkedMemberId, url)}
           onClose={() => setShowEditMyMember(false)}
           onSubmit={handleSaveMyMember}
         />

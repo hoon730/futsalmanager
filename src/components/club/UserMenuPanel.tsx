@@ -10,6 +10,7 @@ import { KakaoIcon } from "@/components/icons/KakaoIcon";
 import { ShareMenu } from "@/components/ShareMenu";
 import { toast } from "@/stores/toastStore";
 import { toFriendlyMessage } from "@/lib/errorMessage";
+import { AvatarUploader } from "@/components/AvatarUploader";
 import {
   loadSquadFromSupabase,
   loadFixedTeamsFromSupabase,
@@ -30,7 +31,7 @@ interface Props {
 }
 
 export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
-  const { user, profile, signOut, updateUsername } = useAuthStore();
+  const { user, profile, signOut, updateUsername, updateAvatarUrl } = useAuthStore();
   const { squad, clearSquad, setSquad } = useSquadStore();
   const { setFixedTeams } = useFixedTeamStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
@@ -281,21 +282,18 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
 
           {/* 계정 헤더 */}
           <div className="flex items-center gap-3 mb-6 px-1">
-            {/* 아바타 — 이미지 있으면 보여주고 없으면 글자 fallback */}
-            <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
-              style={{ background: "rgba(13,242,62,0.10)", border: "1px solid rgba(13,242,62,0.20)" }}>
-              {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.username || "프로필"}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              ) : (
-                <span className="text-lg font-black text-primary">{avatarLetter}</span>
-              )}
-            </div>
+            {/* 아바타 — 클릭 시 사진 변경 */}
+            {user && (
+              <AvatarUploader
+                currentUrl={profile?.avatar_url}
+                fallbackText={avatarLetter}
+                basePath={`profiles/${user.id}`}
+                onUploaded={updateAvatarUrl}
+                size={48}
+                shape="square"
+                showLabel={false}
+              />
+            )}
             {/* 이름 / 이메일 */}
             <div className="flex-1 min-w-0">
               {editingName ? (
