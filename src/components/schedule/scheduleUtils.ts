@@ -81,3 +81,19 @@ export function deadlineToHoursBefore(matchDateIso: string, rsvpDeadline?: strin
   const diffHours = Math.round((matchMs - deadlineMs) / (3600 * 1000));
   return diffHours > 0 ? diffHours : 0;
 }
+
+/**
+ * 매치 자동 제목 생성 — "5.25 (월) 19:00 경기" 형식.
+ * MatchFormModal 에서 사용자가 직접 입력하지 않으므로 시각 기반으로 자동 생성.
+ * 표시 측(MatchDetailSheet 등)에서 빈 title fallback 과 일치하는 포맷 유지.
+ */
+export function defaultMatchTitle(matchDateIso: string): string {
+  const d = new Date(matchDateIso);
+  if (Number.isNaN(d.getTime())) return "경기";
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const weekday = d.toLocaleDateString("ko-KR", { weekday: "short" });
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${month}.${day} (${weekday}) ${hh}:${mm} 경기`;
+}

@@ -4,7 +4,7 @@ import type { IMatch } from "@/types";
 import PlaceSearchInput from "@/components/PlaceSearchInput";
 import { toFriendlyMessage } from "@/lib/errorMessage";
 import { supabase } from "@/lib/supabase";
-import { computeRsvpDeadline, deadlineToHoursBefore } from "./scheduleUtils";
+import { computeRsvpDeadline, deadlineToHoursBefore, defaultMatchTitle } from "./scheduleUtils";
 
 type MatchInput = Omit<IMatch, "id" | "createdAt" | "squadId">;
 
@@ -141,7 +141,7 @@ export function MatchFormModal(props: MatchFormModalProps) {
           date.setDate(date.getDate() + i * 7);
           const dateIso = date.toISOString();
           await props.onSubmit(props.squadId, {
-            title: "",
+            title: defaultMatchTitle(dateIso),
             matchDate: dateIso,
             location: location || undefined,
             maxPlayers,
@@ -153,8 +153,9 @@ export function MatchFormModal(props: MatchFormModalProps) {
         props.onClose();
       } else {
         await props.onSubmit({
-          // 제목은 더 이상 사용자 편집 대상이 아님. 기존 값 유지.
-          title: props.match.title,
+          // title 은 사용자 편집 대상이 아님 → 매치 시각 기반으로 자동 재생성
+          // (기존 빈 title 매치도 수정 시점에 자연스럽게 채워짐)
+          title: defaultMatchTitle(matchDateIso),
           matchDate: matchDateIso,
           location: location || undefined,
           maxPlayers,
