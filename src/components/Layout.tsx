@@ -80,7 +80,17 @@ const Layout = () => {
       {/* 상단 헤더 */}
       <header className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0" style={{ zIndex: 40 }}>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-primary text-xs font-black opacity-60">⚽</span>
+          {squad?.logoUrl ? (
+            <img
+              src={squad.logoUrl}
+              alt={squad.name}
+              className="w-6 h-6 rounded-md object-cover border border-white/10 flex-shrink-0"
+              referrerPolicy="no-referrer"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          ) : (
+            <span className="text-primary text-xs font-black opacity-60">⚽</span>
+          )}
           <span className="text-white/70 text-sm font-bold truncate max-w-[160px]">
             {squad?.name || "풋살 매니저"}
           </span>

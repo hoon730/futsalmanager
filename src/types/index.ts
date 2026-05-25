@@ -15,6 +15,7 @@ export interface ISquad {
   name: string;
   members: IMember[];
   createdAt: string;
+  logoUrl?: string | null;
 }
 
 export interface IDivision {

@@ -98,6 +98,7 @@ export const loadSquadFromSupabase = async (squadId: string): Promise<ISquad | n
       name: squadData.name,
       members,
       createdAt: squadData.created_at,
+      logoUrl: squadData.logo_url ?? null,
     };
   } catch (error) {
     console.error("스쿼드 로드 실패:", error);
