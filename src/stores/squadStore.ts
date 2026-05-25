@@ -9,6 +9,7 @@ interface ISquadStore {
   setSquad: (squad: ISquad) => void;
   clearSquad: () => void;
   updateSquadName: (name: string) => void;
+  updateSquadLogo: (logoUrl: string | null) => void;
   addMember: (member: IMember) => void;
   removeMember: (id: string) => void;
   updateMember: (id: string, updates: Partial<IMember>) => void;
@@ -33,6 +34,11 @@ export const useSquadStore = create<ISquadStore>()((set) => ({
   updateSquadName: (name) =>
     set((state) => ({
       squad: state.squad ? { ...state.squad, name } : null,
+    })),
+
+  updateSquadLogo: (logoUrl) =>
+    set((state) => ({
+      squad: state.squad ? { ...state.squad, logoUrl } : null,
     })),
 
   addMember: (member) =>

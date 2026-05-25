@@ -32,7 +32,7 @@ interface Props {
 
 export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const { user, profile, signOut, updateUsername, updateAvatarUrl } = useAuthStore();
-  const { squad, clearSquad, setSquad } = useSquadStore();
+  const { squad, clearSquad, setSquad, updateSquadLogo } = useSquadStore();
   const { setFixedTeams } = useFixedTeamStore();
   const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -225,6 +225,13 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
     onClose();
   };
 
+  const handleLogoUpload = async (url: string) => {
+    if (!squad?.id) return;
+    const { error } = await supabase.from("squads").update({ logo_url: url }).eq("id", squad.id);
+    if (error) throw error;
+    updateSquadLogo(url);
+  };
+
   const handleSignOut = async () => {
     onClose();
     // signOut을 먼저 호출해 user=null → AuthPage로 전환한 뒤 squad 정리
@@ -350,9 +357,19 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
             <>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">현재 동호회</p>
               <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4 mb-5">
-                {/* 동호회 이름 + 권한 */}
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-white font-black text-base uppercase tracking-wide truncate">{currentClubName}</p>
+                {/* 로고 + 동호회 이름 + 권한 */}
+                <div className="flex items-center gap-3">
+                  <AvatarUploader
+                    currentUrl={squad.logoUrl}
+                    fallbackText={currentClubName}
+                    basePath={`squads/${squad.id}`}
+                    onUploaded={handleLogoUpload}
+                    size={40}
+                    shape="square"
+                    showLabel={false}
+                    disabled={!isOwner}
+                  />
+                  <p className="flex-1 text-white font-black text-base uppercase tracking-wide truncate">{currentClubName}</p>
                   {currentClub ? (
                     <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
                       style={{ background: isOwner ? "rgba(13,242,62,0.12)" : "rgba(255,255,255,0.05)", color: isOwner ? "#0DF23E" : "rgba(255,255,255,0.5)" }}>
