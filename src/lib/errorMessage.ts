@@ -21,6 +21,7 @@ export function toFriendlyMessage(err: unknown, fallback = "요청에 실패했�
     { test: /User already registered/i, msg: "이미 가입된 이메일입니다" },
     { test: /Password should be at least/i, msg: "비밀번호가 너무 짧습니다" },
     { test: /Email not confirmed/i, msg: "이메일 인증이 필요합니다" },
+    { test: /rate limit exceeded/i, msg: "시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요" },
   ];
 
   for (const { test, msg } of map) {
