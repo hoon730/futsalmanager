@@ -1,26 +1,17 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { logger } from "@/lib/logger";
 import { useSquadStore } from '@/stores/squadStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { ConfirmModal } from '@/components/modals';
 import { toast } from '@/stores/toastStore';
 import { toFriendlyMessage } from '@/lib/errorMessage';
-import {
-  isPushSupported,
-  getPermission,
-  requestPermission,
-  getCurrentSubscription,
-  subscribeToPush,
-  unsubscribeFromPush,
-} from '@/lib/pushNotification';
 import type { IMember } from '@/types';
-import type { ISquadUserRow } from '@/components/settings/types';
-import { SquadUserDetailModal } from '@/components/settings/SquadUserDetailModal';
 import { EditMyMemberModal } from '@/components/settings/EditMyMemberModal';
 import { MemberEditModal } from '@/components/settings/MemberEditModal';
 import { LinkMemberModal } from '@/components/settings/LinkMemberModal';
 import { AddMemberModal } from '@/components/settings/AddMemberModal';
+import { NotificationsSection } from '@/components/settings/NotificationsSection';
+import { SquadUsersSection } from '@/components/settings/SquadUsersSection';
 
 export default function SettingsPage() {
   const { squad, addMember, removeMember, updateMember } = useSquadStore();
@@ -42,8 +33,6 @@ export default function SettingsPage() {
   const [editSaving, setEditSaving] = useState(false);
   // 내 선수 프로필 카드 케밥 메뉴
   const [showMyProfileMenu, setShowMyProfileMenu] = useState(false);
-  // 동호회 회원 상세 모달
-  const [selectedSquadUser, setSelectedSquadUser] = useState<ISquadUserRow | null>(null);
   // 관리자용 멤버 편집 모달
   const [editingMember, setEditingMember] = useState<IMember | null>(null);
 
@@ -160,171 +149,8 @@ export default function SettingsPage() {
     }
   };
 
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [notifLoading, setNotifLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isPushSupported()) return;
-    setNotifPermission(getPermission());
-    getCurrentSubscription().then((sub) => setIsSubscribed(!!sub));
-  }, []);
-
-  const handleEnableNotifications = async () => {
-    if (!user || !squad?.id) return;
-    setNotifLoading(true);
-    try {
-      const perm = await requestPermission();
-      setNotifPermission(perm);
-      if (perm === 'granted') {
-        await subscribeToPush(squad.id, user.id);
-        setIsSubscribed(true);
-        toast('경기 알림이 켜졌습니다');
-      }
-    } catch {
-      toast('알림 설정에 실패했습니다', 'error');
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
-  const handleDisableNotifications = async () => {
-    if (!user || !squad?.id) return;
-    setNotifLoading(true);
-    try {
-      await unsubscribeFromPush(squad.id, user.id);
-      setIsSubscribed(false);
-      toast('알림이 해제되었습니다');
-    } catch {
-      toast('알림 해제에 실패했습니다', 'error');
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
-  // 동호회 회원 (인증 유저) 목록
-  const [squadUsers, setSquadUsers] = useState<ISquadUserRow[]>([]);
-  const [squadUsersLoading, setSquadUsersLoading] = useState(false);
-
-  const loadSquadUsers = async () => {
-    if (!squad?.id) return;
-    setSquadUsersLoading(true);
-    try {
-      const { data, error } = await supabase
-        .rpc("get_squad_users_with_stats", { p_squad_id: squad.id });
-      if (error) throw error;
-
-      // RPC 컬럼명은 'o_' 접두어 사용 (RETURNS TABLE 의 OUT param 모호성 회피를 위해)
-      const rows: ISquadUserRow[] = (data || []).map((row: {
-        o_user_id: string; o_role: string; o_username: string; o_joined_at: string;
-        o_attended_matches: number; o_total_matches: number; o_attendance_rate: number;
-      }) => ({
-        userId: row.o_user_id,
-        role: row.o_role as ISquadUserRow["role"],
-        username: row.o_username,
-        joinedAt: row.o_joined_at,
-        attendedMatches: Number(row.o_attended_matches),
-        totalMatches: Number(row.o_total_matches),
-        attendanceRate: row.o_attendance_rate,
-      }));
-      setSquadUsers(rows);
-    } catch (e) {
-      // RPC가 아직 배포되지 않았거나 권한 오류 시 — FK 없는 2단계 쿼리로 폴백
-      // (squad_members.user_id → profiles.id 는 PostgREST가 인식하는 FK가 아니므로
-      //  inline join `profiles(username)` 은 실패함)
-      logger.error("get_squad_users_with_stats 실패, 폴백 쿼리 시도:", e);
-      try {
-        // 1. squad_members 조회
-        const { data: smRows, error: smErr } = await supabase
-          .from("squad_members")
-          .select("user_id, role, joined_at")
-          .eq("squad_id", squad.id);
-        if (smErr) throw smErr;
-
-        const userIds = (smRows || []).map((r) => r.user_id);
-
-        // 2. 해당 user_id 들의 프로필 조회 (RLS: 같은 squad 멤버끼리 조회 가능)
-        let profileMap: Record<string, string> = {};
-        if (userIds.length > 0) {
-          const { data: profileRows } = await supabase
-            .from("profiles")
-            .select("id, username")
-            .in("id", userIds);
-          profileMap = Object.fromEntries(
-            (profileRows || []).map((p) => [p.id, p.username || "알 수 없음"])
-          );
-        }
-
-        const rows: ISquadUserRow[] = (smRows || []).map((row) => ({
-          userId: row.user_id,
-          role: row.role as ISquadUserRow["role"],
-          username: profileMap[row.user_id] || "알 수 없음",
-          joinedAt: row.joined_at,
-          attendedMatches: 0,
-          totalMatches: 0,
-          attendanceRate: 0,
-        }))
-        // owner → admin → member 순 정렬
-        .sort((a, b) => {
-          const order = { owner: 0, admin: 1, member: 2 } as const;
-          return order[a.role] - order[b.role];
-        });
-
-        setSquadUsers(rows);
-      } catch (fbE) {
-        logger.error("폴백 쿼리도 실패:", fbE);
-      }
-    } finally {
-      setSquadUsersLoading(false);
-    }
-  };
-
-  // 운영자/관리자만 RPC를 호출 (비-운영자는 RPC가 'Unauthorized' 42501 → HTTP 403 반환)
-  // userRole 이 아직 미정(null)일 때는 호출 보류 → 권한 확정 후에만 시도
-  useEffect(() => {
-    if (!isOwnerOrAdmin) { setSquadUsers([]); return; }
-    loadSquadUsers();
-  }, [squad?.id, isOwnerOrAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleChangeRole = async (userId: string, newRole: "admin" | "member") => {
-    if (!squad?.id || userRole !== "owner") return;
-    const { error } = await supabase
-      .from("squad_members")
-      .update({ role: newRole })
-      .eq("squad_id", squad.id)
-      .eq("user_id", userId);
-    if (error) {
-      toast("역할 변경에 실패했습니다", "error");
-      return;
-    }
-    setSquadUsers((prev) =>
-      prev.map((u) => (u.userId === userId ? { ...u, role: newRole } : u))
-        .sort((a, b) => ({ owner: 0, admin: 1, member: 2 }[a.role] - { owner: 0, admin: 1, member: 2 }[b.role]))
-    );
-  };
-
-  const handleRemoveSquadMember = (userId: string, username: string) => {
-    if (!squad?.id) return;
-    setConfirmModal({
-      isOpen: true,
-      title: "회원 내보내기",
-      message: `${username}님을 동호회에서 내보내시겠습니까?`,
-      onConfirm: async () => {
-        const { error } = await supabase
-          .from("squad_members")
-          .delete()
-          .eq("squad_id", squad.id)
-          .eq("user_id", userId);
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        if (error) {
-          toast("내보내기에 실패했습니다", "error");
-          return;
-        }
-        setSquadUsers((prev) => prev.filter((u) => u.userId !== userId));
-        toast(`${username} 멤버를 내보냈습니다`);
-      },
-    });
-  };
+  // 동호회 회원 (인증 유저) 섹션은 SquadUsersSection 으로 분리됨
+  // 알림 설정 섹션은 NotificationsSection 으로 분리됨
 
   // 상태
   const [currentPage, setCurrentPage] = useState(0);
@@ -586,71 +412,13 @@ export default function SettingsPage() {
       </main>
 
       {/* 동호회 회원 (인증 유저) 섹션 — 운영자/관리자만 표시 */}
-      {isOwnerOrAdmin && (
-      <div className="px-6 mb-6 mt-14">
-        <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
-              동호회 회원 {squadUsers.length > 0 ? `· ${squadUsers.length}명` : ""}
-            </p>
-            <button
-              onClick={loadSquadUsers}
-              disabled={squadUsersLoading}
-              className="text-white/20 hover:text-white/50 transition-colors"
-            >
-              <span className="material-icons text-sm">refresh</span>
-            </button>
-          </div>
-
-          {squadUsersLoading ? (
-            <p className="text-white/20 text-xs py-2">로딩 중...</p>
-          ) : squadUsers.length === 0 ? (
-            <p className="text-white/20 text-xs py-2">회원 정보가 없습니다</p>
-          ) : (
-            <div className="space-y-2">
-              {squadUsers.map((u) => {
-                const isMe = u.userId === user?.id;
-                const roleBadge: Record<string, { label: string; color: string }> = {
-                  owner: { label: "OWNER", color: "#FFD700" },
-                  admin: { label: "ADMIN", color: "#0DF23E" },
-                  member: { label: "MEMBER", color: "rgba(255,255,255,0.3)" },
-                };
-                const badge = roleBadge[u.role];
-                // 운영자가 다른 멤버를 클릭하면 상세 모달
-                const clickable = userRole === "owner" && !isMe;
-                return (
-                  <button
-                    key={u.userId}
-                    onClick={() => clickable && setSelectedSquadUser(u)}
-                    disabled={!clickable}
-                    className={`w-full flex items-center gap-3 py-2 px-1 -mx-1 rounded-lg transition-colors text-left ${clickable ? "hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer" : "cursor-default"}`}
-                  >
-                    {/* 아바타 */}
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
-                      style={{ backgroundColor: isMe ? "rgba(13,242,62,0.15)" : "rgba(255,255,255,0.07)", color: isMe ? "#0DF23E" : "rgba(255,255,255,0.5)" }}
-                    >
-                      {u.username[0]?.toUpperCase() ?? "?"}
-                    </div>
-                    {/* 이름 */}
-                    <span className="flex-1 text-sm font-bold text-white truncate">
-                      {u.username}
-                      {isMe && <span className="ml-1.5 text-[9px] text-white/30 font-black uppercase tracking-widest">나</span>}
-                    </span>
-                    {/* 역할 배지 */}
-                    <span className="text-[9px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: badge.color }}>
-                      {badge.label}
-                    </span>
-                    {clickable && (
-                      <span className="material-icons text-white/20 text-sm flex-shrink-0">chevron_right</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+      {squad?.id && (
+        <SquadUsersSection
+          squadId={squad.id}
+          isOwnerOrAdmin={isOwnerOrAdmin}
+          userRole={userRole}
+          currentUserId={user?.id ?? null}
+        />
       )}
 
       {/* 내 설정 */}
@@ -791,63 +559,8 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* 알림 설정 */}
-      {isPushSupported() && (
-        <div className="px-6 mb-6">
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">경기 알림</p>
-
-            {notifPermission === 'denied' ? (
-              <div className="flex items-center gap-3">
-                <span className="material-icons text-white/20 text-sm">notifications_off</span>
-                <div className="flex-1">
-                  <p className="text-white/50 text-xs font-bold">브라우저에서 알림이 차단됨</p>
-                  <p className="text-white/20 text-[10px] mt-0.5">브라우저 설정에서 알림을 허용해주세요</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span
-                    className="material-icons text-sm flex-shrink-0"
-                    style={{ color: isSubscribed ? '#0DF23E' : 'rgba(255,255,255,0.2)' }}
-                  >
-                    {isSubscribed ? 'notifications_active' : 'notifications_none'}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-white/70 text-sm font-bold">새 경기 알림</p>
-                    <p className="text-white/30 text-[10px] mt-0.5 truncate">
-                      {isSubscribed ? '경기가 추가되면 알림을 받습니다' : '경기 추가 시 알림 받기'}
-                    </p>
-                  </div>
-                </div>
-                {/* 토글 스위치 */}
-                <button
-                  onClick={isSubscribed ? handleDisableNotifications : handleEnableNotifications}
-                  disabled={notifLoading}
-                  className="relative w-12 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50"
-                  style={{ backgroundColor: isSubscribed ? '#0DF23E' : 'rgba(255,255,255,0.1)' }}
-                >
-                  <span
-                    className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200"
-                    style={{ left: isSubscribed ? '1.375rem' : '0.125rem' }}
-                  />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 동호회 회원 상세 모달 (운영자 액션) */}
-      {selectedSquadUser && (
-        <SquadUserDetailModal
-          user={selectedSquadUser}
-          onClose={() => setSelectedSquadUser(null)}
-          onChangeRole={handleChangeRole}
-          onRemove={handleRemoveSquadMember}
-        />
-      )}
+      {/* 알림 설정 — NotificationsSection 으로 분리 */}
+      <NotificationsSection userId={user?.id ?? null} squadId={squad?.id ?? null} />
 
       {/* 관리자 멤버 편집 모달 */}
       {editingMember && isOwnerOrAdmin && (
