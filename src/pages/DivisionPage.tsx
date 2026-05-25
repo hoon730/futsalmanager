@@ -5,10 +5,12 @@ import { useSquadStore } from "@/stores/squadStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { useMatchStore } from "@/stores/matchStore";
+import { useSquadMercenaryStore } from "@/stores/squadMercenaryStore";
 import { divideTeamsWithConstraints, updateTeammateHistory as updateHistory } from "@/lib/teamAlgorithm";
 import { saveDivisionToSupabase, syncTeammateHistoryToSupabase } from "@/lib/supabaseSync";
 import { ConfirmModal, FixedTeamModal } from "@/components/modals";
 import { toast } from "@/stores/toastStore";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 import type { IMember, IFixedTeam } from "@/types";
 
 const TEAM_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
@@ -19,6 +21,14 @@ const DivisionPage = () => {
   const { fixedTeams, addFixedTeam, removeFixedTeam } = useFixedTeamStore();
   const { saveDivision, divisionHistory, teammateHistory, updateTeammateHistory: updateStoreHistory } = useDivisionStore();
   const { matches, attendees, matchMercenaries, loadAttendees, loadMatches } = useMatchStore();
+  const {
+    mercenaries,
+    load: loadSquadMercenaries,
+    add: addSquadMercenary,
+    remove: removeSquadMercenary,
+    ingestNames: ingestMercenaryNames,
+    clear: clearSquadMercenaries,
+  } = useSquadMercenaryStore();
 
   const [currentTime, setCurrentTime] = useState('');
   const [currentTeams, setCurrentTeams] = useState<IMember[][] | null>(null);
@@ -46,13 +56,10 @@ const DivisionPage = () => {
   // 고정팀 상세 모달
   const [selectedFixedTeam, setSelectedFixedTeam] = useState<IFixedTeam | null>(null);
 
-  // 용병 관련
-  const [mercenaries, setMercenaries] = useState<IMember[]>(() => {
-    const saved = localStorage.getItem('mercenaries');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // 용병 관련 (squad_mercenaries 테이블이 source of truth)
   const [mercenaryName, setMercenaryName] = useState('');
   const [selectedMercenaries, setSelectedMercenaries] = useState<string[]>([]);
+  const [mercenaryActionLoading, setMercenaryActionLoading] = useState(false);
 
   // 모달
   const [showTeamCountModal, setShowTeamCountModal] = useState(false);
@@ -72,9 +79,17 @@ const DivisionPage = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // squad 전환 시 용병 풀 로드 + 이전 선택 초기화
   useEffect(() => {
-    localStorage.setItem('mercenaries', JSON.stringify(mercenaries));
-  }, [mercenaries]);
+    if (!squad?.id) {
+      clearSquadMercenaries();
+      setSelectedMercenaries([]);
+      return;
+    }
+    loadSquadMercenaries(squad.id);
+    setSelectedMercenaries([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squad?.id]);
 
   // 오늘 경기 감지 (±3시간 이내) — 참석자 자동 연동용
   const todayMatch = useMemo(() => {
@@ -113,21 +128,25 @@ const DivisionPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayAttendees.length, todayMatch?.id]);
 
-  // 경기에서 추가된 용병 자동 동기화
+  // 경기에서 추가된 용병들을 squad pool 에 자동 누적
   useEffect(() => {
-    if (todayMatchMercenaries.length === 0) return;
-    setMercenaries((prev) => {
-      const existingIds = new Set(prev.map((m) => m.id));
-      const newOnes = todayMatchMercenaries.filter((m) => !existingIds.has(m.id));
-      return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
-    });
+    if (!squad?.id || todayMatchMercenaries.length === 0) return;
+    ingestMercenaryNames(squad.id, todayMatchMercenaries.map((m) => m.name));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayMatchMercenaries.length, todayMatch?.id, squad?.id]);
+
+  // squad pool 이 업데이트되면, 매치 용병과 이름 매칭되는 squad mercenary id 자동 선택
+  useEffect(() => {
+    if (todayMatchMercenaries.length === 0 || mercenaries.length === 0) return;
+    const matchNames = new Set(todayMatchMercenaries.map((m) => m.name));
+    const autoSelectIds = mercenaries.filter((m) => matchNames.has(m.name)).map((m) => m.id);
+    if (autoSelectIds.length === 0) return;
     setSelectedMercenaries((prev) => {
       const existing = new Set(prev);
-      const newIds = todayMatchMercenaries.map((m) => m.id).filter((id) => !existing.has(id));
+      const newIds = autoSelectIds.filter((id) => !existing.has(id));
       return newIds.length > 0 ? [...prev, ...newIds] : prev;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayMatchMercenaries.length, todayMatch?.id]);
+  }, [mercenaries, todayMatchMercenaries]);
 
   const loadTodayParticipants = () => {
     if (!todayMatch || !squad) return;
@@ -237,24 +256,36 @@ const DivisionPage = () => {
   };
 
   // ── 용병 ──
-  const handleAddMercenary = () => {
+  const handleAddMercenary = async () => {
     const name = mercenaryName.trim();
+    if (!squad?.id) return;
     if (!name) { toast('용병 이름을 입력해주세요', 'error'); return; }
     if (mercenaries.some(m => m.name === name)) { toast('이미 추가된 용병입니다', 'error'); return; }
     if (members.some(m => m.name === name)) { toast('정규 멤버와 동일한 이름입니다', 'error'); return; }
-    const newMercenary: IMember = { id: `mercenary-${Date.now()}`, name, isMercenary: true, active: true, createdAt: new Date().toISOString() };
-    setMercenaries([...mercenaries, newMercenary]);
-    setSelectedMercenaries([...selectedMercenaries, newMercenary.id]);
-    setMercenaryName('');
+
+    setMercenaryActionLoading(true);
+    try {
+      const created = await addSquadMercenary(squad.id, name);
+      setSelectedMercenaries((prev) => [...prev, created.id]);
+      setMercenaryName('');
+    } catch (e) {
+      toast(toFriendlyMessage(e, '용병 추가에 실패했습니다'), 'error');
+    } finally {
+      setMercenaryActionLoading(false);
+    }
   };
 
   const handleRemoveMercenary = (id: string) => {
     setConfirmModal({
       isOpen: true, title: '용병 삭제', message: '이 용병을 삭제하시겠습니까?',
-      onConfirm: () => {
-        setMercenaries(mercenaries.filter(m => m.id !== id));
-        setSelectedMercenaries(selectedMercenaries.filter(mid => mid !== id));
+      onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false });
+        try {
+          await removeSquadMercenary(id);
+          setSelectedMercenaries(prev => prev.filter(mid => mid !== id));
+        } catch (e) {
+          toast(toFriendlyMessage(e, '용병 삭제에 실패했습니다'), 'error');
+        }
       }
     });
   };
@@ -440,10 +471,11 @@ const DivisionPage = () => {
                 />
                 <button
                   onClick={handleAddMercenary}
-                  className="px-4 py-3 rounded-xl font-black text-sm active:scale-95 transition-all"
+                  disabled={mercenaryActionLoading}
+                  className="px-4 py-3 rounded-xl font-black text-sm active:scale-95 transition-all disabled:opacity-40"
                   style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
                 >
-                  추가
+                  {mercenaryActionLoading ? '추가중' : '추가'}
                 </button>
               </div>
 
