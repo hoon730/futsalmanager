@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { logger } from "@/lib/logger";
 import { createPortal } from "react-dom";
 import { useSquadStore } from "@/stores/squadStore";
 import { useMatchStore } from "@/stores/matchStore";
@@ -150,7 +151,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
     try {
       await setAttendance(selectedMatch.id, user.id, status, linkedMemberId);
     } catch (e) {
-      console.error("[RSVP] setAttendance failed:", e);
+      logger.error("[RSVP] setAttendance failed:", e);
       toast(toFriendlyMessage(e, "출석 응답을 저장하지 못했습니다"), "error");
     }
   };

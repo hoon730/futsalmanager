@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { logger } from "@/lib/logger";
 import { useSquadStore } from "@/stores/squadStore";
 import { useDivisionStore } from "@/stores/divisionStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
@@ -45,7 +46,7 @@ export const useAutoSync = () => {
 
       // 500ms 후 업로드
       squadTimerRef.current = setTimeout(() => {
-        console.log("📤 스쿼드 자동 업로드...");
+        logger.log("📤 스쿼드 자동 업로드...");
         syncSquadToSupabase(squad);
       }, 500);
     }
@@ -68,7 +69,7 @@ export const useAutoSync = () => {
 
       // 500ms 후 업로드
       fixedTeamsTimerRef.current = setTimeout(() => {
-        console.log("📤 고정 팀 자동 업로드...");
+        logger.log("📤 고정 팀 자동 업로드...");
         syncFixedTeamsToSupabase(squad.id, fixedTeams);
       }, 500);
     }
@@ -91,7 +92,7 @@ export const useAutoSync = () => {
       );
 
       if (newDivisions.length > 0) {
-        console.log(`📤 새 이력 ${newDivisions.length}건 자동 업로드...`);
+        logger.log(`📤 새 이력 ${newDivisions.length}건 자동 업로드...`);
         newDivisions.forEach((division) => {
           syncDivisionToSupabase(division);
         });
@@ -112,7 +113,7 @@ export const useAutoSync = () => {
 
     // 500ms 후 업로드
     teammateHistoryTimerRef.current = setTimeout(() => {
-      console.log("📤 팀 메이트 이력 자동 업로드...");
+      logger.log("📤 팀 메이트 이력 자동 업로드...");
       syncTeammateHistoryToSupabase(squad.id, teammateHistory);
     }, 500);
   }, [teammateHistory, squad?.id]);

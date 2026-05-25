@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { logger } from "@/lib/logger";
 import type { ISquad, IMember, IFixedTeam, IDivision, ITeammateHistory } from "@/types";
 
 // ====================================
@@ -56,7 +57,7 @@ export const syncSquadToSupabase = async (squad: ISquad) => {
 
     return { success: true };
   } catch (error) {
-    console.error("스쿼드 동기화 실패:", error);
+    logger.error("스쿼드 동기화 실패:", error);
     return { success: false, error };
   }
 };
@@ -101,7 +102,7 @@ export const loadSquadFromSupabase = async (squadId: string): Promise<ISquad | n
       logoUrl: squadData.logo_url ?? null,
     };
   } catch (error) {
-    console.error("스쿼드 로드 실패:", error);
+    logger.error("스쿼드 로드 실패:", error);
     return null;
   }
 };
@@ -121,7 +122,7 @@ export const findSquadByName = async (name: string): Promise<ISquad | null> => {
 
     return loadSquadFromSupabase(squadData.id);
   } catch (error) {
-    console.error("스쿼드 검색 실패:", error);
+    logger.error("스쿼드 검색 실패:", error);
     return null;
   }
 };
@@ -153,7 +154,7 @@ export const syncFixedTeamsToSupabase = async (
 
     return { success: true };
   } catch (error) {
-    console.error("고정 팀 동기화 실패:", error);
+    logger.error("고정 팀 동기화 실패:", error);
     return { success: false, error };
   }
 };
@@ -175,7 +176,7 @@ export const loadFixedTeamsFromSupabase = async (
       active: ft.active,
     }));
   } catch (error) {
-    console.error("고정 팀 로드 실패:", error);
+    logger.error("고정 팀 로드 실패:", error);
     return [];
   }
 };
@@ -200,7 +201,7 @@ export const syncDivisionToSupabase = async (division: IDivision) => {
     if (error) throw error;
     return { success: true };
   } catch (error) {
-    console.error("이력 동기화 실패:", error);
+    logger.error("이력 동기화 실패:", error);
     return { success: false, error };
   }
 };
@@ -228,7 +229,7 @@ export const loadDivisionsFromSupabase = async (
       teamCount: d.team_count,
     }));
   } catch (error) {
-    console.error("이력 로드 실패:", error);
+    logger.error("이력 로드 실패:", error);
     return [];
   }
 };
@@ -249,7 +250,7 @@ export const saveDivisionToSupabase = async (division: IDivision) => {
     if (error) throw error;
     return { success: true };
   } catch (error) {
-    console.error("이력 저장 실패:", error);
+    logger.error("이력 저장 실패:", error);
     return { success: false, error };
   }
 };
@@ -264,7 +265,7 @@ export const deleteDivisionFromSupabase = async (divisionId: string) => {
     if (error) throw error;
     return { success: true };
   } catch (error) {
-    console.error("이력 삭제 실패:", error);
+    logger.error("이력 삭제 실패:", error);
     return { success: false, error };
   }
 };
@@ -297,7 +298,7 @@ export const syncTeammateHistoryToSupabase = async (
 
     return { success: true };
   } catch (error) {
-    console.error("팀 메이트 이력 동기화 실패:", error);
+    logger.error("팀 메이트 이력 동기화 실패:", error);
     return { success: false, error };
   }
 };
@@ -320,7 +321,7 @@ export const loadTeammateHistoryFromSupabase = async (
 
     return history;
   } catch (error) {
-    console.error("팀 메이트 이력 로드 실패:", error);
+    logger.error("팀 메이트 이력 로드 실패:", error);
     return {};
   }
 };

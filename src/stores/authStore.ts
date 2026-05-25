@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { logger } from "@/lib/logger";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { toFriendlyMessage } from "@/lib/errorMessage";
@@ -125,7 +126,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             if (profile) set((state) => ({ ...state, profile }));
           } catch (e) {
-            console.error("프로필 조회 실패 (auth state는 정상):", e);
+            logger.error("프로필 조회 실패 (auth state는 정상):", e);
           }
         })();
       } catch {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { logger } from "@/lib/logger";
 import { createPortal } from "react-dom";
 import type { IMatch, IMatchAttendee, IMatchComment, ISquad, IMember, IDivision } from "@/types";
 import { shareMatch, isKakaoReady } from "@/lib/kakaoShare";
@@ -177,7 +178,7 @@ export function MatchDetailSheet({
             .invoke("send-mention-notification", {
               body: { targetUserIds, matchId: match.id, squadId: squad.id, commenterName },
             })
-            .catch((e) => console.warn("[mention-push]", e));
+            .catch((e) => logger.warn("[mention-push]", e));
         }
 
         // 답글 푸시 알림 — 부모 댓글 작성자에게 (자기 자신 답글은 제외)
@@ -197,7 +198,7 @@ export function MatchDetailSheet({
                   replyPreview: text,
                 },
               })
-              .catch((e) => console.warn("[reply-push]", e));
+              .catch((e) => logger.warn("[reply-push]", e));
           }
         }
       }

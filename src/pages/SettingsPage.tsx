@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { logger } from "@/lib/logger";
 import { useSquadStore } from '@/stores/squadStore';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
@@ -231,7 +232,7 @@ export default function SettingsPage() {
       // RPC가 아직 배포되지 않았거나 권한 오류 시 — FK 없는 2단계 쿼리로 폴백
       // (squad_members.user_id → profiles.id 는 PostgREST가 인식하는 FK가 아니므로
       //  inline join `profiles(username)` 은 실패함)
-      console.error("get_squad_users_with_stats 실패, 폴백 쿼리 시도:", e);
+      logger.error("get_squad_users_with_stats 실패, 폴백 쿼리 시도:", e);
       try {
         // 1. squad_members 조회
         const { data: smRows, error: smErr } = await supabase
@@ -271,7 +272,7 @@ export default function SettingsPage() {
 
         setSquadUsers(rows);
       } catch (fbE) {
-        console.error("폴백 쿼리도 실패:", fbE);
+        logger.error("폴백 쿼리도 실패:", fbE);
       }
     } finally {
       setSquadUsersLoading(false);

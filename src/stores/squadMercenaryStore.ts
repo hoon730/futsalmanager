@@ -3,6 +3,7 @@
 // - 동호회 멤버 전체가 같은 용병 명단을 공유
 // - 매치별 참석 기록은 기존 match_mercenaries 테이블이 담당
 import { create } from "zustand";
+import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
 import type { IMember } from "@/types";
 
@@ -48,7 +49,7 @@ export const useSquadMercenaryStore = create<ISquadMercenaryStore>()((set, get) 
       if (error) throw error;
       set({ mercenaries: (data || []).map(toMember) });
     } catch (e) {
-      console.error("squad_mercenaries 로드 실패:", e);
+      logger.error("squad_mercenaries 로드 실패:", e);
     } finally {
       set({ isLoading: false });
     }
@@ -100,7 +101,7 @@ export const useSquadMercenaryStore = create<ISquadMercenaryStore>()((set, get) 
       .from("squad_mercenaries")
       .upsert(rows, { onConflict: "squad_id,name", ignoreDuplicates: true });
     if (error) {
-      console.error("squad_mercenaries ingest 실패:", error);
+      logger.error("squad_mercenaries ingest 실패:", error);
       return;
     }
     // 정확한 id/created_at 을 얻기 위해 다시 로드 (소수의 행이므로 비용 미미)
