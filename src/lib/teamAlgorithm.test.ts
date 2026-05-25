@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, vi } from "vitest";
 import { divideTeamsWithConstraints, updateTeammateHistory } from "./teamAlgorithm";
 import type { IMember, IFixedTeam } from "@/types";
 
-// alert / console 은 알고리즘 내부에서 호출되지만 테스트에서는 무시
+// logger.log 가 알고리즘 내부에 다수 있어 테스트 출력을 어지럽힘 → 침묵.
+// (alert 는 lib 함수에서 더 이상 호출되지 않으므로 stub 불필요)
 beforeAll(() => {
-  vi.stubGlobal("alert", vi.fn());
   vi.spyOn(console, "log").mockImplementation(() => {});
 });
 

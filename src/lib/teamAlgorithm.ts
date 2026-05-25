@@ -14,10 +14,9 @@ export const divideTeamsWithConstraints = async (
   fixedTeams: IFixedTeam[] = [],
   teammateHistory: ITeammateHistory = {}
 ): Promise<IDivisionResult | null> => {
-  if (players.length < teamCount) {
-    alert(`최소 ${teamCount}명 이상의 참가자가 필요합니다.`);
-    return null;
-  }
+  // 참가자 부족 케이스는 호출 측(DivisionPage.handleDivideTeams)이 이미 toast 로 안내.
+  // 안전망으로 null 만 반환하고 lib 함수 안에서는 UI 호출 안 함.
+  if (players.length < teamCount) return null;
 
   logger.log("팀 나누기 알고리즘 시작:", {
     참가자: players.map((p) => p.name),
@@ -61,11 +60,7 @@ export const divideTeamsWithConstraints = async (
     결과: bestDivision ? "성공" : "실패",
   });
 
-  if (!bestDivision) {
-    alert("팀을 나눌 수 없습니다. 고정 설정을 확인해주세요.");
-    return null;
-  }
-
+  // 1000회 시도 후에도 실패하면 null. 호출 측이 일반 실패 메시지로 처리.
   return bestDivision;
 };
 
