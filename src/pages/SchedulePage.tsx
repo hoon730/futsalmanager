@@ -314,17 +314,22 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                           <div className="flex gap-1 flex-shrink-0 -mr-1.5 -mt-1.5">
                             <button
                               onClick={() => togglePin(a.id, !a.pinned)}
+                              aria-label={a.pinned ? "공지 핀 해제" : "공지 핀 고정"}
+                              aria-pressed={a.pinned}
                               className="w-7 h-7 flex items-center justify-center transition-all active:scale-90"
                               style={{ color: a.pinned ? "#0DF23E" : "rgba(255,255,255,0.2)" }}
                             >
-                              <span className="material-icons" style={{ fontSize: "16px" }}>push_pin</span>
+                              <span className="material-icons" style={{ fontSize: "16px" }} aria-hidden="true">push_pin</span>
                             </button>
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === a.id ? null : a.id); }}
+                                aria-label="공지 메뉴"
+                                aria-haspopup="menu"
+                                aria-expanded={openMenuId === a.id}
                                 className="w-7 h-7 flex items-center justify-center transition-all active:scale-90 text-white/30 hover:text-white/60"
                               >
-                                <span className="material-icons" style={{ fontSize: "16px" }}>more_vert</span>
+                                <span className="material-icons" style={{ fontSize: "16px" }} aria-hidden="true">more_vert</span>
                               </button>
                               {openMenuId === a.id && (
                                 <>
@@ -395,6 +400,7 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
                 <div className="flex items-center gap-2 mb-5">
                   <button
                     onClick={() => { setNoticeMode("list"); setNewNotice(""); setEditingNoticeId(null); }}
+                    aria-label="공지 목록으로 돌아가기"
                     className="text-white/40 hover:text-white transition-colors"
                   >
                     <span className="material-icons text-lg">arrow_back</span>
@@ -477,13 +483,15 @@ export default function SchedulePage({ onGoToDivision }: { onGoToDivision: () =>
           <div className="mt-10">
             <button
               onClick={() => { setShowPast((v) => !v); setPastPage(1); }}
+              aria-expanded={showPast}
+              aria-controls="past-matches-list"
               className="flex items-center gap-2 text-white/30 text-xs font-black uppercase tracking-widest py-2"
             >
-              <span className="material-icons text-sm">{showPast ? "expand_less" : "expand_more"}</span>
+              <span className="material-icons text-sm" aria-hidden="true">{showPast ? "expand_less" : "expand_more"}</span>
               지난 경기 {past.length}건
             </button>
             {showPast && (
-              <div className="space-y-4 mt-3">
+              <div id="past-matches-list" className="space-y-4 mt-3">
                 {pagedPast.map((match) => (
                   <MatchCard
                     key={match.id}
