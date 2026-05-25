@@ -49,6 +49,8 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
   const [showAccountEdit, setShowAccountEdit] = useState(false);
   // 동호회 정보 편집 모달 (로고 + 이름 동시 편집, 운영자만)
   const [showSquadEdit, setShowSquadEdit] = useState(false);
+  // 헤더 우측 통합 메뉴 (프로필 편집 / 동호회 편집)
+  const [showMainMenu, setShowMainMenu] = useState(false);
 
   // 드래그 다운 닫기 + 진입/퇴장 애니메이션 (controlled transform)
   const [visible, setVisible] = useState(false);
@@ -282,14 +284,47 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
               </p>
               <p className="text-white/30 text-xs truncate mt-0.5">{user?.email}</p>
             </div>
-            {/* 편집 아이콘 — 사진 + 닉네임 모달 트리거 */}
-            <button
-              onClick={() => setShowAccountEdit(true)}
-              aria-label="내 프로필 편집"
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors active:scale-90 flex-shrink-0"
-            >
-              <span className="material-icons text-base" aria-hidden="true">edit</span>
-            </button>
+            {/* 우상단 통합 메뉴 — 프로필 / 동호회 편집 트리거 */}
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowMainMenu((v) => !v)}
+                aria-label="편집 메뉴"
+                aria-haspopup="menu"
+                aria-expanded={showMainMenu}
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors active:scale-90"
+              >
+                <span className="material-icons text-lg" aria-hidden="true">more_vert</span>
+              </button>
+              {showMainMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMainMenu(false)} />
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-10 z-20 rounded-xl overflow-hidden whitespace-nowrap shadow-lg min-w-[150px]"
+                    style={{ background: "rgba(28,34,28,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    <button
+                      role="menuitem"
+                      onClick={() => { setShowMainMenu(false); setShowAccountEdit(true); }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors"
+                    >
+                      <span className="material-icons text-white/50" style={{ fontSize: "14px" }} aria-hidden="true">person</span>
+                      프로필 편집
+                    </button>
+                    {squad?.id && currentClub?.role === "owner" && (
+                      <button
+                        role="menuitem"
+                        onClick={() => { setShowMainMenu(false); setShowSquadEdit(true); }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors border-t border-white/5"
+                      >
+                        <span className="material-icons text-white/50" style={{ fontSize: "14px" }} aria-hidden="true">groups</span>
+                        동호회 편집
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* === CURRENT SQUAD === */}
@@ -319,16 +354,7 @@ export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
                     )}
                   </div>
                   <p className="flex-1 text-white font-black text-base uppercase tracking-wide truncate">{currentClubName}</p>
-                  {/* 운영자만 동호회 정보 편집 가능 */}
-                  {isOwner && (
-                    <button
-                      onClick={() => setShowSquadEdit(true)}
-                      aria-label="동호회 정보 편집"
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors active:scale-90 flex-shrink-0"
-                    >
-                      <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">edit</span>
-                    </button>
-                  )}
+                  {/* 운영자 편집 진입은 우상단 통합 메뉴로 이동 */}
                   {currentClub ? (
                     <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
                       style={{ background: isOwner ? "rgba(13,242,62,0.12)" : "rgba(255,255,255,0.05)", color: isOwner ? "#0DF23E" : "rgba(255,255,255,0.5)" }}>
