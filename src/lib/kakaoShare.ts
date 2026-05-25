@@ -2,6 +2,8 @@
 // 비즈니스 인증 없이 사용 가능한 Share 기능만 다룸
 
 // SDK는 index.html에서 로드됨 — 전역 window.Kakao 객체 사용
+import { toast } from "@/stores/toastStore";
+
 interface KakaoLink {
   title: string;
   description: string;
@@ -49,7 +51,7 @@ export function isKakaoReady(): boolean {
 /** 동호회 초대 코드 공유 */
 export function shareSquadInvite(squadName: string, inviteCode: string) {
   if (!isKakaoReady()) {
-    alert("카카오 공유를 사용할 수 없습니다");
+    toast("카카오 공유를 사용할 수 없습니다", "error");
     return;
   }
   const baseUrl = window.location.origin;
@@ -79,7 +81,7 @@ export function shareMatch(opts: {
   maxPlayers: number;
 }) {
   if (!isKakaoReady()) {
-    alert("카카오 공유를 사용할 수 없습니다");
+    toast("카카오 공유를 사용할 수 없습니다", "error");
     return;
   }
   const baseUrl = window.location.origin;
