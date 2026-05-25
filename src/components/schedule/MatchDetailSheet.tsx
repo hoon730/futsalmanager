@@ -297,9 +297,10 @@ export function MatchDetailSheet({
           <div className="flex-shrink-0 flex items-center justify-between px-3 pt-1 pb-1">
             <button
               onClick={handleClose}
+              aria-label="닫기"
               className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
             >
-              <span className="material-icons text-lg">close</span>
+              <span className="material-icons text-lg" aria-hidden="true">close</span>
             </button>
 
             <div className="flex items-center gap-1">
@@ -329,9 +330,10 @@ export function MatchDetailSheet({
                 trigger={(open) => (
                   <button
                     onClick={open}
+                    aria-label="경기 공유"
                     className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
                   >
-                    <span className="material-icons text-lg">ios_share</span>
+                    <span className="material-icons text-lg" aria-hidden="true">ios_share</span>
                   </button>
                 )}
               />
@@ -339,9 +341,12 @@ export function MatchDetailSheet({
               <div className="relative">
                 <button
                   onClick={() => setMatchMenuOpen(v => !v)}
+                  aria-label="경기 메뉴"
+                  aria-haspopup="menu"
+                  aria-expanded={matchMenuOpen}
                   className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors active:scale-90"
                 >
-                  <span className="material-icons text-lg">more_vert</span>
+                  <span className="material-icons text-lg" aria-hidden="true">more_vert</span>
                 </button>
                 {matchMenuOpen && (
                   <>

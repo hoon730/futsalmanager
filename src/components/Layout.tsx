@@ -108,6 +108,7 @@ const Layout = () => {
         {user && (
           <button
             onClick={() => setMenuOpen(true)}
+            aria-label="사용자 메뉴 열기"
             className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0 hover:bg-primary/30 transition-colors"
           >
             <span className="text-primary text-xs font-bold">{avatarLetter}</span>
@@ -146,6 +147,8 @@ const Layout = () => {
           <button
             key={id}
             onClick={() => handleTabChange(id)}
+            aria-label={label}
+            aria-current={activeTab === id ? "page" : undefined}
             className="flex flex-col items-center justify-center gap-1.5 h-full transition-all"
             style={{
               width: "25%",
