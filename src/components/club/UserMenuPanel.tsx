@@ -1,0 +1,570 @@
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useAuthStore } from "@/stores/authStore";
+import { useSquadStore } from "@/stores/squadStore";
+import { useFixedTeamStore } from "@/stores/fixedTeamStore";
+import { useDivisionStore } from "@/stores/divisionStore";
+import { supabase } from "@/lib/supabase";
+import { shareSquadInvite, isKakaoReady } from "@/lib/kakaoShare";
+import { KakaoIcon } from "@/components/icons/KakaoIcon";
+import { ShareMenu } from "@/components/ShareMenu";
+import { toast } from "@/stores/toastStore";
+import { toFriendlyMessage } from "@/lib/errorMessage";
+import { AccountEditModal } from "@/components/club/AccountEditModal";
+import { SquadEditModal } from "@/components/club/SquadEditModal";
+import {
+  loadSquadFromSupabase,
+  loadFixedTeamsFromSupabase,
+  loadDivisionsFromSupabase,
+  loadTeammateHistoryFromSupabase,
+} from "@/lib/supabaseSync";
+
+interface Club {
+  id: string;
+  name: string;
+  invite_code: string;
+  role: string;
+}
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const UserMenuPanel = ({ isOpen, onClose }: Props) => {
+  const { user, profile, signOut } = useAuthStore();
+  const { squad, clearSquad, setSquad } = useSquadStore();
+  const { setFixedTeams } = useFixedTeamStore();
+  const { setDivisionHistory, updateTeammateHistory } = useDivisionStore();
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<"idle" | "input" | "deleting">("idle");
+  const [deleteInput, setDeleteInput] = useState("");
+  // 현재 동호회의 전체 멤버 수 (owner 탈퇴 시 위임 vs 삭제 분기 판단용)
+  const [squadMemberCount, setSquadMemberCount] = useState<number | null>(null);
+
+  // 프로필 편집 모달 (사진 + 닉네임 동시 편집)
+  const [showAccountEdit, setShowAccountEdit] = useState(false);
+  // 동호회 정보 편집 모달 (로고 + 이름 동시 편집, 운영자만)
+  const [showSquadEdit, setShowSquadEdit] = useState(false);
+  // 헤더 우측 통합 메뉴 (프로필 편집 / 동호회 편집)
+  const [showMainMenu, setShowMainMenu] = useState(false);
+
+  // 드래그 다운 닫기 + 진입/퇴장 애니메이션 (controlled transform)
+  const [visible, setVisible] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartY = useRef<number>(0);
+
+  // 마운트 후 한 프레임 뒤에 visible=true로 → translateY(100%) → translateY(0) 애니메이션
+  useEffect(() => {
+    if (!isOpen) return;
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, [isOpen]);
+
+  const handleAnimatedClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 250);
+  };
+
+  const CLOSE_THRESHOLD = 100;
+  const handleDragStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    dragStartY.current = e.touches[0].clientY;
+  };
+  const handleDragMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const dy = e.touches[0].clientY - dragStartY.current;
+    setDragY(Math.max(0, dy));
+  };
+  const handleDragEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragY > CLOSE_THRESHOLD) {
+      handleAnimatedClose();
+    } else {
+      setDragY(0);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+    setClubsLoading(true);
+    supabase
+      .from("squad_members")
+      .select("role, squads(id, name, invite_code)")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (data) {
+          const list = data.map((row) => {
+            const squad = Array.isArray(row.squads) ? row.squads[0] : row.squads;
+            return {
+              id: squad.id as string,
+              name: squad.name as string,
+              invite_code: squad.invite_code as string,
+              role: row.role as string,
+            };
+          });
+          setClubs(list);
+        }
+        setClubsLoading(false);
+      });
+  }, [isOpen, user]);
+
+  // 현재 동호회 멤버 수 조회 (탈퇴 시 위임 vs 삭제 판단)
+  useEffect(() => {
+    if (!isOpen || !squad?.id) { setSquadMemberCount(null); return; }
+    supabase
+      .from("squad_members")
+      .select("user_id", { count: "exact", head: true })
+      .eq("squad_id", squad.id)
+      .then(({ count }) => setSquadMemberCount(count ?? 0));
+  }, [isOpen, squad?.id]);
+
+  const handleCopyCode = () => {
+    const current = clubs.find((c) => c.id === squad?.id);
+    if (!current) return;
+    navigator.clipboard.writeText(current.invite_code);
+    toast("초대 코드가 복사되었습니다");
+  };
+
+  const handleRegenerateCode = async () => {
+    if (!squad?.id) return;
+    setRegenerating(true);
+    try {
+      const { data, error } = await supabase.rpc("regenerate_invite_code", {
+        p_squad_id: squad.id,
+      });
+      if (error) throw error;
+      const newCode = data as string;
+      setClubs((prev) => prev.map((c) => c.id === squad.id ? { ...c, invite_code: newCode } : c));
+      toast("초대 코드가 재생성되었습니다");
+    } catch (e) {
+      toast(toFriendlyMessage(e, "코드 재생성에 실패했습니다"), "error");
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const handleSwitchClub = async (club: Club) => {
+    const [fullSquad, fixedTeams, divisions, history] = await Promise.all([
+      loadSquadFromSupabase(club.id),
+      loadFixedTeamsFromSupabase(club.id),
+      loadDivisionsFromSupabase(club.id),
+      loadTeammateHistoryFromSupabase(club.id),
+    ]);
+    if (fullSquad) {
+      setSquad(fullSquad);
+      setFixedTeams(fixedTeams);
+      setDivisionHistory(divisions);
+      updateTeammateHistory(history);
+    }
+    onClose();
+  };
+
+  const handleDeleteClub = async () => {
+    if (!squad?.id) return;
+    setDeleteConfirm("deleting");
+    try {
+      const { error } = await supabase.from("squads").delete().eq("id", squad.id);
+      if (error) throw error;
+      setDeleteConfirm("idle");
+      setDeleteInput("");
+      clearSquad();
+      onClose();
+    } catch {
+      setDeleteConfirm("input");
+    }
+  };
+
+  const handleLeaveClub = async () => {
+    if (!user || !squad?.id) return;
+    try {
+      const { data, error } = await supabase.rpc("leave_squad", { p_squad_id: squad.id });
+      if (error) throw error;
+      const result = data as { action: "left" | "transferred" | "deleted"; new_owner_username?: string };
+      if (result.action === "transferred") {
+        toast(`${result.new_owner_username}님이 새 운영자가 되었습니다`);
+      } else if (result.action === "deleted") {
+        toast("마지막 멤버라 동호회가 삭제되었습니다");
+      } else {
+        toast("동호회에서 탈퇴했습니다");
+      }
+    } catch (e) {
+      toast(toFriendlyMessage(e, "탈퇴에 실패했습니다"), "error");
+      return;
+    }
+    setLeaveConfirm(false);
+    clearSquad();
+    onClose();
+  };
+
+  const handleSignOut = async () => {
+    onClose();
+    // signOut을 먼저 호출해 user=null → AuthPage로 전환한 뒤 squad 정리
+    // (clearSquad를 먼저 하면 user=있음 + squad=null 상태가 돼 ClubSetupPage가 순간 노출됨)
+    await signOut();
+    clearSquad();
+  };
+
+  const currentClub = clubs.find((c) => c.id === squad?.id);
+  // squad 데이터로 현재 동호회 이름 표시 (clubs fetch 완료 전에도 보여줌)
+  const currentClubName = currentClub?.name ?? squad?.name ?? "";
+  const isOwner = currentClub?.role === "owner";
+  const avatarLetter = (profile?.username || user?.email || "?")[0].toUpperCase();
+
+  if (!isOpen) return null;
+
+  return createPortal(
+    <>
+      <div
+        className="fixed inset-0 backdrop-blur-sm z-50"
+        style={{
+          backgroundColor: visible
+            ? `rgba(0,0,0,${Math.max(0, 0.7 - dragY / 600)})`
+            : "rgba(0,0,0,0)",
+          transition: isDragging ? "none" : "background-color 0.25s ease-out",
+        }}
+        onClick={handleAnimatedClose}
+      />
+
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto"
+        style={{
+          transform: !visible
+            ? "translateY(100%)"
+            : dragY > 0
+              ? `translateY(${dragY}px)`
+              : "translateY(0)",
+          transition: isDragging
+            ? "none"
+            : "transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
+      >
+        <div className="rounded-t-[2.5rem] px-5 pt-5 pb-10 bg-[#1a1a1a] border-t border-white/5">
+          {/* 핸들 — 드래그 다운으로 닫기 */}
+          <div
+            className="-mx-5 -mt-5 px-5 pt-5 pb-2 cursor-grab active:cursor-grabbing"
+            style={{ touchAction: "none" }}
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+            onTouchCancel={handleDragEnd}
+          >
+            <div className="w-10 h-1 bg-white/10 rounded-full mx-auto mb-4" />
+          </div>
+
+          {/* 계정 헤더 */}
+          <div className="flex items-center gap-3 mb-6 px-1">
+            {/* 아바타 — 표시 전용 */}
+            <div
+              className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+              style={{ background: "rgba(13,242,62,0.10)", border: "1px solid rgba(13,242,62,0.20)" }}
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              ) : (
+                <span className="text-lg font-black text-primary">{avatarLetter}</span>
+              )}
+            </div>
+            {/* 이름 / 이메일 */}
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-black text-base uppercase tracking-wide truncate">
+                {profile?.username || "사용자"}
+              </p>
+              <p className="text-white/30 text-xs truncate mt-0.5">{user?.email}</p>
+            </div>
+            {/* 우상단 통합 메뉴 — 프로필 / 동호회 편집 트리거 */}
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowMainMenu((v) => !v)}
+                aria-label="편집 메뉴"
+                aria-haspopup="menu"
+                aria-expanded={showMainMenu}
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors active:scale-90"
+              >
+                <span className="material-icons text-lg" aria-hidden="true">more_vert</span>
+              </button>
+              {showMainMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMainMenu(false)} />
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-10 z-20 rounded-xl overflow-hidden whitespace-nowrap shadow-lg min-w-[150px]"
+                    style={{ background: "rgba(28,34,28,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    <button
+                      role="menuitem"
+                      onClick={() => { setShowMainMenu(false); setShowAccountEdit(true); }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors"
+                    >
+                      <span className="material-icons text-white/50" style={{ fontSize: "14px" }} aria-hidden="true">person</span>
+                      프로필 편집
+                    </button>
+                    {squad?.id && currentClub?.role === "owner" && (
+                      <button
+                        role="menuitem"
+                        onClick={() => { setShowMainMenu(false); setShowSquadEdit(true); }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-white/80 hover:bg-white/5 transition-colors border-t border-white/5"
+                      >
+                        <span className="material-icons text-white/50" style={{ fontSize: "14px" }} aria-hidden="true">groups</span>
+                        동호회 편집
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* === CURRENT SQUAD === */}
+          {squad?.id && (
+            <>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">현재 동호회</p>
+              <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4 mb-5">
+                {/* 로고 + 동호회 이름 + 편집 + 권한 */}
+                <div className="flex items-center gap-3">
+                  {/* 로고 — 표시 전용 (변경은 우측 ✏️ 아이콘) */}
+                  <div
+                    className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+                    style={{ background: "rgba(13,242,62,0.10)", border: "1px solid rgba(13,242,62,0.20)" }}
+                  >
+                    {squad.logoUrl ? (
+                      <img
+                        src={squad.logoUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <span className="text-sm font-black text-primary">
+                        {currentClubName.slice(0, 1) || "?"}
+                      </span>
+                    )}
+                  </div>
+                  <p className="flex-1 text-white font-black text-base uppercase tracking-wide truncate">{currentClubName}</p>
+                  {/* 운영자 편집 진입은 우상단 통합 메뉴로 이동 */}
+                  {currentClub ? (
+                    <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                      style={{ background: isOwner ? "rgba(13,242,62,0.12)" : "rgba(255,255,255,0.05)", color: isOwner ? "#0DF23E" : "rgba(255,255,255,0.5)" }}>
+                      {isOwner ? "운영자" : "멤버"}
+                    </span>
+                  ) : clubsLoading ? (
+                    <span className="text-[9px] text-white/20 animate-pulse">로딩 중...</span>
+                  ) : null}
+                </div>
+
+                {/* 초대 코드 — clubs 데이터 로드 완료 시에만 표시 */}
+                {currentClub && (
+                <div className="mt-4 pt-4 border-t border-white/5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">초대 코드</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-2xl font-black tracking-[0.4em] font-mono text-primary">
+                      {currentClub.invite_code}
+                    </span>
+                    <ShareMenu
+                      title="초대 코드 공유"
+                      items={[
+                        {
+                          label: "코드 복사",
+                          icon: <span className="material-icons text-base text-white/60">content_copy</span>,
+                          onClick: handleCopyCode,
+                        },
+                        ...(isKakaoReady() ? [{
+                          label: "카카오톡으로 보내기",
+                          icon: <KakaoIcon size={20} />,
+                          onClick: () => shareSquadInvite(currentClub.name, currentClub.invite_code),
+                        }] : []),
+                      ]}
+                      trigger={(open) => (
+                        <button
+                          onClick={open}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/85 text-xs font-black uppercase tracking-wider transition-all active:scale-95 hover:bg-white/12"
+                        >
+                          <span className="material-icons text-sm">ios_share</span>
+                          공유
+                        </button>
+                      )}
+                    />
+                  </div>
+                  <p className="text-white/25 text-[10px] mt-2.5 leading-relaxed">멤버에게 이 코드를 공유하면 동호회에 참가할 수 있습니다</p>
+                  {isOwner && (
+                    <button
+                      onClick={handleRegenerateCode}
+                      disabled={regenerating}
+                      className="mt-3 text-white/25 hover:text-white/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors disabled:opacity-40"
+                    >
+                      <span className="material-icons text-xs">refresh</span>
+                      {regenerating ? "재생성 중..." : "코드 재생성"}
+                    </button>
+                  )}
+                </div>
+                )}
+
+                {/* 위험 액션 — clubs 로드 완료 후에만 표시 (currentClub.name 사용) */}
+                {currentClub && (() => {
+                  // owner가 혼자인 경우만 "동호회 삭제" — 데이터 영구 삭제
+                  // owner여도 다른 멤버 있으면 "탈퇴" (자동 위임)
+                  // 일반 멤버는 그냥 "탈퇴"
+                  const showHardDelete = isOwner && squadMemberCount === 1;
+                  return (
+                <div className="mt-4 pt-4 border-t border-white/5">
+                  {showHardDelete ? (
+                    deleteConfirm === "input" || deleteConfirm === "deleting" ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-red-400/80 font-bold leading-relaxed">
+                          정말 <span className="font-black">{currentClub.name}</span>을 삭제하시겠어요?<br />
+                          <span className="text-[10px] text-red-400/60 font-bold">혼자 남은 운영자라 멤버, 경기, 댓글, 공지 등 모든 데이터가 영구 삭제됩니다.</span>
+                        </p>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={deleteInput}
+                          onChange={(e) => setDeleteInput(e.target.value)}
+                          placeholder={`확인을 위해 "${currentClub.name}" 입력`}
+                          className="w-full bg-black/20 border border-red-500/20 rounded-lg px-3 py-2 text-xs font-bold text-white placeholder-white/20 outline-none focus:border-red-500/50"
+                          disabled={deleteConfirm === "deleting"}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setDeleteConfirm("idle"); setDeleteInput(""); }}
+                            disabled={deleteConfirm === "deleting"}
+                            className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white/40 disabled:opacity-40"
+                            style={{ background: "rgba(255,255,255,0.05)" }}
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={handleDeleteClub}
+                            disabled={deleteInput !== currentClub.name || deleteConfirm === "deleting"}
+                            className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white disabled:opacity-30"
+                            style={{ background: "rgba(239,68,68,0.7)" }}
+                          >
+                            {deleteConfirm === "deleting" ? "삭제 중..." : "삭제"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm("input")}
+                        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-colors"
+                        style={{ color: "rgba(239,68,68,0.55)" }}
+                      >
+                        <span className="material-icons text-xs">delete_forever</span>
+                        동호회 삭제
+                      </button>
+                    )
+                  ) : (
+                    leaveConfirm ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-red-400/80 font-bold text-center leading-relaxed">
+                          정말 <span className="font-black">{currentClub.name}</span>에서 탈퇴할까요?
+                          {isOwner && (
+                            <>
+                              <br />
+                              <span className="text-[10px] text-red-400/60 font-bold">운영자 권한은 다음 멤버에게 자동 위임됩니다.</span>
+                            </>
+                          )}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setLeaveConfirm(false)}
+                            className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white/40"
+                            style={{ background: "rgba(255,255,255,0.05)" }}
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={handleLeaveClub}
+                            className="flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest text-white"
+                            style={{ background: "rgba(239,68,68,0.6)" }}
+                          >
+                            탈퇴
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setLeaveConfirm(true)}
+                        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-colors"
+                        style={{ color: "rgba(239,68,68,0.55)" }}
+                      >
+                        <span className="material-icons text-xs">exit_to_app</span>
+                        동호회 탈퇴
+                      </button>
+                    )
+                  )}
+                </div>
+                  );
+                })()}
+              </div>
+            </>
+          )}
+
+
+          {/* === SWITCH SQUAD === */}
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 px-1">동호회 전환</p>
+          <div className="space-y-2 mb-5">
+            {clubs
+              .filter((c) => c.id !== squad?.id)
+              .map((club) => (
+                <button
+                  key={club.id}
+                  onClick={() => handleSwitchClub(club)}
+                  className="w-full flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] hover:border-white/10 rounded-xl px-4 py-3 transition-all text-left active:scale-[0.98]"
+                >
+                  <span className="material-icons text-white/30 text-sm">sports_soccer</span>
+                  <span className="text-white/80 text-sm font-bold flex-1 uppercase tracking-wide truncate">{club.name}</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                    style={{ background: club.role === "owner" ? "rgba(13,242,62,0.10)" : "rgba(255,255,255,0.04)", color: club.role === "owner" ? "rgba(13,242,62,0.7)" : "rgba(255,255,255,0.4)" }}>
+                    {club.role === "owner" ? "운영자" : "멤버"}
+                  </span>
+                </button>
+              ))}
+            <button
+              onClick={() => { clearSquad(); onClose(); }}
+              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left active:scale-[0.98] border border-dashed"
+              style={{ borderColor: "rgba(255,255,255,0.10)" }}
+            >
+              <span className="material-icons text-white/30 text-sm">add</span>
+              <span className="text-white/50 text-xs font-black uppercase tracking-widest">다른 동호회 참가 / 만들기</span>
+            </button>
+          </div>
+
+          {/* === 로그아웃 — 하단 작은 텍스트 링크 === */}
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 text-white/35 hover:text-white/60 text-[11px] font-black uppercase tracking-wider transition-colors active:scale-95"
+            >
+              로그아웃
+              <span className="material-icons text-xs">logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 내 프로필 편집 모달 */}
+      {showAccountEdit && (
+        <AccountEditModal onClose={() => setShowAccountEdit(false)} />
+      )}
+
+      {/* 동호회 정보 편집 모달 */}
+      {showSquadEdit && (
+        <SquadEditModal onClose={() => setShowSquadEdit(false)} />
+      )}
+    </>,
+    document.body
+  );
+};

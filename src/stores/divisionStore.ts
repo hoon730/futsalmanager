@@ -30,13 +30,12 @@ export const useDivisionStore = create<IDivisionStore>()((set) => ({
     })),
 
   deleteDivision: async (id) => {
-    // Supabase에서 삭제
-    await deleteDivisionFromSupabase(id);
-
-    // 로컬 스토어에서 삭제
+    // 로컬 스토어 즉시 반영 (optimistic update — UI 즉시 반응)
     set((state) => ({
       divisionHistory: state.divisionHistory.filter((d) => d.id !== id),
     }));
+    // Supabase에서 삭제 (백그라운드)
+    await deleteDivisionFromSupabase(id);
   },
 
   clearAllDivisions: async () => {

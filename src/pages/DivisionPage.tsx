@@ -4,9 +4,13 @@ import { createPortal } from "react-dom";
 import { useSquadStore } from "@/stores/squadStore";
 import { useFixedTeamStore } from "@/stores/fixedTeamStore";
 import { useDivisionStore } from "@/stores/divisionStore";
+import { useMatchStore } from "@/stores/matchStore";
+import { useSquadMercenaryStore } from "@/stores/squadMercenaryStore";
 import { divideTeamsWithConstraints, updateTeammateHistory as updateHistory } from "@/lib/teamAlgorithm";
 import { saveDivisionToSupabase, syncTeammateHistoryToSupabase } from "@/lib/supabaseSync";
-import { AlertModal, ConfirmModal, FixedTeamModal } from "@/components/modals";
+import { ConfirmModal, FixedTeamModal } from "@/components/modals";
+import { toast } from "@/stores/toastStore";
+import { toFriendlyMessage } from "@/lib/errorMessage";
 import type { IMember, IFixedTeam } from "@/types";
 
 const TEAM_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
@@ -16,6 +20,15 @@ const DivisionPage = () => {
   const { squad, selectedParticipants, toggleParticipant, selectAllParticipants, clearAllParticipants } = useSquadStore();
   const { fixedTeams, addFixedTeam, removeFixedTeam } = useFixedTeamStore();
   const { saveDivision, divisionHistory, teammateHistory, updateTeammateHistory: updateStoreHistory } = useDivisionStore();
+  const { matches, attendees, matchMercenaries, loadAttendees, loadMatches } = useMatchStore();
+  const {
+    mercenaries,
+    load: loadSquadMercenaries,
+    add: addSquadMercenary,
+    remove: removeSquadMercenary,
+    ingestNames: ingestMercenaryNames,
+    clear: clearSquadMercenaries,
+  } = useSquadMercenaryStore();
 
   const [currentTime, setCurrentTime] = useState('');
   const [currentTeams, setCurrentTeams] = useState<IMember[][] | null>(null);
@@ -43,20 +56,15 @@ const DivisionPage = () => {
   // 고정팀 상세 모달
   const [selectedFixedTeam, setSelectedFixedTeam] = useState<IFixedTeam | null>(null);
 
-  // 용병 관련
-  const [mercenaries, setMercenaries] = useState<IMember[]>(() => {
-    const saved = localStorage.getItem('mercenaries');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // 용병 관련 (squad_mercenaries 테이블이 source of truth)
   const [mercenaryName, setMercenaryName] = useState('');
   const [selectedMercenaries, setSelectedMercenaries] = useState<string[]>([]);
+  const [mercenaryActionLoading, setMercenaryActionLoading] = useState(false);
 
   // 모달
   const [showTeamCountModal, setShowTeamCountModal] = useState(false);
   const [showSavePeriodModal, setShowSavePeriodModal] = useState(false);
   const [showFixedTeamModal, setShowFixedTeamModal] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [showAlert, setShowAlert] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   useEffect(() => {
@@ -71,12 +79,104 @@ const DivisionPage = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // squad 전환 시 용병 풀 로드 + 이전 선택 초기화
   useEffect(() => {
-    localStorage.setItem('mercenaries', JSON.stringify(mercenaries));
-  }, [mercenaries]);
+    if (!squad?.id) {
+      clearSquadMercenaries();
+      setSelectedMercenaries([]);
+      return;
+    }
+    loadSquadMercenaries(squad.id);
+    setSelectedMercenaries([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squad?.id]);
 
-  const members = squad?.members || [];
-  const sortedMembers = useMemo(() => [...members].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en'])), [members]);
+  // 오늘 경기 감지 (±3시간 이내) — 참석자 자동 연동용
+  const todayMatch = useMemo(() => {
+    const now = new Date();
+    return matches.find((m) => {
+      const diff = Math.abs(new Date(m.matchDate).getTime() - now.getTime());
+      return diff <= 3 * 60 * 60 * 1000;
+    }) || null;
+  }, [matches]);
+
+
+  const todayAttendees = todayMatch ? (attendees[todayMatch.id] || []) : [];
+  // todayMatchMercenaries 는 매 렌더마다 새 배열이라 effect deps 안정성을 위해 useMemo
+  const todayMatchMercenaries = useMemo(
+    () => (todayMatch ? (matchMercenaries[todayMatch.id] || []) : []),
+    [todayMatch, matchMercenaries],
+  );
+
+  useEffect(() => {
+    if (squad?.id && matches.length === 0) {
+      loadMatches(squad.id);
+    }
+    // squad 전환 시점만 — store action / matches.length 변화엔 무반응
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squad?.id]);
+
+  useEffect(() => {
+    if (todayMatch && !attendees[todayMatch.id]) {
+      loadAttendees(todayMatch.id);
+    }
+    // todayMatch 변경 시에만 한 번 호출 — attendees 전체 변화엔 재실행 X
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayMatch?.id]);
+
+  // 오늘 경기 참석자가 로드되면 자동으로 참석 현황에 체크
+  useEffect(() => {
+    if (!todayMatch || !squad) return;
+    const attending = todayAttendees.filter((a) => a.status === 'attending' && a.memberId);
+    if (attending.length === 0) return;
+    if (selectedParticipants.length === 0) {
+      loadTodayParticipants();
+    }
+  // todayAttendees 길이 변화 또는 경기 전환 시에만 실행
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayAttendees.length, todayMatch?.id]);
+
+  // 경기에서 추가된 용병들을 squad pool 에 자동 누적
+  useEffect(() => {
+    if (!squad?.id || todayMatchMercenaries.length === 0) return;
+    ingestMercenaryNames(squad.id, todayMatchMercenaries.map((m) => m.name));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayMatchMercenaries.length, todayMatch?.id, squad?.id]);
+
+  // squad pool 이 업데이트되면, 매치 용병과 이름 매칭되는 squad mercenary id 자동 선택
+  useEffect(() => {
+    if (todayMatchMercenaries.length === 0 || mercenaries.length === 0) return;
+    const matchNames = new Set(todayMatchMercenaries.map((m) => m.name));
+    const autoSelectIds = mercenaries.filter((m) => matchNames.has(m.name)).map((m) => m.id);
+    if (autoSelectIds.length === 0) return;
+    setSelectedMercenaries((prev) => {
+      const existing = new Set(prev);
+      const newIds = autoSelectIds.filter((id) => !existing.has(id));
+      return newIds.length > 0 ? [...prev, ...newIds] : prev;
+    });
+  }, [mercenaries, todayMatchMercenaries]);
+
+  const loadTodayParticipants = () => {
+    if (!todayMatch || !squad) return;
+    const attendingMemberIds = todayAttendees
+      .filter((a) => a.status === 'attending' && a.memberId)
+      .map((a) => a.memberId as string);
+    const validIds = attendingMemberIds.filter((id) =>
+      squad.members.some((m) => m.id === id)
+    );
+    if (validIds.length > 0) {
+      // 기존 선택 초기화 후 참가자로 세팅
+      clearAllParticipants();
+      validIds.forEach((id) => toggleParticipant(id));
+    }
+  };
+
+  const sortedMembers = useMemo(() => {
+    const list = squad?.members ?? [];
+    return [...list].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en']));
+  }, [squad?.members]);
+  // 합집합/선택해제 분기에서 사용 — useMemo 와 별개로 squad members 참조
+  const members = squad?.members ?? [];
   const sortedMercenaries = useMemo(() => [...mercenaries].sort((a, b) => a.name.localeCompare(b.name, ['ko', 'en'])), [mercenaries]);
 
   const attendingCount = selectedParticipants.length;
@@ -168,24 +268,36 @@ const DivisionPage = () => {
   };
 
   // ── 용병 ──
-  const handleAddMercenary = () => {
+  const handleAddMercenary = async () => {
     const name = mercenaryName.trim();
-    if (!name) { setAlertMessage('용병 이름을 입력해주세요'); setShowAlert(true); return; }
-    if (mercenaries.some(m => m.name === name)) { setAlertMessage('이미 추가된 용병입니다'); setShowAlert(true); return; }
-    if (members.some(m => m.name === name)) { setAlertMessage('정규 멤버와 동일한 이름입니다'); setShowAlert(true); return; }
-    const newMercenary: IMember = { id: `mercenary-${Date.now()}`, name, isMercenary: true, active: true, createdAt: new Date().toISOString() };
-    setMercenaries([...mercenaries, newMercenary]);
-    setSelectedMercenaries([...selectedMercenaries, newMercenary.id]);
-    setMercenaryName('');
+    if (!squad?.id) return;
+    if (!name) { toast('용병 이름을 입력해주세요', 'error'); return; }
+    if (mercenaries.some(m => m.name === name)) { toast('이미 추가된 용병입니다', 'error'); return; }
+    if (members.some(m => m.name === name)) { toast('정규 멤버와 동일한 이름입니다', 'error'); return; }
+
+    setMercenaryActionLoading(true);
+    try {
+      const created = await addSquadMercenary(squad.id, name);
+      setSelectedMercenaries((prev) => [...prev, created.id]);
+      setMercenaryName('');
+    } catch (e) {
+      toast(toFriendlyMessage(e, '용병 추가에 실패했습니다'), 'error');
+    } finally {
+      setMercenaryActionLoading(false);
+    }
   };
 
   const handleRemoveMercenary = (id: string) => {
     setConfirmModal({
       isOpen: true, title: '용병 삭제', message: '이 용병을 삭제하시겠습니까?',
-      onConfirm: () => {
-        setMercenaries(mercenaries.filter(m => m.id !== id));
-        setSelectedMercenaries(selectedMercenaries.filter(mid => mid !== id));
+      onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false });
+        try {
+          await removeSquadMercenary(id);
+          setSelectedMercenaries(prev => prev.filter(mid => mid !== id));
+        } catch (e) {
+          toast(toFriendlyMessage(e, '용병 삭제에 실패했습니다'), 'error');
+        }
       }
     });
   };
@@ -200,9 +312,9 @@ const DivisionPage = () => {
     const selectedMembers = members.filter(m => selectedParticipants.includes(m.id));
     const selectedMercs = mercenaries.filter(m => selectedMercenaries.includes(m.id));
     const allParticipants = [...selectedMembers, ...selectedMercs];
-    if (allParticipants.length < teamCount) { setAlertMessage(`최소 ${teamCount}명이 필요합니다`); setShowAlert(true); return; }
+    if (allParticipants.length < teamCount) { toast(`최소 ${teamCount}명이 필요합니다`, 'error'); return; }
     const result = await divideTeamsWithConstraints(allParticipants, teamCount, fixedTeams, teammateHistory);
-    if (!result || !result.teams) { setAlertMessage('팀 배정에 실패했습니다. 다시 시도해주세요.'); setShowAlert(true); return; }
+    if (!result || !result.teams) { toast('팀 배정에 실패했습니다. 다시 시도해주세요.', 'error'); return; }
     setCurrentTeams(result.teams);
     setActiveTeamPage(0);
     setShowResultModal(true);
@@ -213,15 +325,14 @@ const DivisionPage = () => {
     if (!currentTeams || !squad) return;
     const date = new Date();
     const notes = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. ${period}`;
-    const division = { id: Date.now().toString(), squadId: squad.id, divisionDate: date.toISOString(), notes, period, teams: currentTeams, teamCount: currentTeams.length };
+    const division = { id: Date.now().toString(), squadId: squad.id, matchId: todayMatch?.id, divisionDate: date.toISOString(), notes, period, teams: currentTeams, teamCount: currentTeams.length };
     await saveDivisionToSupabase(division);
     saveDivision(division);
     const updatedHistory = updateHistory(currentTeams, teammateHistory);
     updateStoreHistory(updatedHistory);
     await syncTeammateHistoryToSupabase(squad.id, updatedHistory);
     setShowSavePeriodModal(false);
-    setAlertMessage(`${period} 결과가 저장되었습니다`);
-    setShowAlert(true);
+    toast(`${period} 결과가 저장되었습니다`);
   };
 
   // ── 고정팀 ──
@@ -233,34 +344,34 @@ const DivisionPage = () => {
   return (
     <div className="animate-fade-in">
       {/* 헤더 */}
-      <header className="px-6 pt-12 pb-10">
+      <header className="px-6 pt-12 pb-14">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">팀 배정</h1>
-            <div className="h-1 w-8 mt-3 rounded-full shadow-[0_0_10px_#0df23e]" style={{ backgroundColor: '#0DF23E' }}></div>
+            <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]" />
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Match #{divisionHistory.length + 1}</p>
-            <p className="text-[10px] font-black uppercase mt-1" style={{ color: '#0DF23E' }}>오늘 {currentTime}</p>
+            <p className="text-[10px] font-black text-primary uppercase mt-1">오늘 {currentTime}</p>
           </div>
         </div>
       </header>
 
-      <section className="space-y-6">
+
+      <section className="space-y-14">
         {/* ── 참석 현황 ── */}
         <div>
-          <div className="flex justify-between items-center mb-4 px-6">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="material-icons text-sm" style={{ color: '#0DF23E' }}>groups</span>
+          <div className="flex justify-between items-center mb-5 px-6">
+            <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+              <span className="material-icons text-sm text-primary">groups</span>
               참석 현황
-              <span className="text-xs ml-1" style={{ color: 'rgba(13,242,62,0.6)' }}>({attendingCount}명 선택됨)</span>
+              <span className="text-xs font-black text-primary/60 normal-case tracking-normal">({attendingCount}명)</span>
             </h2>
             <button
               onClick={() => isAllSelected ? clearAllParticipants() : selectAllParticipants()}
-              className={`text-xs font-bold px-4 py-1.5 rounded-full border active:scale-95 transition-all ${
-                isAllSelected ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'border-primary/20 bg-primary/10'
+              className={`text-xs font-black px-4 py-1.5 rounded-xl border active:scale-95 transition-all ${
+                isAllSelected ? 'text-red-400 bg-red-500/10 border-red-500/20' : 'text-primary bg-primary/10 border-primary/20'
               }`}
-              style={!isAllSelected ? { color: '#0DF23E' } : {}}
             >
               {isAllSelected ? '전체 해제' : '전체 선택'}
             </button>
@@ -307,7 +418,7 @@ const DivisionPage = () => {
                               <div className="min-w-0">
                                 <p className="text-sm font-bold text-white truncate">{member.name}</p>
                                 {member.positionKey && (
-                                  <p className="text-[10px] opacity-60 text-slate-300 font-medium uppercase">{member.positionKey}</p>
+                                  <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">{member.positionKey}</p>
                                 )}
                               </div>
                             </div>
@@ -331,6 +442,8 @@ const DivisionPage = () => {
                     <button
                       key={i}
                       onClick={() => handlePageClick(i)}
+                      aria-label={`${i + 1}페이지로 이동`}
+                      aria-current={activePage === i ? "page" : undefined}
                       className="h-1.5 rounded-full transition-all duration-300"
                       style={activePage === i
                         ? { width: '2rem', backgroundColor: '#0DF23E', boxShadow: '0 0 8px rgba(13,242,62,0.5)' }
@@ -344,19 +457,18 @@ const DivisionPage = () => {
           )}
         </div>
 
-        <div className="px-6 space-y-6">
+        <div className="px-6 space-y-8">
           {/* ── 용병 추가 ── */}
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <span className="material-icons text-sm" style={{ color: '#0DF23E' }}>person_add</span>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+                <span className="material-icons text-sm text-primary">person_add</span>
                 용병 추가
-                <span className="text-xs ml-1" style={{ color: 'rgba(13,242,62,0.6)' }}>({attendingMercenaryCount}명 선택됨)</span>
+                <span className="text-xs font-black text-primary/60 normal-case tracking-normal">({attendingMercenaryCount}명)</span>
               </h2>
               <button
                 onClick={() => setShowFixedTeamModal(true)}
-                className="text-xs font-bold px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 active:scale-95 transition-all"
-                style={{ color: '#0DF23E' }}
+                className="text-xs font-black px-4 py-1.5 bg-primary/10 rounded-xl border border-primary/20 active:scale-95 transition-all text-primary"
               >
                 고정팀 설정
               </button>
@@ -369,17 +481,15 @@ const DivisionPage = () => {
                   onChange={(e) => setMercenaryName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddMercenary()}
                   placeholder="용병 이름 입력"
-                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
-                  style={{ color: 'white' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(13,242,62,0.5)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all"
                 />
                 <button
                   onClick={handleAddMercenary}
-                  className="px-4 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+                  disabled={mercenaryActionLoading}
+                  className="px-4 py-3 rounded-xl font-black text-sm active:scale-95 transition-all disabled:opacity-40"
                   style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
                 >
-                  추가
+                  {mercenaryActionLoading ? '추가중' : '추가'}
                 </button>
               </div>
 
@@ -410,7 +520,7 @@ const DivisionPage = () => {
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRemoveMercenary(merc.id); }}
-                          className="text-xs font-bold px-3 py-1 rounded-full border text-red-400 bg-red-500/10 border-red-500/20 active:scale-95 transition-all"
+                          className="text-xs font-black px-3 py-1.5 rounded-xl border border-red-500/20 text-red-400 bg-red-500/10 active:scale-95 transition-all"
                         >
                           삭제
                         </button>
@@ -425,8 +535,8 @@ const DivisionPage = () => {
           {/* ── 고정 팀 현황 ── */}
           {fixedTeams.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                <span className="material-icons text-sm" style={{ color: '#0DF23E' }}>lock</span>
+              <h2 className="text-base font-black uppercase tracking-widest flex items-center gap-2 mb-5 text-white/80">
+                <span className="material-icons text-sm text-primary">lock</span>
                 고정팀 현황
               </h2>
               <div className="space-y-2">
@@ -453,7 +563,7 @@ const DivisionPage = () => {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); removeFixedTeam(team.id); }}
-                        className="text-xs font-bold px-3 py-1 rounded-full border text-red-400 bg-red-500/10 border-red-500/20 active:scale-95 transition-all"
+                        className="text-xs font-black px-3 py-1.5 rounded-xl border border-red-500/20 text-red-400 bg-red-500/10 active:scale-95 transition-all"
                       >
                         삭제
                       </button>
@@ -501,10 +611,10 @@ const DivisionPage = () => {
           팀 개수 선택 모달
       ══════════════════════════════════════ */}
       {showTeamCountModal && createPortal(
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9000 }} onClick={() => setShowTeamCountModal(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={() => setShowTeamCountModal(false)}>
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden animate-fade-in"
-            style={{ background: 'rgba(22,38,27,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(13,242,62,0.3)' }}
+            style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-10">
@@ -512,7 +622,7 @@ const DivisionPage = () => {
                 <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>grid_view</span>
               </div>
               <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">팀 개수 설정</h2>
-              <p className="text-xs text-white/40 mt-3 font-medium">경기를 진행할 최적의 팀 개수를 선택하세요</p>
+              <p className="text-xs text-white/40 mt-3 font-bold">경기를 진행할 최적의 팀 개수를 선택하세요</p>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-10">
               {[2, 3, 4, 5].map(num => (
@@ -543,18 +653,7 @@ const DivisionPage = () => {
             </div>
             <button
               onClick={() => setShowTeamCountModal(false)}
-              className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-              }}
+              className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
             >
               뒤로가기
             </button>
@@ -573,11 +672,11 @@ const DivisionPage = () => {
           <div className="px-6 pt-10 pb-8 flex items-center justify-between flex-shrink-0">
             <div>
               <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">팀 배정 결과</h1>
-              <div className="h-1 w-8 mt-1.5 rounded-full" style={{ backgroundColor: '#0DF23E' }}></div>
+              <div className="h-1 w-8 bg-primary mt-3 rounded-full shadow-[0_0_10px_#0df23e]" />
             </div>
             <button
               onClick={() => setShowSavePeriodModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
               style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
             >
               <span className="material-icons text-sm">save</span>
@@ -647,7 +746,7 @@ const DivisionPage = () => {
                             >
                               {member.name.slice(1)}
                             </div>
-                            <span className="font-semibold text-sm text-white/90 flex-1 truncate">{member.name}</span>
+                            <span className="font-bold text-sm text-white flex-1 truncate">{member.name}</span>
                             {member.isMercenary && (
                               <span className="text-[9px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 bg-orange-500/20 text-orange-400">용병</span>
                             )}
@@ -680,7 +779,7 @@ const DivisionPage = () => {
           <div className="px-5 pt-1 pb-10 space-y-2.5 flex-shrink-0">
             <button
               onClick={() => handleDivideTeams(currentTeams.length)}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 text-sm"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
               style={{ backgroundColor: '#0DF23E', color: '#0a150d' }}
             >
               <span className="material-icons text-lg">autorenew</span>
@@ -688,18 +787,7 @@ const DivisionPage = () => {
             </button>
             <button
               onClick={() => setShowResultModal(false)}
-              className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-              }}
+              className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
             >
               뒤로가기
             </button>
@@ -713,10 +801,10 @@ const DivisionPage = () => {
           저장 모달
       ══════════════════════════════════════ */}
       {showSavePeriodModal && createPortal(
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center px-6" style={{ zIndex: 9100 }} onClick={() => setShowSavePeriodModal(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={() => setShowSavePeriodModal(false)}>
           <div
             className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden animate-fade-in"
-            style={{ background: 'rgba(22,38,27,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(13,242,62,0.2)' }}
+            style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-10">
@@ -724,13 +812,13 @@ const DivisionPage = () => {
                 <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>save</span>
               </div>
               <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">팀 결과 저장</h2>
-              <p className="text-xs text-white/40 mt-3 font-medium">어느 시간대로 저장하시겠습니까?</p>
+              <p className="text-xs text-white/40 mt-3 font-bold">어느 시간대로 저장하시겠습니까?</p>
             </div>
             <div className="flex gap-5 mb-10">
               {/* 전반전 버튼 - 파랑 호버 */}
               <button
                 onClick={() => handleSave('전반전')}
-                className="flex-1 py-3 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
+                className="flex-1 py-3.5 rounded-xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)' }}
                 onMouseEnter={e => {
                   const el = e.currentTarget;
@@ -755,7 +843,7 @@ const DivisionPage = () => {
               {/* 후반전 버튼 - 빨강 호버 */}
               <button
                 onClick={() => handleSave('후반전')}
-                className="flex-1 py-3 rounded-2xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
+                className="flex-1 py-3.5 rounded-xl font-black uppercase transition-all active:scale-95 flex flex-col items-center"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.1)' }}
                 onMouseEnter={e => {
                   const el = e.currentTarget;
@@ -780,18 +868,7 @@ const DivisionPage = () => {
             </div>
             <button
               onClick={() => setShowSavePeriodModal(false)}
-              className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-              }}
+              className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
             >
               뒤로가기
             </button>
@@ -808,10 +885,10 @@ const DivisionPage = () => {
           members.find(m => m.id === id) || mercenaries.find(m => m.id === id)
         ).filter(Boolean);
         return createPortal(
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 animate-fade-in" style={{ zIndex: 9200 }} onClick={() => setSelectedFixedTeam(null)}>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center px-6 z-[9999] animate-fade-in" onClick={() => setSelectedFixedTeam(null)}>
             <div
               className="w-full max-w-sm rounded-[2.5rem] p-8 animate-fade-in"
-              style={{ background: 'rgba(22,38,27,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(13,242,62,0.2)' }}
+              style={{ background: 'rgba(22,28,22,0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(13,242,62,0.15)' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center mb-8">
@@ -834,18 +911,7 @@ const DivisionPage = () => {
               </div>
               <button
                 onClick={() => setSelectedFixedTeam(null)}
-                className="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-[0.2em] transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(13,242,62,0.4)';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#0DF23E';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(13,242,62,0.05)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-                }}
+                className="w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 transition-all active:scale-95 hover:border-primary/30 hover:text-white/60"
               >
                 뒤로가기
               </button>
@@ -855,8 +921,7 @@ const DivisionPage = () => {
         );
       })()}
 
-      {/* Alert / Confirm / FixedTeam 모달 */}
-      <AlertModal isOpen={showAlert} message={alertMessage} onClose={() => setShowAlert(false)} />
+      {/* Confirm / FixedTeam 모달 */}
       <ConfirmModal
         isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message}
         onConfirm={confirmModal.onConfirm} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}

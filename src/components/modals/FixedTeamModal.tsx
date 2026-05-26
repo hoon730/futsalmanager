@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import type { IMember, IFixedTeam } from "@/types";
 
 interface FixedTeamModalProps {
@@ -22,6 +23,14 @@ const FixedTeamModal = ({
   onAddFixedTeam,
 }: FixedTeamModalProps) => {
   const [selection, setSelection] = useState<string[]>([]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [onClose]);
 
   // 오늘 참석하는 멤버와 용병
   const attendingMembers = useMemo(
@@ -61,6 +70,10 @@ const FixedTeamModal = ({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fixed-team-title"
         className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden flex flex-col animate-fade-in"
         style={{
           background: 'rgba(22,38,27,0.95)',
@@ -73,9 +86,9 @@ const FixedTeamModal = ({
         {/* 헤더 - 아이콘 + 중앙 정렬 */}
         <header className="mb-6 flex-shrink-0 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'rgba(13,242,62,0.1)', border: '1px solid rgba(13,242,62,0.2)' }}>
-            <span className="material-icons text-3xl" style={{ color: '#0DF23E' }}>link</span>
+            <span className="material-icons text-3xl" style={{ color: '#0DF23E' }} aria-hidden="true">link</span>
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">고정팀 설정</h2>
+          <h2 id="fixed-team-title" className="text-2xl font-black tracking-tight text-white uppercase italic">고정팀 설정</h2>
           <p className="text-xs text-white/40 mt-2 font-medium">고정으로 묶을 멤버를 2명 이상 선택하세요</p>
           {selection.length > 0 && (
             <p className="text-xs font-black mt-1" style={{ color: '#0DF23E' }}>

@@ -1,63 +1,123 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Layout from "@/components/Layout";
-import { useInitialLoad } from "@/hooks/useInitialLoad";
+import { useAuthSquadLoad } from "@/hooks/useAuthSquadLoad";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useAutoSync } from "@/hooks/useAutoSync";
 import { useSquadStore } from "@/stores/squadStore";
+import { useAuthStore } from "@/stores/authStore";
 import { AlertModal } from "@/components/modals/AlertModal";
+import { ToastContainer } from "@/components/Toast";
+import { InviteGate } from "@/components/InviteGate";
+import { lazyWithRetry, clearChunkReloadFlag } from "@/lib/lazyWithRetry";
+import { ChunkErrorBoundary } from "@/components/ChunkErrorBoundary";
+
+// 로그인 전/동호회 미설정 화면도 lazy-load — 정상 진입 후엔 다운로드 안 함
+// lazyWithRetry: 배포 직후 stale chunk 404 발생 시 자동 reload로 복구
+const AuthPage      = lazyWithRetry(() => import("@/components/auth/AuthPage").then(m => ({ default: m.AuthPage })));
+const ClubSetupPage = lazyWithRetry(() => import("@/components/club/ClubSetupPage").then(m => ({ default: m.ClubSetupPage })));
+
+const FullscreenLoader = ({ message }: { message: string }) => (
+  <div className="loading-screen">
+    <div className="loading-spinner"></div>
+    <p>{message}</p>
+  </div>
+);
 
 const App = () => {
-  const { isLoading, error: loadError } = useInitialLoad();
-  const { squad } = useSquadStore();
+  const { user, isLoading: authLoading, initialize } = useAuthStore();
+  const { squad, clearSquad } = useSquadStore();
+
+  // 인증 상태 초기화
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  // App이 정상적으로 마운트되었으므로 chunk 재시도 플래그 초기화
+  // (다음 배포에서 다시 stale chunk 발생 시 자동 reload가 재개되도록)
+  useEffect(() => {
+    clearChunkReloadFlag();
+  }, []);
+
+  const { isLoading: authDataLoading } = useAuthSquadLoad(user?.id);
+
   const { isConnected } = useRealtimeSync(squad?.id || null);
   const [syncErrorModal, setSyncErrorModal] = useState(false);
 
-  // 자동 동기화 활성화
+  // 초대 링크(?invite=CODE)로 진입 + 이미 동호회 있는 경우 → 하단 시트로 가입 안내
+  // useState 지연 초기화로 마운트 시 1회 localStorage 읽기 (useEffect 내 setState 금지 규칙 회피)
+  const [pendingInviteCode] = useState<string | null>(() => {
+    try { return localStorage.getItem("pendingInviteCode") || null; } catch { return null; }
+  });
+  const [inviteDismissed, setInviteDismissed] = useState(false);
+  const showInviteGate = !!user && !!squad?.id && !!pendingInviteCode && !inviteDismissed;
+
+  const handleInviteJoin = () => {
+    setInviteDismissed(true);
+    // localStorage 코드는 유지 → ClubSetupPage가 마운트될 때 읽어서 자동 입력
+    clearSquad();
+  };
+
+  const handleInviteDismiss = () => {
+    try { localStorage.removeItem("pendingInviteCode"); } catch { /* ignore */ }
+    setInviteDismissed(true);
+  };
+
   useAutoSync();
 
-  // 동기화 연결 실패 감지 - 데이터가 없을 때만, 최초 연결 실패 시에만 표시
   const hasData = (squad?.members?.length ?? 0) > 0;
   useEffect(() => {
-    // 이미 연결됐거나, 데이터가 있거나, 로딩 중이면 모달 표시 안 함
-    if (isConnected || hasData || isLoading || !squad?.id) return;
-
+    if (isConnected || hasData || authDataLoading || !squad?.id) return;
     const timer = setTimeout(() => {
-      // 타이머 만료 시점에 다시 체크: 여전히 미연결이고 데이터도 없을 때만
-      if (!isConnected && !hasData) {
-        setSyncErrorModal(true);
-      }
+      if (!isConnected && !hasData) setSyncErrorModal(true);
     }, 5000);
     return () => clearTimeout(timer);
-  }, [isConnected, squad?.id, isLoading, hasData]);
+  }, [isConnected, squad?.id, authDataLoading, hasData]);
 
-  if (isLoading) {
+  // 1. 인증 확인 중
+  if (authLoading) {
+    return <FullscreenLoader message="로딩 중..." />;
+  }
+
+  // 2. 비로그인 → 인증 페이지
+  if (!user) {
     return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
-        <p>데이터 로드 중...</p>
-      </div>
+      <ChunkErrorBoundary>
+        <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
+          <AuthPage />
+        </Suspense>
+      </ChunkErrorBoundary>
     );
   }
 
+  // 3. 로그인 완료, 동호회 데이터 로딩 중
+  if (authDataLoading) {
+    return <FullscreenLoader message="동호회 데이터 로드 중..." />;
+  }
+
+  // 4. 로그인했지만 동호회 미설정
+  if (!squad?.id) {
+    return (
+      <ChunkErrorBoundary>
+        <Suspense fallback={<FullscreenLoader message="로딩 중..." />}>
+          <ClubSetupPage />
+        </Suspense>
+      </ChunkErrorBoundary>
+    );
+  }
+
+  // 5. 정상 진입
   return (
     <>
       <Layout />
-
-      {/* 동기화 에러 모달 */}
+      {showInviteGate && (
+        <InviteGate onJoin={handleInviteJoin} onDismiss={handleInviteDismiss} />
+      )}
       <AlertModal
         isOpen={syncErrorModal}
-        message="⚠️ 실시간 동기화 연결 실패\n\n인터넷 연결을 확인해주세요.\n데이터는 로컬에 저장됩니다."
+        message="⚠️ 실시간 동기화 연결 실패\n\n인터넷 연결을 확인해주세요."
         onClose={() => setSyncErrorModal(false)}
       />
-
-      {/* 초기 로드 에러 모달 */}
-      {loadError && (
-        <AlertModal
-          isOpen={!!loadError}
-          message={`❌ 데이터 로드 실패\n\n${loadError}\n\n인터넷 연결을 확인해주세요.`}
-          onClose={() => {}}
-        />
-      )}
+      <ToastContainer />
     </>
   );
 };

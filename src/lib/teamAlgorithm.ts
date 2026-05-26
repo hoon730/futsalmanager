@@ -1,4 +1,5 @@
 import type { IMember, IFixedTeam, ITeammateHistory } from "@/types";
+import { logger } from "@/lib/logger";
 
 interface IDivisionResult {
   teams: IMember[][];
@@ -13,12 +14,11 @@ export const divideTeamsWithConstraints = async (
   fixedTeams: IFixedTeam[] = [],
   teammateHistory: ITeammateHistory = {}
 ): Promise<IDivisionResult | null> => {
-  if (players.length < teamCount) {
-    alert(`최소 ${teamCount}명 이상의 참가자가 필요합니다.`);
-    return null;
-  }
+  // 참가자 부족 케이스는 호출 측(DivisionPage.handleDivideTeams)이 이미 toast 로 안내.
+  // 안전망으로 null 만 반환하고 lib 함수 안에서는 UI 호출 안 함.
+  if (players.length < teamCount) return null;
 
-  console.log("팀 나누기 알고리즘 시작:", {
+  logger.log("팀 나누기 알고리즘 시작:", {
     참가자: players.map((p) => p.name),
     팀개수: teamCount,
     고정팀수: fixedTeams.length,
@@ -54,17 +54,13 @@ export const divideTeamsWithConstraints = async (
     }
   }
 
-  console.log("팀 나누기 결과:", {
+  logger.log("팀 나누기 결과:", {
     성공한시도: successfulAttempts,
     최고점수: bestScore,
     결과: bestDivision ? "성공" : "실패",
   });
 
-  if (!bestDivision) {
-    alert("팀을 나눌 수 없습니다. 고정 설정을 확인해주세요.");
-    return null;
-  }
-
+  // 1000회 시도 후에도 실패하면 null. 호출 측이 일반 실패 메시지로 처리.
   return bestDivision;
 };
 
@@ -101,11 +97,11 @@ const attemptDivision = (
 
     // 그룹의 모든 인원이 아직 배치되지 않았는지 확인
     if (groupPlayers.length !== group.playerIds.length) {
-      console.log("고정 그룹 일부 멤버가 이미 배치됨, 스킵:", group);
+      logger.log("고정 그룹 일부 멤버가 이미 배치됨, 스킵:", group);
       continue;
     }
 
-    console.log("고정 그룹 배치 시도:", {
+    logger.log("고정 그룹 배치 시도:", {
       그룹크기: groupPlayers.length,
       멤버: groupPlayers.map((p) => p.name),
     });
@@ -120,14 +116,14 @@ const attemptDivision = (
         teams[i].push(...groupPlayers);
         groupPlayers.forEach((p) => assigned.add(p.id));
         placed = true;
-        console.log(`고정 그룹을 팀 ${i}에 배치 성공`);
+        logger.log(`고정 그룹을 팀 ${i}에 배치 성공`);
         break;
       }
     }
 
     // 고정 그룹을 배치할 수 없으면 실패
     if (!placed) {
-      console.log("고정 그룹 배치 실패, 이번 시도 폐기");
+      logger.log("고정 그룹 배치 실패, 이번 시도 폐기");
       return null;
     }
   }
@@ -151,6 +147,9 @@ const attemptDivision = (
 
 /**
  * 팀 나누기 점수 계산 (낮을수록 좋음)
+ * - 팀메이트 이력: 자주 같이 한 사람끼리 다른 팀으로
+ * - 실력 밸런싱: 팀 간 실력 합산 차이 최소화
+ * - GK 분배: GK가 한 팀에 몰리지 않도록
  */
 const calculateDivisionScore = (
   division: IDivisionResult,
@@ -158,17 +157,41 @@ const calculateDivisionScore = (
 ): number => {
   let score = 0;
 
+  // 1. 팀메이트 이력 페널티
   division.teams.forEach((team) => {
     for (let i = 0; i < team.length; i++) {
       for (let j = i + 1; j < team.length; j++) {
         const key = [team[i].id, team[j].id].sort().join("-");
         const count = teammateHistory[key] || 0;
-
-        // 함께한 횟수에 따라 점수 부여 (제곱으로 페널티 증가)
         score += Math.pow(count, 2);
       }
     }
   });
+
+  // 2. 실력 밸런싱 페널티 (가중치 × 3)
+  const teamSkills = division.teams.map((team) =>
+    team.reduce((sum, p) => sum + (p.skillLevel ?? 3), 0)
+  );
+  const avgSkill = teamSkills.reduce((a, b) => a + b, 0) / teamSkills.length;
+  const skillPenalty = teamSkills.reduce(
+    (s, ts) => s + Math.pow(ts - avgSkill, 2),
+    0
+  );
+  score += skillPenalty * 3;
+
+  // 3. GK 분배 페널티 (가중치 × 10 — 가장 중요)
+  const totalGKs = division.teams.reduce(
+    (sum, team) => sum + team.filter((p) => p.positionKey === "GK").length,
+    0
+  );
+  if (totalGKs > 0) {
+    const avgGKs = totalGKs / division.teams.length;
+    const gkPenalty = division.teams.reduce((s, team) => {
+      const gkCount = team.filter((p) => p.positionKey === "GK").length;
+      return s + Math.pow(gkCount - avgGKs, 2);
+    }, 0);
+    score += gkPenalty * 10;
+  }
 
   return score;
 };

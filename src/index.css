@@ -87,6 +87,12 @@ body {
   animation: fade-in 0.3s ease-out forwards;
 }
 
+/* ===== 슬라이드업 애니메이션 (바텀 시트) ===== */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
 /* ===== 로딩 스피너 ===== */
 @keyframes spin {
   to { transform: rotate(360deg); }

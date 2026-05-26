@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface IConfirmModalProps {
   isOpen: boolean;
@@ -21,6 +23,16 @@ export const ConfirmModal = ({
   cancelText = "뒤로가기",
   isDanger = false,
 }: IConfirmModalProps) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleConfirm = () => {
@@ -35,6 +47,10 @@ export const ConfirmModal = ({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
         className="w-full max-w-sm rounded-[2.5rem] p-8 relative overflow-hidden"
         style={{
           background: 'rgba(22,38,27,0.95)',
@@ -44,7 +60,7 @@ export const ConfirmModal = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-black italic uppercase text-white mb-3">{title}</h3>
+        <h3 id="confirm-modal-title" className="text-lg font-black italic uppercase text-white mb-3">{title}</h3>
         <p className="text-sm text-white/60 font-medium leading-relaxed mb-8">{message}</p>
 
         <div className="space-y-3">
