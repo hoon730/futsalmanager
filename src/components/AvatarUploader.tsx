@@ -18,7 +18,7 @@ interface Props {
   disabled?: boolean;
   /** 모서리 (round = 원형, square = 둥근 사각형 — 로고용) */
   shape?: "round" | "square";
-  /** 라벨("사진 변경") 표시 여부. 기본 true */
+  /** 라벨("사진 변경") 표시 여부. 기본 false */
   showLabel?: boolean;
 }
 
@@ -30,7 +30,7 @@ export function AvatarUploader({
   size = 80,
   disabled,
   shape = "round",
-  showLabel = true,
+  showLabel = false,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -56,55 +56,57 @@ export function AvatarUploader({
 
   return (
     <div className="flex flex-col items-center gap-2.5">
-      <button
-        type="button"
-        onClick={open}
-        disabled={disabled || uploading}
-        className="relative overflow-hidden border-2 transition-all active:scale-95 disabled:opacity-60"
-        style={{
-          width: size,
-          height: size,
-          borderRadius: radius,
-          borderColor: "rgba(13,242,62,0.3)",
-          background: "rgba(13,242,62,0.10)",
-        }}
-      >
-        {currentUrl ? (
-          <img src={currentUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <span
-            className="text-xl font-black text-primary flex items-center justify-center w-full h-full"
-            style={{ fontSize: size * 0.32 }}
-          >
-            {fallbackText?.slice(0, 1) ?? "?"}
-          </span>
-        )}
-        {/* 업로드 중 오버레이 */}
-        {uploading && (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ background: "rgba(0,0,0,0.55)" }}
-          >
-            <div className="loading-spinner" style={{ width: 22, height: 22 }} />
-          </div>
-        )}
-        {/* 우하단 카메라 인디케이터 — 시인성 위해 살짝 더 키우고 밖으로 빼냄 */}
+      {/* overflow-hidden이 카메라 인디케이터를 clip하지 않도록 래퍼로 분리 */}
+      <div className="relative" style={{ width: size, height: size }}>
+        <button
+          type="button"
+          onClick={open}
+          disabled={disabled || uploading}
+          className="overflow-hidden border-2 transition-all active:scale-95 disabled:opacity-60 w-full h-full"
+          style={{
+            borderRadius: radius,
+            borderColor: "rgba(13,242,62,0.3)",
+            background: "rgba(13,242,62,0.10)",
+          }}
+        >
+          {currentUrl ? (
+            <img src={currentUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span
+              className="text-xl font-black text-primary flex items-center justify-center w-full h-full"
+              style={{ fontSize: size * 0.32 }}
+            >
+              {fallbackText?.slice(0, 1) ?? "?"}
+            </span>
+          )}
+          {/* 업로드 중 오버레이 */}
+          {uploading && (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+            >
+              <div className="loading-spinner" style={{ width: 22, height: 22 }} />
+            </div>
+          )}
+        </button>
+        {/* 우하단 카메라 인디케이터 — 반쯤 걸치게 배치, 자체 클릭 처리 */}
         {!uploading && !disabled && (
           <div
-            className="absolute w-6 h-6 rounded-full flex items-center justify-center"
+            className="absolute w-6.5 h-6.5 rounded-full flex items-center justify-center cursor-pointer"
             style={{
-              right: -4,
-              bottom: -4,
+              right: 0,
+              bottom: 0,
               background: "#0DF23E",
               border: "2px solid #0a150d",
               boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
             }}
+            onClick={open}
             aria-hidden="true"
           >
-            <span className="material-icons text-[#0a150d]" style={{ fontSize: 14 }}>photo_camera</span>
+            <span className="material-icons text-[#0a150d]" style={{ fontSize: 16 }}>photo_camera</span>
           </div>
         )}
-      </button>
+      </div>
       {showLabel && (
         <button
           type="button"
