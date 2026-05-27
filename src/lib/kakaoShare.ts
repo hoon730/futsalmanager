@@ -8,6 +8,8 @@ interface KakaoLink {
   title: string;
   description: string;
   imageUrl: string;
+  imageWidth?: number;
+  imageHeight?: number;
   link: { mobileWebUrl: string; webUrl: string };
 }
 
@@ -65,7 +67,9 @@ export function shareSquadInvite(squadName: string, inviteCode: string) {
         `초대 코드: ${inviteCode}\n` +
         `\n👇 아래 버튼을 누르면 자동으로 가입 페이지로 이동합니다.\n` +
         `또는 ${baseUrl} 에 접속해서 "동호회 참가" → 코드 입력`,
-      imageUrl: `${baseUrl}/og-image.png?v=3`,
+      imageUrl: `${baseUrl}/kakao-share-image.png`,
+      imageWidth: 800,
+      imageHeight: 800,
       link: { mobileWebUrl: url, webUrl: url },
     },
     buttons: [{ title: "동호회 가입하기", link: { mobileWebUrl: url, webUrl: url } }],
