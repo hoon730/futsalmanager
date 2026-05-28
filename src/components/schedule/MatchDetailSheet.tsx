@@ -332,6 +332,7 @@ export function MatchDetailSheet({
                       location: match.location,
                       attendingCount: totalAttending,
                       maxPlayers: match.maxPlayers,
+                      matchId: match.id,
                     }),
                   }] : []),
                 ]}

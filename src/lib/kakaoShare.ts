@@ -83,12 +83,17 @@ export function shareMatch(opts: {
   location?: string;
   attendingCount: number;
   maxPlayers: number;
+  /** 딥링크용 경기 ID — ?tab=schedule&match=ID 형태로 URL에 포함 */
+  matchId?: string;
 }) {
   if (!isKakaoReady()) {
     toast("카카오 공유를 사용할 수 없습니다", "error");
     return;
   }
   const baseUrl = window.location.origin;
+  const url = opts.matchId
+    ? `${baseUrl}?tab=schedule&match=${encodeURIComponent(opts.matchId)}`
+    : baseUrl;
   const date = new Date(opts.matchDate);
   const dateStr = date.toLocaleString("ko-KR", {
     month: "long", day: "numeric", weekday: "short",
@@ -104,9 +109,11 @@ export function shareMatch(opts: {
     content: {
       title: opts.title,
       description: desc,
-      imageUrl: `${baseUrl}/og-image.png?v=3`,
-      link: { mobileWebUrl: baseUrl, webUrl: baseUrl },
+      imageUrl: `${baseUrl}/kakao-share-image.png`,
+      imageWidth: 800,
+      imageHeight: 800,
+      link: { mobileWebUrl: url, webUrl: url },
     },
-    buttons: [{ title: "참석 응답하기", link: { mobileWebUrl: baseUrl, webUrl: baseUrl } }],
+    buttons: [{ title: "참석 응답하기", link: { mobileWebUrl: url, webUrl: url } }],
   });
 }
