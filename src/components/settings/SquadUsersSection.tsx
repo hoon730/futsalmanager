@@ -19,10 +19,12 @@ interface Props {
 
 type RoleOrder = { owner: 0; admin: 1; member: 2 };
 const ROLE_ORDER: RoleOrder = { owner: 0, admin: 1, member: 2 };
+const INITIAL_VISIBLE = 5;
 
 export function SquadUsersSection({ squadId, isOwnerOrAdmin, userRole, currentUserId }: Props) {
   const [squadUsers, setSquadUsers] = useState<ISquadUserRow[]>([]);
   const [squadUsersLoading, setSquadUsersLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [selectedSquadUser, setSelectedSquadUser] = useState<ISquadUserRow | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -160,7 +162,7 @@ export function SquadUsersSection({ squadId, isOwnerOrAdmin, userRole, currentUs
             <p className="text-white/20 text-xs py-2">회원 정보가 없습니다</p>
           ) : (
             <div className="space-y-2">
-              {squadUsers.map((u) => {
+              {(expanded ? squadUsers : squadUsers.slice(0, INITIAL_VISIBLE)).map((u) => {
                 const isMe = u.userId === currentUserId;
                 const roleBadge: Record<string, { label: string; color: string }> = {
                   owner: { label: "OWNER", color: "#FFD700" },
@@ -195,6 +197,19 @@ export function SquadUsersSection({ squadId, isOwnerOrAdmin, userRole, currentUs
                   </button>
                 );
               })}
+              {squadUsers.length > INITIAL_VISIBLE && (
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="w-full flex items-center justify-center gap-1.5 mt-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-colors text-white/30 hover:text-white/50 hover:bg-white/[0.03]"
+                >
+                  <span className="material-icons text-sm" style={{ fontSize: 14 }}>
+                    {expanded ? "expand_less" : "expand_more"}
+                  </span>
+                  {expanded
+                    ? "접기"
+                    : `${squadUsers.length - INITIAL_VISIBLE}명 더보기`}
+                </button>
+              )}
             </div>
           )}
         </div>
