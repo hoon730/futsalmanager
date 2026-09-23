@@ -33,6 +33,7 @@ export function MembersSection({ isOwnerOrAdmin }: Props) {
 
   // 페이지네이션 + 드래그 스크롤
   const [currentPage, setCurrentPage] = useState(0);
+  const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages - 1) : 0;
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
@@ -263,9 +264,9 @@ export function MembersSection({ isOwnerOrAdmin }: Props) {
                 key={i}
                 onClick={() => handlePageClick(i)}
                 aria-label={`${i + 1}페이지로 이동`}
-                aria-current={currentPage === i ? "page" : undefined}
+                aria-current={safeCurrentPage === i ? "page" : undefined}
                 className="h-1.5 rounded-full transition-all duration-300"
-                style={currentPage === i
+                style={safeCurrentPage === i
                   ? { width: "2rem", backgroundColor: "#0DF23E", boxShadow: "0 0 8px rgba(13,242,62,0.5)" }
                   : { width: "0.5rem", backgroundColor: "rgba(255,255,255,0.1)" }
                 }
