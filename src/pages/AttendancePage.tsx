@@ -59,12 +59,14 @@ export default function AttendancePage() {
 
   const STATS_PAGE_SIZE = 5;
   const statsTotalPages = Math.ceil(divisionStats.memberStats.length / STATS_PAGE_SIZE);
-  const pagedStats = divisionStats.memberStats.slice((statsPage - 1) * STATS_PAGE_SIZE, statsPage * STATS_PAGE_SIZE);
+  const safeStatsPage = statsTotalPages > 0 ? Math.min(statsPage, statsTotalPages) : 1;
+  const pagedStats = divisionStats.memberStats.slice((safeStatsPage - 1) * STATS_PAGE_SIZE, safeStatsPage * STATS_PAGE_SIZE);
 
   const HISTORY_PAGE_SIZE = 5;
   const reversedHistory = [...divisionHistory].reverse();
   const historyTotalPages = Math.ceil(reversedHistory.length / HISTORY_PAGE_SIZE);
-  const pagedHistory = reversedHistory.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
+  const safeHistoryPage = historyTotalPages > 0 ? Math.min(historyPage, historyTotalPages) : 1;
+  const pagedHistory = reversedHistory.slice((safeHistoryPage - 1) * HISTORY_PAGE_SIZE, safeHistoryPage * HISTORY_PAGE_SIZE);
 
   const getParsedDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -77,7 +79,7 @@ export default function AttendancePage() {
   const showHistoryDetail = (detail: { notes?: string; divisionDate: string; teams: HistoryDetail['teams'] }) => {
     setSelectedSession({
       notes: detail.notes || new Date(detail.divisionDate).toLocaleDateString('ko-KR'),
-      date: detail.notes || new Date(detail.divisionDate).toLocaleDateString('ko-KR'),
+      date: new Date(detail.divisionDate).toLocaleDateString('ko-KR'),
       teams: detail.teams,
     });
   };
@@ -187,7 +189,7 @@ export default function AttendancePage() {
             </h2>
             <div className="space-y-2">
               {pagedStats.map((s, i) => {
-                const rank = (statsPage - 1) * STATS_PAGE_SIZE + i + 1;
+                const rank = (safeStatsPage - 1) * STATS_PAGE_SIZE + i + 1;
                 return (
                   <div key={s.id} className="flex items-center gap-3 py-2">
                     <span className="text-[10px] font-black text-white/20 w-4 text-right">{rank}</span>
@@ -212,7 +214,7 @@ export default function AttendancePage() {
                     onClick={() => setStatsPage(page)}
                     className="w-8 h-8 rounded-full text-[11px] font-black transition-all"
                     style={
-                      page === statsPage
+                      page === safeStatsPage
                         ? { backgroundColor: '#0DF23E', color: '#0a150d' }
                         : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }
                     }
@@ -256,7 +258,7 @@ export default function AttendancePage() {
                 {pagedHistory.map((session, idx) => {
                   const { month, day } = getParsedDate(session.divisionDate);
                   const count = session.teams.flat().filter((p: { isMercenary?: boolean }) => !p.isMercenary).length;
-                  const globalIdx = (historyPage - 1) * HISTORY_PAGE_SIZE + idx;
+                  const globalIdx = (safeHistoryPage - 1) * HISTORY_PAGE_SIZE + idx;
                   return (
                     <div key={session.id} className="glass-card p-5 rounded-2xl flex items-center gap-4 border border-white/5">
                       <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center flex-shrink-0">
@@ -301,7 +303,7 @@ export default function AttendancePage() {
                       onClick={() => setHistoryPage(page)}
                       className="w-8 h-8 rounded-full text-[11px] font-black transition-all"
                       style={
-                        page === historyPage
+                        page === safeHistoryPage
                           ? { backgroundColor: '#0DF23E', color: '#0a150d' }
                           : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }
                       }
