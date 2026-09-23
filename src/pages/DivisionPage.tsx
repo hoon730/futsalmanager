@@ -306,6 +306,24 @@ const DivisionPage = () => {
     setSelectedMercenaries(prev => prev.includes(id) ? prev.filter(mid => mid !== id) : [...prev, id]);
   };
 
+  // 오늘 이미 생성된 다른 시간대(전반/후반) 팀에서 함께였던 페어 — 재배정 시 사실상 배제 대상
+  const getTodayStrictAvoidPairs = (): Set<string> => {
+    const today = new Date().toDateString();
+    const pairs = new Set<string>();
+    divisionHistory
+      .filter((d) => d.squadId === squad?.id && new Date(d.divisionDate).toDateString() === today)
+      .forEach((d) => {
+        d.teams.forEach((team) => {
+          for (let i = 0; i < team.length; i++) {
+            for (let j = i + 1; j < team.length; j++) {
+              pairs.add([team[i].id, team[j].id].sort().join("-"));
+            }
+          }
+        });
+      });
+    return pairs;
+  };
+
   // ── 팀 나누기 ──
   const handleDivideTeams = async (teamCount: number) => {
     setShowTeamCountModal(false);
@@ -313,7 +331,8 @@ const DivisionPage = () => {
     const selectedMercs = mercenaries.filter(m => selectedMercenaries.includes(m.id));
     const allParticipants = [...selectedMembers, ...selectedMercs];
     if (allParticipants.length < teamCount) { toast(`최소 ${teamCount}명이 필요합니다`, 'error'); return; }
-    const result = await divideTeamsWithConstraints(allParticipants, teamCount, fixedTeams, teammateHistory);
+    const strictAvoidPairs = getTodayStrictAvoidPairs();
+    const result = await divideTeamsWithConstraints(allParticipants, teamCount, fixedTeams, teammateHistory, strictAvoidPairs);
     if (!result || !result.teams) { toast('팀 배정에 실패했습니다. 다시 시도해주세요.', 'error'); return; }
     setCurrentTeams(result.teams);
     setActiveTeamPage(0);

@@ -12,7 +12,8 @@ export const divideTeamsWithConstraints = async (
   players: IMember[],
   teamCount: number = 2,
   fixedTeams: IFixedTeam[] = [],
-  teammateHistory: ITeammateHistory = {}
+  teammateHistory: ITeammateHistory = {},
+  strictAvoidPairs: Set<string> = new Set()
 ): Promise<IDivisionResult | null> => {
   // 참가자 부족 케이스는 호출 측(DivisionPage.handleDivideTeams)이 이미 toast 로 안내.
   // 안전망으로 null 만 반환하고 lib 함수 안에서는 UI 호출 안 함.
@@ -40,7 +41,7 @@ export const divideTeamsWithConstraints = async (
 
     if (division) {
       successfulAttempts++;
-      const score = calculateDivisionScore(division, teammateHistory);
+      const score = calculateDivisionScore(division, teammateHistory, strictAvoidPairs);
 
       if (score < bestScore) {
         bestScore = score;
@@ -148,22 +149,27 @@ const attemptDivision = (
 /**
  * 팀 나누기 점수 계산 (낮을수록 좋음)
  * - 팀메이트 이력: 자주 같이 한 사람끼리 다른 팀으로
+ * - 오늘 다른 시간대(전반/후반) 페어: 사실상 배제
  * - 실력 밸런싱: 팀 간 실력 합산 차이 최소화
  * - GK 분배: GK가 한 팀에 몰리지 않도록
  */
 const calculateDivisionScore = (
   division: IDivisionResult,
-  teammateHistory: ITeammateHistory
+  teammateHistory: ITeammateHistory,
+  strictAvoidPairs: Set<string> = new Set()
 ): number => {
   let score = 0;
 
-  // 1. 팀메이트 이력 페널티
+  // 1. 팀메이트 이력 페널티 (오늘 다른 시간대 페어는 강한 페널티로 사실상 배제)
   division.teams.forEach((team) => {
     for (let i = 0; i < team.length; i++) {
       for (let j = i + 1; j < team.length; j++) {
         const key = [team[i].id, team[j].id].sort().join("-");
         const count = teammateHistory[key] || 0;
         score += Math.pow(count, 2);
+        if (strictAvoidPairs.has(key)) {
+          score += 10000;
+        }
       }
     }
   });
