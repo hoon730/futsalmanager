@@ -37,6 +37,7 @@ const DivisionPage = () => {
   // 참석현황 페이지네이션
   const [activePage, setActivePage] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [memberSearch, setMemberSearch] = useState('');
 
   // 팀 결과 스와이퍼
   const [activeTeamPage, setActiveTeamPage] = useState(0);
@@ -192,6 +193,11 @@ const DivisionPage = () => {
     }
     return chunks;
   }, [sortedMembers]);
+  const filteredMembers = useMemo(() => {
+    const q = memberSearch.trim();
+    if (!q) return sortedMembers;
+    return sortedMembers.filter(m => m.name.includes(q));
+  }, [sortedMembers, memberSearch]);
 
   // ── 참석현황 스크롤/드래그 ──
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -228,6 +234,45 @@ const DivisionPage = () => {
       }
     }
     isDragging.current = false;
+  };
+
+  const renderMemberCard = (member: IMember) => {
+    const isSelected = selectedParticipants.includes(member.id);
+    return (
+      <div
+        key={member.id}
+        onClick={() => { if (!hasDragged.current) toggleParticipant(member.id); }}
+        className="rounded-[1.25rem] p-4 flex items-center justify-between transition-all cursor-pointer border-2"
+        style={{
+          background: isSelected ? 'rgba(13,242,62,0.08)' : 'rgba(22,38,27,0.8)',
+          backdropFilter: 'blur(12px)',
+          borderColor: isSelected ? '#0DF23E' : 'transparent',
+          opacity: isSelected ? 1 : 0.45,
+        }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          {member.avatarUrl ? (
+            <img alt={member.name} className="w-10 h-10 rounded-full object-cover border border-white/10" src={member.avatarUrl} />
+          ) : (
+            <div className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10" style={{ background: 'rgba(13,242,62,0.2)' }}>
+              <span className="text-sm font-bold">{member.name.slice(1)}</span>
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-white truncate">{member.name}</p>
+            {member.positionKey && (
+              <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">{member.positionKey}</p>
+            )}
+          </div>
+        </div>
+        <div
+          className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+          style={isSelected ? { backgroundColor: '#0DF23E', borderColor: '#0DF23E' } : { borderColor: 'rgba(255,255,255,0.1)' }}
+        >
+          {isSelected && <span className="material-icons text-[14px] font-black" style={{ color: '#0a150d' }}>check</span>}
+        </div>
+      </div>
+    );
   };
 
   // ── 팀 결과 스크롤/드래그 ──
@@ -399,80 +444,70 @@ const DivisionPage = () => {
           {members.length === 0 ? (
             <div className="px-6"><p className="text-center text-white/40 py-8">멤버를 추가해주세요</p></div>
           ) : (
-            <div className="relative">
-              <div
-                ref={scrollRef}
-                onScroll={handleScroll}
-                onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onMouseLeave={onMouseUp}
-                className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory touch-pan-x cursor-grab active:cursor-grabbing select-none"
-              >
-                {playerChunks.map((chunk, chunkIdx) => (
-                  <div key={chunkIdx} className="w-full flex-shrink-0 snap-center px-6">
-                    <div className="grid grid-cols-2 gap-3">
-                      {chunk.map(member => {
-                        const isSelected = selectedParticipants.includes(member.id);
-                        return (
-                          <div
-                            key={member.id}
-                            onClick={() => { if (!hasDragged.current) toggleParticipant(member.id); }}
-                            className="rounded-[1.25rem] p-4 flex items-center justify-between transition-all cursor-pointer border-2"
-                            style={{
-                              background: isSelected ? 'rgba(13,242,62,0.08)' : 'rgba(22,38,27,0.8)',
-                              backdropFilter: 'blur(12px)',
-                              borderColor: isSelected ? '#0DF23E' : 'transparent',
-                              opacity: isSelected ? 1 : 0.45,
-                            }}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              {member.avatarUrl ? (
-                                <img alt={member.name} className="w-10 h-10 rounded-full object-cover border border-white/10" src={member.avatarUrl} />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10" style={{ background: 'rgba(13,242,62,0.2)' }}>
-                                  <span className="text-sm font-bold">{member.name.slice(1)}</span>
-                                </div>
-                              )}
-                              <div className="min-w-0">
-                                <p className="text-sm font-bold text-white truncate">{member.name}</p>
-                                {member.positionKey && (
-                                  <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">{member.positionKey}</p>
-                                )}
-                              </div>
-                            </div>
-                            <div
-                              className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
-                              style={isSelected ? { backgroundColor: '#0DF23E', borderColor: '#0DF23E' } : { borderColor: 'rgba(255,255,255,0.1)' }}
-                            >
-                              {isSelected && <span className="material-icons text-[14px] font-black" style={{ color: '#0a150d' }}>check</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
+            <>
               {playerChunks.length > 1 && (
-                <div className="flex justify-center gap-2 mt-6">
-                  {playerChunks.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handlePageClick(i)}
-                      aria-label={`${i + 1}페이지로 이동`}
-                      aria-current={activePage === i ? "page" : undefined}
-                      className="h-1.5 rounded-full transition-all duration-300"
-                      style={activePage === i
-                        ? { width: '2rem', backgroundColor: '#0DF23E', boxShadow: '0 0 8px rgba(13,242,62,0.5)' }
-                        : { width: '0.5rem', backgroundColor: 'rgba(255,255,255,0.1)' }
-                      }
-                    />
-                  ))}
+                <div className="px-6 mb-4 relative">
+                  <span className="material-icons absolute left-9 top-1/2 -translate-y-1/2 text-white/20 text-lg pointer-events-none">search</span>
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="이름으로 검색"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-primary/50 transition-all"
+                  />
                 </div>
               )}
-            </div>
+
+              {memberSearch.trim() ? (
+                <div className="px-6">
+                  {filteredMembers.length === 0 ? (
+                    <p className="text-center text-white/40 py-8 text-sm">'{memberSearch.trim()}' 검색 결과가 없습니다</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {filteredMembers.map(renderMemberCard)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <div
+                    ref={scrollRef}
+                    onScroll={handleScroll}
+                    onMouseDown={onMouseDown}
+                    onMouseMove={onMouseMove}
+                    onMouseUp={onMouseUp}
+                    onMouseLeave={onMouseUp}
+                    className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory touch-pan-x cursor-grab active:cursor-grabbing select-none"
+                  >
+                    {playerChunks.map((chunk, chunkIdx) => (
+                      <div key={chunkIdx} className="w-full flex-shrink-0 snap-center px-6">
+                        <div className="grid grid-cols-2 gap-3">
+                          {chunk.map(renderMemberCard)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {playerChunks.length > 1 && (
+                    <div className="flex justify-center gap-2 mt-6">
+                      {playerChunks.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handlePageClick(i)}
+                          aria-label={`${i + 1}페이지로 이동`}
+                          aria-current={activePage === i ? "page" : undefined}
+                          className="h-1.5 rounded-full transition-all duration-300"
+                          style={activePage === i
+                            ? { width: '2rem', backgroundColor: '#0DF23E', boxShadow: '0 0 8px rgba(13,242,62,0.5)' }
+                            : { width: '0.5rem', backgroundColor: 'rgba(255,255,255,0.1)' }
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -593,23 +628,15 @@ const DivisionPage = () => {
             </div>
           )}
 
-          {/* ── 통계 카드 ── */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="glass-card rounded-2xl p-6 flex flex-col items-center justify-center gap-2 border border-white/5">
-              <p className="text-[10px] uppercase tracking-wider opacity-60 font-black">멤버 인원</p>
-              <div className="flex flex-col items-center gap-1">
-                <p className="text-sm font-bold text-white/80">멤버 <span style={{ color: '#0DF23E' }}>{members.length}명</span></p>
-                <p className="text-sm font-bold text-white/80">용병 <span style={{ color: '#0DF23E' }}>{mercenaries.length}명</span></p>
-              </div>
-            </div>
-            <div className="glass-card rounded-2xl p-6 flex flex-col items-center justify-center gap-2 border border-white/5">
-              <p className="text-[10px] uppercase tracking-wider opacity-60 font-black">참석 인원</p>
-              <span className="text-2xl font-black" style={{ color: '#0DF23E' }}>{totalAttending}명</span>
-            </div>
+          {/* ── 참석 요약 ── */}
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-white/50">
+            <span>전체 {members.length + mercenaries.length}명</span>
+            <span className="text-white/20">·</span>
+            <span>오늘 참석 <span className="font-black" style={{ color: '#0DF23E' }}>{totalAttending}명</span></span>
           </div>
 
           {/* ── DIVIDE INTO TEAMS 버튼 ── */}
-          <div className="pt-6 pb-4">
+          <div className="pt-4 pb-4">
             <button
               onClick={() => setShowTeamCountModal(true)}
               disabled={totalAttending < 2}
@@ -745,32 +772,42 @@ const DivisionPage = () => {
                       </div>
   
                       {/* 선수 리스트 - 5명까지, 초과 시 스크롤 */}
-                      <div
-                        className="z-10 relative overflow-y-auto hide-scrollbar flex flex-col gap-2"
-                        style={{ maxHeight: 'calc(5 * 2.6rem + 4 * 0.5rem)' }}
-                      >
-                        {team.map((member, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-3 px-3 rounded-xl flex-shrink-0"
-                            style={{
-                              background: `linear-gradient(135deg, ${color}18 0%, ${color}0C 100%)`,
-                              border: `1px solid ${color}30`,
-                              height: '2.6rem',
-                            }}
-                          >
+                      <div className="z-10 relative">
+                        <div
+                          className="overflow-y-auto hide-scrollbar flex flex-col gap-2"
+                          style={{ maxHeight: 'calc(5 * 2.6rem + 4 * 0.5rem)' }}
+                        >
+                          {team.map((member, i) => (
                             <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0"
-                              style={{ background: `${color}40`, color: '#fff' }}
+                              key={i}
+                              className="flex items-center gap-3 px-3 rounded-xl flex-shrink-0"
+                              style={{
+                                background: `linear-gradient(135deg, ${color}18 0%, ${color}0C 100%)`,
+                                border: `1px solid ${color}30`,
+                                height: '2.6rem',
+                              }}
                             >
-                              {member.name.slice(1)}
+                              <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0"
+                                style={{ background: `${color}40`, color: '#fff' }}
+                              >
+                                {member.name.slice(1)}
+                              </div>
+                              <span className="font-bold text-sm text-white flex-1 truncate">{member.name}</span>
+                              {member.isMercenary && (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 bg-orange-500/20 text-orange-400">용병</span>
+                              )}
                             </div>
-                            <span className="font-bold text-sm text-white flex-1 truncate">{member.name}</span>
-                            {member.isMercenary && (
-                              <span className="text-[9px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 bg-orange-500/20 text-orange-400">용병</span>
-                            )}
+                          ))}
+                        </div>
+                        {team.length > 5 && (
+                          <div
+                            className="absolute bottom-0 left-0 right-0 h-7 flex items-end justify-center pointer-events-none"
+                            style={{ background: 'linear-gradient(to bottom, transparent, #0a150d)' }}
+                          >
+                            <span className="material-icons text-white/40" style={{ fontSize: '1rem' }}>expand_more</span>
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
                   </div>
